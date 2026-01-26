@@ -50,6 +50,30 @@ $approvingAuthorities = $appStmt->fetchAll();
 // Get all documents
 $allDocuments = $documentController->getAllDocuments();
 
+// Create cooperative color map
+$ecColors = [];
+$colorPalette = [
+    'bg-red-200 dark:bg-red-900/30',
+    'bg-blue-200 dark:bg-blue-900/30',
+    'bg-green-200 dark:bg-green-900/30',
+    'bg-yellow-200 dark:bg-yellow-900/30',
+    'bg-purple-200 dark:bg-purple-900/30',
+    'bg-pink-200 dark:bg-pink-900/30',
+    'bg-indigo-200 dark:bg-indigo-900/30',
+    'bg-teal-200 dark:bg-teal-900/30',
+    'bg-orange-200 dark:bg-orange-900/30',
+    'bg-cyan-200 dark:bg-cyan-900/30',
+];
+
+$colorIndex = 0;
+foreach ($allDocuments as $doc) {
+    $ec = $doc['ec'];
+    if (!isset($ecColors[$ec])) {
+        $ecColors[$ec] = $colorPalette[$colorIndex % count($colorPalette)];
+        $colorIndex++;
+    }
+}
+
 // Handle search filter
 $searchTerm = isset($_GET['search']) ? trim($_GET['search']) : '';
 $filterItem = isset($_GET['item']) ? trim($_GET['item']) : '';
@@ -197,7 +221,7 @@ ob_start();
             </thead>
             <tbody>
                 <?php foreach ($documents as $doc): ?>
-                <tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                <tr class="border-b border-gray-200 dark:border-gray-700 transition <?php echo isset($ecColors[$doc['ec']]) ? $ecColors[$doc['ec']] : ''; ?>">
                     <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
                         <?php echo htmlspecialchars($doc['ec']); ?>
                     </td>

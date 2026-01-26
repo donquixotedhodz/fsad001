@@ -198,7 +198,7 @@ CREATE TABLE IF NOT EXISTS `items` (
 CREATE TABLE IF NOT EXISTS `manap` (
   `id` int NOT NULL AUTO_INCREMENT,
   `ec` varchar(100) NOT NULL,
-  `item` varchar(255) NOT NULL,
+  `item` varchar(500) NOT NULL,
   `recommending_approvals` varchar(500) DEFAULT NULL,
   `approving_authority` varchar(500) DEFAULT NULL,
   `control_point` varchar(1000) DEFAULT NULL,

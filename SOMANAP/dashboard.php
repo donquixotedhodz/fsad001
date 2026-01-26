@@ -264,6 +264,25 @@ ob_start();
         const ecLabels = ecData.map(item => item.ec);
         const ecValues = ecData.map(item => item.count);
 
+        // Autumn colors for each EC
+        const autumnColors = [
+            'rgba(220, 20, 60, 0.8)',       // Crimson
+            'rgba(255, 69, 0, 0.8)',        // Red-Orange
+            'rgba(255, 140, 0, 0.8)',       // Dark Orange
+            'rgba(255, 165, 0, 0.8)',       // Orange
+            'rgba(218, 165, 32, 0.8)',      // Goldenrod
+            'rgba(184, 134, 11, 0.8)',      // Dark Goldenrod
+            'rgba(139, 69, 19, 0.8)',       // Saddle Brown
+            'rgba(210, 105, 30, 0.8)',      // Chocolate
+            'rgba(205, 92, 92, 0.8)',       // Indian Red
+            'rgba(178, 34, 34, 0.8)',       // Firebrick
+            'rgba(160, 82, 45, 0.8)',       // Sienna
+            'rgba(165, 42, 42, 0.8)'        // Brown
+        ];
+
+        const ecBackgroundColors = ecLabels.map((_, index) => autumnColors[index % autumnColors.length]);
+        const ecBorderColors = ecBackgroundColors.map(color => color.replace('0.8', '1'));
+
         const ecCtx = document.getElementById('ecChart').getContext('2d');
         new Chart(ecCtx, {
             type: 'bar',
@@ -272,8 +291,8 @@ ob_start();
                 datasets: [{
                     label: 'Number of Documents',
                     data: ecValues,
-                    backgroundColor: 'rgba(59, 130, 246, 0.8)',
-                    borderColor: 'rgba(59, 130, 246, 1)',
+                    backgroundColor: ecBackgroundColors,
+                    borderColor: ecBorderColors,
                     borderWidth: 1
                 }]
             },

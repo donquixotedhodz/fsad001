@@ -352,7 +352,7 @@ ob_start();
     <div class="bg-white dark:bg-gray-800 rounded-lg w-full max-w-6xl p-8 max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between mb-6">
             <h2 class="text-3xl font-bold text-gray-900 dark:text-white">Upload Document</h2>
-            <button onclick="document.getElementById('uploadModal').classList.add('hidden')" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+            <button id="closeModalBtn" onclick="document.getElementById('uploadModal').classList.add('hidden')" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
@@ -459,11 +459,22 @@ ob_start();
 
             <div id="uploadMessage" class="hidden p-4 rounded-lg text-sm font-medium"></div>
 
+            <!-- Loading Indicator -->
+            <div id="uploadLoading" class="hidden flex items-center justify-center gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+                <div class="animate-spin">
+                    <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+                <span class="text-blue-700 dark:text-blue-300 font-medium">Uploading documents...</span>
+            </div>
+
             <div class="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <button type="button" onclick="document.getElementById('uploadModal').classList.add('hidden')" class="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition font-medium">
+                <button id="cancelBtn" type="button" onclick="document.getElementById('uploadModal').classList.add('hidden')" class="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition font-medium">
                     Cancel
                 </button>
-                <button type="submit" class="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-medium">
+                <button id="submitBtn" type="submit" class="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-medium">
                     Upload Documents
                 </button>
             </div>
@@ -834,10 +845,27 @@ function updateFileList() {
 document.getElementById('uploadForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     
+    // Lock the form
+    const submitBtn = document.getElementById('submitBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const uploadLoading = document.getElementById('uploadLoading');
+    const uploadMessage = document.getElementById('uploadMessage');
+    const uploadForm = document.getElementById('uploadForm');
+    
     if (fileInput.files.length === 0) {
         alert('Please select at least one file');
         return;
     }
+    
+    // Show loading indicator and disable buttons
+    uploadLoading.classList.remove('hidden');
+    submitBtn.disabled = true;
+    cancelBtn.disabled = true;
+    closeModalBtn.disabled = true;
+    uploadForm.style.opacity = '0.6';
+    uploadForm.style.pointerEvents = 'none';
+    uploadMessage.classList.add('hidden');
     
     // Validate and get Item values
     const itemSelects = document.querySelectorAll('[name="items[]"]');
@@ -930,6 +958,7 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
         const data = await response.json();
         
         if (data.success) {
+            uploadLoading.classList.add('hidden');
             messageDiv.classList.remove('hidden', 'bg-red-50', 'text-red-800', 'dark:bg-red-900/20', 'dark:text-red-400');
             messageDiv.classList.add('bg-green-50', 'text-green-800', 'dark:bg-green-900/20', 'dark:text-green-400');
             messageDiv.textContent = '✓ ' + data.message;
@@ -939,11 +968,25 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
                 location.reload();
             }, 1500);
         } else {
+            uploadLoading.classList.add('hidden');
+            submitBtn.disabled = false;
+            cancelBtn.disabled = false;
+            closeModalBtn.disabled = false;
+            uploadForm.style.opacity = '1';
+            uploadForm.style.pointerEvents = 'auto';
+            
             messageDiv.classList.remove('hidden', 'bg-green-50', 'text-green-800', 'dark:bg-green-900/20', 'dark:text-green-400');
             messageDiv.classList.add('bg-red-50', 'text-red-800', 'dark:bg-red-900/20', 'dark:text-red-400');
             messageDiv.textContent = '✗ ' + (data.message || 'Upload failed');
         }
     } catch (error) {
+        uploadLoading.classList.add('hidden');
+        submitBtn.disabled = false;
+        cancelBtn.disabled = false;
+        closeModalBtn.disabled = false;
+        uploadForm.style.opacity = '1';
+        uploadForm.style.pointerEvents = 'auto';
+        
         messageDiv.classList.remove('hidden', 'bg-green-50', 'text-green-800', 'dark:bg-green-900/20', 'dark:text-green-400');
         messageDiv.classList.add('bg-red-50', 'text-red-800', 'dark:bg-red-900/20', 'dark:text-red-400');
         messageDiv.textContent = '✗ Error uploading documents: ' + error.message;

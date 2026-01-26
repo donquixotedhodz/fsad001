@@ -219,12 +219,13 @@ $dateGenerated = date('F d, Y');
                     $totalAmount = 0;
                     foreach ($ppeRecords as $record) {
                         $totalAmount += $record['amount'];
+                        $formattedDate = date('m/d/Y', strtotime($record['date']));
                         echo '<tr>';
                         echo '<td>' . htmlspecialchars(strtoupper($record['check_no'] ?? '')) . '</td>';
                         echo '<td>' . htmlspecialchars(strtoupper($record['dv_or_no'] ?? '')) . '</td>';
                         echo '<td>' . htmlspecialchars(strtoupper($record['particulars'])) . '</td>';
                         echo '<td class="text-right">' . number_format($record['amount'], 2) . '</td>';
-                        echo '<td>' . htmlspecialchars(strtoupper($record['date'])) . '</td>';
+                        echo '<td>' . htmlspecialchars(strtoupper($formattedDate)) . '</td>';
                         echo '<td></td>';
                         echo '<td></td>';
                         echo '<td></td>';

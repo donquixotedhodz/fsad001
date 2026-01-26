@@ -240,7 +240,7 @@ CREATE TABLE IF NOT EXISTS `ppe_funds` (
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Data exporting was unselected.
-INSERT INTO ppe_funds (fund_name, remaining_balance) VALUES ('PPE Provident Fund', 7377280.01);
+INSERT INTO ppe_funds (fund_name, remaining_balance) VALUES ('PPE Provident Fund', 0);
 -- Dumping structure for table neafsad.recommending_approvals
 CREATE TABLE IF NOT EXISTS `recommending_approvals` (
   `id` int NOT NULL AUTO_INCREMENT,

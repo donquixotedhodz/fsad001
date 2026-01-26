@@ -176,8 +176,9 @@ try {
                         $totalDebit += $record['debit'];
                         $totalCredit += $record['credit'];
                         
+                        $formattedDate = date('m/d/Y', strtotime($record['date']));
                         echo '<tr>';
-                        echo '<td>' . strtoupper(htmlspecialchars($record['date'])) . '</td>';
+                        echo '<td>' . strtoupper(htmlspecialchars($formattedDate)) . '</td>';
                         echo '<td>' . strtoupper(htmlspecialchars($record['check_no'] ?? '')) . '</td>';
                         echo '<td>' . strtoupper(htmlspecialchars($record['dv_or_no'] ?? '')) . '</td>';
                         echo '<td>' . strtoupper(htmlspecialchars($record['particulars'])) . '</td>';

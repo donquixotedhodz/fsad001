@@ -172,12 +172,13 @@ try {
                     foreach ($ppeRecords as $record) {
                         $totalAmount += $record['amount'];
                         
+                        $formattedDate = date('m/d/Y', strtotime($record['date']));
                         echo '<tr>';
                         echo '<td>' . strtoupper(htmlspecialchars($record['check_no'] ?? '')) . '</td>';
                         echo '<td>' . strtoupper(htmlspecialchars($record['dv_or_no'] ?? '')) . '</td>';
                         echo '<td>' . strtoupper(htmlspecialchars($record['particulars'])) . '</td>';
                         echo '<td class="text-right">' . number_format($record['amount'], 2) . '</td>';
-                        echo '<td class="text-right">' . strtoupper(htmlspecialchars($record['date'])) . '</td>';
+                        echo '<td class="text-right">' . strtoupper(htmlspecialchars($formattedDate)) . '</td>';
                         echo '</tr>';
                     }
                     

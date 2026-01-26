@@ -315,14 +315,14 @@ ob_start();
         const itemValues = itemData.map(item => item.count).slice(0, 8);
 
         const colors = [
-            'rgba(30, 144, 255, 0.8)',      // Dodger Blue
-            'rgba(176, 224, 230, 0.8)',     // Powder Blue
-            'rgba(135, 206, 235, 0.8)',     // Sky Blue
-            'rgba(173, 216, 230, 0.8)',     // Light Blue
-            'rgba(0, 191, 255, 0.8)',       // Deep Sky Blue
-            'rgba(64, 224, 208, 0.8)',      // Turquoise
-            'rgba(175, 238, 238, 0.8)',     // Pale Turquoise
-            'rgba(240, 248, 255, 0.8)'      // Alice Blue
+            'rgba(220, 20, 60, 0.8)',       // Crimson
+            'rgba(255, 69, 0, 0.8)',        // Red-Orange
+            'rgba(255, 140, 0, 0.8)',       // Dark Orange
+            'rgba(255, 165, 0, 0.8)',       // Orange
+            'rgba(218, 165, 32, 0.8)',      // Goldenrod
+            'rgba(184, 134, 11, 0.8)',      // Dark Goldenrod
+            'rgba(139, 69, 19, 0.8)',       // Saddle Brown
+            'rgba(210, 105, 30, 0.8)'       // Chocolate
         ];
 
         const itemCtx = document.getElementById('itemChart').getContext('2d');

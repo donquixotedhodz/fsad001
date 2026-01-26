@@ -2,10 +2,41 @@
 session_start();
 require_once __DIR__ . '/../config.php';
 
+// Build filter conditions
+$whereConditions = [];
+$params = [];
+
+if (!empty($_GET['date_from'])) {
+    $whereConditions[] = "date >= ?";
+    $params[] = $_GET['date_from'];
+}
+if (!empty($_GET['date_to'])) {
+    $whereConditions[] = "date <= ?";
+    $params[] = $_GET['date_to'];
+}
+if (!empty($_GET['check_no'])) {
+    $whereConditions[] = "check_no LIKE ?";
+    $params[] = '%' . $_GET['check_no'] . '%';
+}
+if (!empty($_GET['dv_or_no'])) {
+    $whereConditions[] = "dv_or_no LIKE ?";
+    $params[] = '%' . $_GET['dv_or_no'] . '%';
+}
+if (!empty($_GET['particulars'])) {
+    $whereConditions[] = "particulars LIKE ?";
+    $params[] = '%' . $_GET['particulars'] . '%';
+}
+
+$whereClause = '';
+if (!empty($whereConditions)) {
+    $whereClause = 'WHERE ' . implode(' AND ', $whereConditions);
+}
+
 // Fetch PPE data from database
 try {
-    $stmt = $conn->prepare("SELECT check_no, dv_or_no, particulars, (debit + credit) as amount, date FROM ppe ORDER BY date ASC");
-    $stmt->execute();
+    $sql = "SELECT check_no, dv_or_no, particulars, (debit + credit) as amount, date FROM ppe $whereClause ORDER BY date ASC";
+    $stmt = $conn->prepare($sql);
+    $stmt->execute($params);
     $ppeRecords = $stmt->fetchAll();
 } catch (Exception $e) {
     $ppeRecords = [];

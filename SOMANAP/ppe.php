@@ -210,7 +210,7 @@ ob_start();
     <dialog id="addPPEModal" class="rounded-lg shadow-lg max-w-2xl w-full p-8 dark:bg-gray-800">
         <h2 class="text-xl font-bold mb-6 text-gray-900 dark:text-white">Add PPE Record</h2>
         
-        <form method="POST" class="space-y-6">
+        <form method="POST" class="space-y-6" id="addPPEForm" onsubmit="prepareAddPPESubmit(event)">
             <input type="hidden" name="action" value="add_ppe">
             
             <div class="grid grid-cols-2 gap-6">
@@ -243,10 +243,15 @@ ob_start();
 
                 <!-- DV/OR No -->
                 <div class="col-span-2">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">DV/OR No. (Format: YYYY-MM-###)</label>
-                    <div class="flex gap-2">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">DV/OR No.</label>
+                    <!-- Actual Check Format -->
+                    <div id="addDVFormatted" class="flex gap-2">
                         <input type="text" id="addDVPrefix" name="dv_prefix" disabled class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-600 dark:text-white bg-gray-200 text-gray-600 focus:outline-none" placeholder="YYYY-MM-">
                         <input type="text" id="addDVSuffix" name="dv_suffix" maxlength="3" placeholder="###" class="w-20 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="updateFullDVNumber()">
+                    </div>
+                    <!-- Online Check Format (4 Numbers) -->
+                    <div id="addDVOnline" style="display:none;">
+                        <input type="text" id="addDVManual" maxlength="50" placeholder="#### (4 digits)" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                     <input type="hidden" id="addDVNumber" name="dv_or_no" value="">
                 </div>
@@ -280,7 +285,7 @@ ob_start();
     <dialog id="editPPEModal" class="rounded-lg shadow-lg max-w-2xl w-full p-8 dark:bg-gray-800">
         <h2 class="text-xl font-bold mb-6 text-gray-900 dark:text-white">Edit PPE Record</h2>
         
-        <form method="POST" class="space-y-6">
+        <form method="POST" class="space-y-6" id="editPPEForm" onsubmit="prepareEditPPESubmit(event)">
             <input type="hidden" name="action" value="edit_ppe">
             <input type="hidden" id="editPPEId" name="ppe_id" value="">
             
@@ -314,10 +319,15 @@ ob_start();
 
                 <!-- DV/OR No -->
                 <div class="col-span-2">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">DV/OR No. (Format: YYYY-MM-###)</label>
-                    <div class="flex gap-2">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">DV/OR No.</label>
+                    <!-- Actual Check Format -->
+                    <div id="editDVFormatted" class="flex gap-2">
                         <input type="text" id="editDVPrefix" name="dv_prefix" disabled class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-600 dark:text-white bg-gray-200 text-gray-600 focus:outline-none" placeholder="YYYY-MM-">
                         <input type="text" id="editDVSuffix" name="dv_suffix" maxlength="3" placeholder="###" class="w-20 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="updateFullEditDVNumber()">
+                    </div>
+                    <!-- Online Check Format (4 Numbers) -->
+                    <div id="editDVOnline" style="display:none;">
+                        <input type="text" id="editDVManual" maxlength="4" placeholder="#### (4 digits)" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                     <input type="hidden" id="editDVNumber" name="dv_or_no" value="">
                 </div>
@@ -366,6 +376,18 @@ ob_start();
     </dialog>
 
     <!-- PPE Table -->
+    <!-- Show Entries and PPE Table -->
+    <div class="mb-4 flex items-center gap-2">
+        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Show</label>
+        <select id="limitSelect" onchange="changeLimit()" class="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="5" <?php echo (!isset($_GET['limit']) || $_GET['limit'] == 5) ? 'selected' : ''; ?>>5</option>
+            <option value="10" <?php echo (isset($_GET['limit']) && $_GET['limit'] == 10) ? 'selected' : ''; ?>>10</option>
+            <option value="25" <?php echo (isset($_GET['limit']) && $_GET['limit'] == 25) ? 'selected' : ''; ?>>25</option>
+            <option value="all" <?php echo (isset($_GET['limit']) && $_GET['limit'] == 'all') ? 'selected' : ''; ?>>Show All</option>
+        </select>
+        <span class="text-sm text-gray-600 dark:text-gray-400">entries</span>
+    </div>
+
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-x-auto">
         <table class="w-full border-collapse">
             <thead>
@@ -382,9 +404,36 @@ ob_start();
             </thead>
             <tbody>
                 <?php
+                // Pagination
+                $itemsPerPage = isset($_GET['limit']) && $_GET['limit'] !== 'all' ? (int)$_GET['limit'] : 5;
+                
                 // Fetch PPE data from database
                 try {
-                    $stmt = $conn->prepare("SELECT * FROM ppe ORDER BY date ASC");
+                    // Get total count
+                    $countStmt = $conn->prepare("SELECT COUNT(*) as total FROM ppe");
+                    $countStmt->execute();
+                    $countResult = $countStmt->fetch();
+                    $totalItems = $countResult['total'];
+                    
+                    // Calculate pagination
+                    if (isset($_GET['limit']) && $_GET['limit'] === 'all') {
+                        $totalPages = 1;
+                        $currentPage = 1;
+                        $offset = 0;
+                    } else {
+                        $totalPages = ceil($totalItems / $itemsPerPage);
+                        $currentPage = isset($_GET['page']) ? max(1, min((int)$_GET['page'], $totalPages)) : 1;
+                        $offset = ($currentPage - 1) * $itemsPerPage;
+                    }
+                    
+                    // Fetch records with limit
+                    if (isset($_GET['limit']) && $_GET['limit'] === 'all') {
+                        $stmt = $conn->prepare("SELECT * FROM ppe ORDER BY date ASC");
+                    } else {
+                        $stmt = $conn->prepare("SELECT * FROM ppe ORDER BY date ASC LIMIT ? OFFSET ?");
+                        $stmt->bindParam(1, $itemsPerPage, PDO::PARAM_INT);
+                        $stmt->bindParam(2, $offset, PDO::PARAM_INT);
+                    }
                     $stmt->execute();
                     $ppeRecords = $stmt->fetchAll();
                     
@@ -406,28 +455,85 @@ ob_start();
                             echo '</tr>';
                         }
                     } else {
-                        echo '<tr><td colspan="7" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-gray-500">No records found</td></tr>';
+                        echo '<tr><td colspan="8" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-gray-500">No records found</td></tr>';
                     }
                 } catch (Exception $e) {
-                    echo '<tr><td colspan="7" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-red-500">Error loading data: ' . htmlspecialchars($e->getMessage()) . '</td></tr>';
+                    echo '<tr><td colspan="8" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-red-500">Error loading data: ' . htmlspecialchars($e->getMessage()) . '</td></tr>';
                 }
                 ?>
             </tbody>
         </table>
     </div>
 
+    <!-- Pagination -->
+    <?php if ($totalPages > 1): ?>
+    <div class="mt-6 flex items-center justify-between">
+        <div class="text-sm text-gray-600 dark:text-gray-400">
+            Showing <?php echo ($offset + 1); ?> to <?php echo min($offset + $itemsPerPage, $totalItems); ?> of <?php echo $totalItems; ?> records
+        </div>
+        <div class="flex gap-2">
+            <?php if ($currentPage > 1): ?>
+            <a href="?page=<?php echo $currentPage - 1; ?>&limit=<?php echo isset($_GET['limit']) ? $_GET['limit'] : 5; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                Previous
+            </a>
+            <?php endif; ?>
+
+            <?php
+            $startPage = max(1, $currentPage - 2);
+            $endPage = min($totalPages, $currentPage + 2);
+            
+            if ($startPage > 1) {
+                echo '<a href="?page=1&limit=' . (isset($_GET['limit']) ? $_GET['limit'] : 5) . '" class="px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">1</a>';
+                if ($startPage > 2) {
+                    echo '<span class="px-3 py-2 text-gray-500 dark:text-gray-400">...</span>';
+                }
+            }
+            
+            for ($i = $startPage; $i <= $endPage; $i++) {
+                if ($i === $currentPage) {
+                    echo '<span class="px-3 py-2 bg-blue-500 text-white rounded-lg">' . $i . '</span>';
+                } else {
+                    echo '<a href="?page=' . $i . '&limit=' . (isset($_GET['limit']) ? $_GET['limit'] : 5) . '" class="px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">' . $i . '</a>';
+                }
+            }
+            
+            if ($endPage < $totalPages) {
+                if ($endPage < $totalPages - 1) {
+                    echo '<span class="px-3 py-2 text-gray-500 dark:text-gray-400">...</span>';
+                }
+                echo '<a href="?page=' . $totalPages . '&limit=' . (isset($_GET['limit']) ? $_GET['limit'] : 5) . '" class="px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">' . $totalPages . '</a>';
+            }
+            ?>
+
+            <?php if ($currentPage < $totalPages): ?>
+            <a href="?page=<?php echo $currentPage + 1; ?>&limit=<?php echo isset($_GET['limit']) ? $_GET['limit'] : 5; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                Next
+            </a>
+            <?php endif; ?>
+        </div>
+    </div>
+    <?php endif; ?>
+
 <script>
 function toggleCheckNoInput() {
     const checkType = document.getElementById('checkType').value;
     const checkNoDiv = document.getElementById('checkNoDiv');
     const checkNoInput = document.getElementById('checkNoInput');
+    const dvFormatted = document.getElementById('addDVFormatted');
+    const dvOnline = document.getElementById('addDVOnline');
     
     if (checkType === 'online') {
         checkNoDiv.style.display = 'none';
         checkNoInput.required = false;
+        dvFormatted.style.display = 'none';
+        dvOnline.style.display = 'block';
+        document.getElementById('addDVManual').required = false;
     } else {
         checkNoDiv.style.display = 'block';
         checkNoInput.required = true;
+        dvFormatted.style.display = 'flex';
+        dvOnline.style.display = 'none';
+        document.getElementById('addDVManual').required = false;
     }
 }
 
@@ -435,13 +541,21 @@ function toggleCheckNoInputEdit() {
     const checkType = document.getElementById('editCheckType').value;
     const checkNoDiv = document.getElementById('editCheckNoDiv');
     const checkNoInput = document.getElementById('editCheckNoInput');
+    const dvFormatted = document.getElementById('editDVFormatted');
+    const dvOnline = document.getElementById('editDVOnline');
     
     if (checkType === 'online') {
         checkNoDiv.style.display = 'none';
         checkNoInput.required = false;
+        dvFormatted.style.display = 'none';
+        dvOnline.style.display = 'block';
+        document.getElementById('editDVManual').required = false;
     } else {
         checkNoDiv.style.display = 'block';
         checkNoInput.required = true;
+        dvFormatted.style.display = 'flex';
+        dvOnline.style.display = 'none';
+        document.getElementById('editDVManual').required = false;
     }
 }
 
@@ -529,6 +643,29 @@ function deletePPE(id) {
         document.body.appendChild(form);
         form.submit();
     }
+}
+
+// Form submission handlers to set correct DV/OR value
+function prepareAddPPESubmit(event) {
+    const checkType = document.getElementById('checkType').value;
+    const hiddenDV = document.getElementById('addDVNumber');
+    
+    if (checkType === 'online') {
+        const manualDV = document.getElementById('addDVManual').value;
+        hiddenDV.value = manualDV;
+    }
+    // For actual, the hidden field is already populated by updateFullDVNumber()
+}
+
+function prepareEditPPESubmit(event) {
+    const checkType = document.getElementById('editCheckType').value;
+    const hiddenDV = document.getElementById('editDVNumber');
+    
+    if (checkType === 'online') {
+        const manualDV = document.getElementById('editDVManual').value;
+        hiddenDV.value = manualDV;
+    }
+    // For actual, the hidden field is already populated by updateFullEditDVNumber()
 }
 
 // Initialize on page load

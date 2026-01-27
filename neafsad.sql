@@ -212,6 +212,8 @@ CREATE TABLE IF NOT EXISTS `manap` (
   `id` int NOT NULL AUTO_INCREMENT,
   `ec` varchar(100) NOT NULL,
   `item` varchar(255) NOT NULL,
+  `department` varchar(255) DEFAULT NULL,
+  `team` varchar(255) DEFAULT NULL,
   `recommending_approvals` varchar(500) DEFAULT NULL,
   `approving_authority` varchar(500) DEFAULT NULL,
   `control_point` varchar(1000) DEFAULT NULL,
@@ -263,6 +265,32 @@ CREATE TABLE IF NOT EXISTS `ppe_funds` (
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Dumping data for table neafsad.ppe_funds: ~0 rows (approximately)
+
+-- Dumping structure for table neafsad.departments
+CREATE TABLE IF NOT EXISTS `departments` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `description` text,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `name` (`name`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Dumping data for table neafsad.departments: ~0 rows (approximately)
+
+-- Dumping structure for table neafsad.teams
+CREATE TABLE IF NOT EXISTS `teams` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `description` text,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `name` (`name`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Dumping data for table neafsad.teams: ~0 rows (approximately)
 
 -- Dumping structure for table neafsad.recommending_approvals
 CREATE TABLE IF NOT EXISTS `recommending_approvals` (

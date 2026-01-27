@@ -47,6 +47,16 @@ $appStmt = $conn->prepare("SELECT id, name FROM approving_authority ORDER BY nam
 $appStmt->execute();
 $approvingAuthorities = $appStmt->fetchAll();
 
+// Fetch departments for dropdown
+$deptStmt = $conn->prepare("SELECT id, name FROM departments ORDER BY name ASC");
+$deptStmt->execute();
+$departmentsList = $deptStmt->fetchAll();
+
+// Fetch teams for dropdown
+$teamStmt = $conn->prepare("SELECT id, name FROM teams ORDER BY name ASC");
+$teamStmt->execute();
+$teamsList = $teamStmt->fetchAll();
+
 // Get all documents
 $allDocuments = $documentController->getAllDocuments();
 
@@ -215,6 +225,8 @@ ob_start();
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Recommending Approvals</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Approving Authority</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Control Point</th>
+                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Department</th>
+                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Team</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Date</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Actions</th>
                 </tr>
@@ -242,6 +254,42 @@ ob_start();
                                 echo '<div class="space-y-1">';
                                 foreach ($points as $point) {
                                     echo '<div class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">' . htmlspecialchars($point) . '</div>';
+                                }
+                                echo '</div>';
+                            } else {
+                                echo '-';
+                            }
+                        } else {
+                            echo '-';
+                        }
+                        ?>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
+                        <?php 
+                        if (!empty($doc['department'])) {
+                            $depts = array_filter(array_map('trim', explode("\n", $doc['department'])));
+                            if (!empty($depts)) {
+                                echo '<div class="space-y-1">';
+                                foreach ($depts as $dept) {
+                                    echo '<div class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">' . htmlspecialchars($dept) . '</div>';
+                                }
+                                echo '</div>';
+                            } else {
+                                echo '-';
+                            }
+                        } else {
+                            echo '-';
+                        }
+                        ?>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
+                        <?php 
+                        if (!empty($doc['team'])) {
+                            $teams = array_filter(array_map('trim', explode("\n", $doc['team'])));
+                            if (!empty($teams)) {
+                                echo '<div class="space-y-1">';
+                                foreach ($teams as $team) {
+                                    echo '<div class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">' . htmlspecialchars($team) . '</div>';
                                 }
                                 echo '</div>';
                             } else {
@@ -286,7 +334,6 @@ ob_start();
                             </svg>
                         </button>
                         <?php endif; ?>
-                    </td>
                     </td>
                 </tr>
                 <?php endforeach; ?>
@@ -465,6 +512,43 @@ ob_start();
                 </button>
             </div>
 
+            <!-- Two Column Layout: Department and Team -->
+            <div class="grid grid-cols-2 gap-6">
+                <!-- Department Section -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Department</label>
+                    <div id="departmentContainer" class="space-y-2 mb-3">
+                        <div class="flex gap-2 items-end">
+                            <div class="flex-1 relative">
+                                <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1.</span>
+                                <input type="text" name="departments[]" placeholder="Type to search department..." class="department-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+                                <div class="department-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" onclick="addDepartment()" class="text-sm px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition font-medium">
+                        + Add Department
+                    </button>
+                </div>
+
+                <!-- Team Section -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Team</label>
+                    <div id="teamContainer" class="space-y-2 mb-3">
+                        <div class="flex gap-2 items-end">
+                            <div class="flex-1 relative">
+                                <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1.</span>
+                                <input type="text" name="teams[]" placeholder="Type to search team..." class="team-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+                                <div class="team-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" onclick="addTeam()" class="text-sm px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition font-medium">
+                        + Add Team
+                    </button>
+                </div>
+            </div>
+
             <!-- Full Width File Upload -->
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Upload Files</label>
@@ -511,6 +595,8 @@ ob_start();
 const itemsData = <?php echo json_encode(array_map(function($item) { return $item['name']; }, $itemsList)); ?>;
 const recAppData = <?php echo json_encode(array_map(function($rec) { return $rec['name']; }, $recommendingApprovals)); ?>;
 const appAuthData = <?php echo json_encode(array_map(function($auth) { return $auth['name']; }, $approvingAuthorities)); ?>;
+const departmentsData = <?php echo json_encode(array_map(function($dept) { return $dept['name']; }, $departmentsList)); ?>;
+const teamsData = <?php echo json_encode(array_map(function($team) { return $team['name']; }, $teamsList)); ?>;
 const ecData = <?php echo json_encode(array_map(function($ec) { return ['name' => $ec['name'], 'code' => $ec['code']]; }, $electricCooperatives)); ?>;
 
 // Autocomplete function
@@ -704,6 +790,8 @@ setupAutocomplete('ecInput', 'ecSuggestions', ecData);
 setupItemAutocomplete(document.querySelector('#itemsContainer .item-input'), itemsData);
 setupRecAppAutocomplete(document.querySelector('#recAppListContainer .rec-app-input'), recAppData);
 setupAppAuthAutocomplete(document.querySelector('#appAuthListContainer .app-auth-input'), appAuthData);
+setupDepartmentAutocomplete(document.querySelector('#departmentContainer .department-input'), departmentsData);
+setupTeamAutocomplete(document.querySelector('#teamContainer .team-input'), teamsData);
 
 // Handle Item bulk adding
 function addItem() {
@@ -798,6 +886,68 @@ function updateAppAuthNumbers() {
     });
 }
 
+// Add department input field
+function addDepartment() {
+    const container = document.getElementById('departmentContainer');
+    const currentCount = container.querySelectorAll('input[name="departments[]"]').length + 1;
+    
+    const div = document.createElement('div');
+    div.className = 'flex gap-2 items-end';
+    div.innerHTML = `
+        <div class="flex-1 relative">
+            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">${currentCount}.</span>
+            <input type="text" name="departments[]" placeholder="Type to search department..." class="department-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+            <div class="department-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+        </div>
+        <button type="button" onclick="this.parentElement.remove(); updateDepartmentNumbers()" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">
+            ✕
+        </button>
+    `;
+    container.appendChild(div);
+    setupDepartmentAutocomplete(div.querySelector('.department-input'), departmentsData);
+}
+
+// Update numbering when departments are removed
+function updateDepartmentNumbers() {
+    const container = document.getElementById('departmentContainer');
+    const inputs = container.querySelectorAll('input[name="departments[]"]');
+    inputs.forEach((input, index) => {
+        const span = input.parentElement.querySelector('span');
+        span.textContent = (index + 1) + '.';
+    });
+}
+
+// Add team input field
+function addTeam() {
+    const container = document.getElementById('teamContainer');
+    const currentCount = container.querySelectorAll('input[name="teams[]"]').length + 1;
+    
+    const div = document.createElement('div');
+    div.className = 'flex gap-2 items-end';
+    div.innerHTML = `
+        <div class="flex-1 relative">
+            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">${currentCount}.</span>
+            <input type="text" name="teams[]" placeholder="Type to search team..." class="team-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+            <div class="team-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+        </div>
+        <button type="button" onclick="this.parentElement.remove(); updateTeamNumbers()" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">
+            ✕
+        </button>
+    `;
+    container.appendChild(div);
+    setupTeamAutocomplete(div.querySelector('.team-input'), teamsData);
+}
+
+// Update numbering when teams are removed
+function updateTeamNumbers() {
+    const container = document.getElementById('teamContainer');
+    const inputs = container.querySelectorAll('input[name="teams[]"]');
+    inputs.forEach((input, index) => {
+        const span = input.parentElement.querySelector('span');
+        span.textContent = (index + 1) + '.';
+    });
+}
+
 // Add control point input field
 function addControlPoint() {
     const container = document.getElementById('controlPointsContainer');
@@ -825,6 +975,76 @@ function updateControlPointNumbers() {
         const span = input.parentElement.querySelector('span');
         span.textContent = (index + 1) + '.';
     });
+}
+
+// Setup autocomplete for department inputs
+function setupDepartmentAutocomplete(input, data) {
+    if (!input) return;
+    
+    input.addEventListener('input', function() {
+        const query = this.value.toLowerCase();
+        const suggestionsDiv = this.nextElementSibling;
+        
+        if (query.length === 0) {
+            suggestionsDiv.classList.add('hidden');
+            return;
+        }
+        
+        const filtered = data.filter(item => item.toLowerCase().includes(query));
+        
+        if (filtered.length === 0) {
+            suggestionsDiv.classList.add('hidden');
+            return;
+        }
+        
+        suggestionsDiv.innerHTML = filtered.map(item => 
+            `<div onclick="selectDepartmentSuggestion(this)" class="px-4 py-2 hover:bg-blue-100 dark:hover:bg-blue-900 cursor-pointer text-gray-900 dark:text-white">${item}</div>`
+        ).join('');        
+        suggestionsDiv.classList.remove('hidden');
+    });
+}
+
+function selectDepartmentSuggestion(element) {
+    const value = element.textContent;
+    const suggestionsDiv = element.parentElement;
+    const input = suggestionsDiv.previousElementSibling;
+    input.value = value;
+    suggestionsDiv.classList.add('hidden');
+}
+
+// Setup autocomplete for team inputs
+function setupTeamAutocomplete(input, data) {
+    if (!input) return;
+    
+    input.addEventListener('input', function() {
+        const query = this.value.toLowerCase();
+        const suggestionsDiv = this.nextElementSibling;
+        
+        if (query.length === 0) {
+            suggestionsDiv.classList.add('hidden');
+            return;
+        }
+        
+        const filtered = data.filter(item => item.toLowerCase().includes(query));
+        
+        if (filtered.length === 0) {
+            suggestionsDiv.classList.add('hidden');
+            return;
+        }
+        
+        suggestionsDiv.innerHTML = filtered.map(item => 
+            `<div onclick="selectTeamSuggestion(this)" class="px-4 py-2 hover:bg-blue-100 dark:hover:bg-blue-900 cursor-pointer text-gray-900 dark:text-white">${item}</div>`
+        ).join('');        
+        suggestionsDiv.classList.remove('hidden');
+    });
+}
+
+function selectTeamSuggestion(element) {
+    const value = element.textContent;
+    const suggestionsDiv = element.parentElement;
+    const input = suggestionsDiv.previousElementSibling;
+    input.value = value;
+    suggestionsDiv.classList.add('hidden');
 }
 
 // File upload handling
@@ -958,6 +1178,34 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
     items.forEach(item => formData.append('items[]', item));
     recApps.forEach(app => formData.append('recommending_approvals_list[]', app));
     appAuths.forEach(auth => formData.append('approving_authority_list[]', auth));
+    
+    // Combine departments with numbering
+    const departmentInputs = document.querySelectorAll('input[name="departments[]"]');
+    const departments = Array.from(departmentInputs)
+        .map((input, index) => {
+            const value = input.value.trim();
+            return value ? (index + 1) + '. ' + value : null;
+        })
+        .filter(dept => dept !== null)
+        .join('\n');
+    
+    if (departments) {
+        formData.set('department', departments);
+    }
+
+    // Combine teams with numbering
+    const teamInputs = document.querySelectorAll('input[name="teams[]"]');
+    const teams = Array.from(teamInputs)
+        .map((input, index) => {
+            const value = input.value.trim();
+            return value ? (index + 1) + '. ' + value : null;
+        })
+        .filter(team => team !== null)
+        .join('\n');
+    
+    if (teams) {
+        formData.set('team', teams);
+    }
     
     // Combine control points with numbering
     const controlPointInputs = document.querySelectorAll('input[name="control_points[]"]');

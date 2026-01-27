@@ -24,6 +24,8 @@ class DocumentController extends MainController {
 
             // Validate required fields
             $ec = $_POST['ec'] ?? '';
+            $department = $_POST['department'] ?? '';
+            $team = $_POST['team'] ?? '';
             $items = $_POST['items'] ?? [];
             $recommending_approvals_list = $_POST['recommending_approvals_list'] ?? [];
             $approving_authority_list = $_POST['approving_authority_list'] ?? [];
@@ -92,6 +94,48 @@ class DocumentController extends MainController {
                         }
                     } catch(Exception $e) {
                         // Continue even if insert fails
+                    }
+                }
+            }
+
+            // Insert new departments if provided and don't exist
+            if (!empty($department)) {
+                $deptItems = array_filter(array_map('trim', explode("\n", $department)));
+                foreach ($deptItems as $dept) {
+                    // Remove numbering if exists (e.g., "1. Operations" -> "Operations")
+                    $dept = preg_replace('/^\d+\.\s+/', '', $dept);
+                    if (!empty($dept)) {
+                        try {
+                            $checkStmt = $this->conn->prepare("SELECT id FROM departments WHERE name = ?");
+                            $checkStmt->execute([$dept]);
+                            if ($checkStmt->rowCount() === 0) {
+                                $insertStmt = $this->conn->prepare("INSERT INTO departments (name, description) VALUES (?, ?)");
+                                $insertStmt->execute([$dept, 'Added via document upload']);
+                            }
+                        } catch(Exception $e) {
+                            // Continue even if insert fails
+                        }
+                    }
+                }
+            }
+
+            // Insert new teams if provided and don't exist
+            if (!empty($team)) {
+                $teamItems = array_filter(array_map('trim', explode("\n", $team)));
+                foreach ($teamItems as $t) {
+                    // Remove numbering if exists (e.g., "1. Team A" -> "Team A")
+                    $t = preg_replace('/^\d+\.\s+/', '', $t);
+                    if (!empty($t)) {
+                        try {
+                            $checkStmt = $this->conn->prepare("SELECT id FROM teams WHERE name = ?");
+                            $checkStmt->execute([$t]);
+                            if ($checkStmt->rowCount() === 0) {
+                                $insertStmt = $this->conn->prepare("INSERT INTO teams (name, description) VALUES (?, ?)");
+                                $insertStmt->execute([$t, 'Added via document upload']);
+                            }
+                        } catch(Exception $e) {
+                            // Continue even if insert fails
+                        }
                     }
                 }
             }
@@ -175,13 +219,15 @@ class DocumentController extends MainController {
 
                     // Insert record with parallel mapping
                     $stmt = $this->conn->prepare("
-                        INSERT INTO manap (ec, item, recommending_approvals, approving_authority, control_point, file_path, file_name)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        INSERT INTO manap (ec, item, department, team, recommending_approvals, approving_authority, control_point, file_path, file_name)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ");
 
                     $result = $stmt->execute([
                         $ec,
                         $item,
+                        $department,
+                        $team,
                         $rec_approval,
                         $app_authority,
                         $all_control_points,

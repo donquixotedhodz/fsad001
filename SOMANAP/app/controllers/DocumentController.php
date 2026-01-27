@@ -379,6 +379,196 @@ class DocumentController extends MainController {
     }
 
     /**
+     * Edit document
+     */
+    public function editDocument() {
+        ob_clean();
+        header('Content-Type: application/json');
+
+        if ($_SERVER['REQUEST_METHOD'] != 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Invalid request method']);
+            exit;
+        }
+
+        // Check role authorization
+        if (!isset($_SESSION['role']) || ($_SESSION['role'] !== 'administrator' && $_SESSION['role'] !== 'superadmin')) {
+            echo json_encode(['success' => false, 'message' => 'You do not have permission to edit documents']);
+            exit;
+        }
+
+        try {
+            require_once __DIR__ . '/../helpers/AuditLogger.php';
+            $auditLogger = new AuditLogger($this->conn);
+
+            $docId = $_POST['doc_id'] ?? '';
+            $ec = $_POST['ec'] ?? '';
+            $items = $_POST['items'] ?? '';
+            $recommending_approvals = $_POST['recommending_approvals'] ?? '';
+            $approving_authority = $_POST['approving_authority'] ?? '';
+            $control_point = $_POST['control_point'] ?? '';
+            $department = $_POST['department'] ?? '';
+            $team = $_POST['team'] ?? '';
+
+            if (empty($docId) || empty($ec) || empty($items)) {
+                echo json_encode(['success' => false, 'message' => 'Required fields are missing']);
+                exit;
+            }
+
+            // Get old document data for audit
+            $stmt = $this->conn->prepare("SELECT * FROM manap WHERE id = ?");
+            $stmt->execute([$docId]);
+            $oldDocument = $stmt->fetch();
+
+            if (!$oldDocument) {
+                echo json_encode(['success' => false, 'message' => 'Document not found']);
+                exit;
+            }
+
+            // Auto-save departments if provided
+            if (!empty($department)) {
+                $deptItems = array_filter(array_map('trim', explode("\n", $department)));
+                foreach ($deptItems as $dept) {
+                    $dept = preg_replace('/^\d+\.\s+/', '', $dept);
+                    if (!empty($dept)) {
+                        try {
+                            $checkStmt = $this->conn->prepare("SELECT id FROM departments WHERE name = ?");
+                            $checkStmt->execute([$dept]);
+                            if ($checkStmt->rowCount() === 0) {
+                                $insertStmt = $this->conn->prepare("INSERT INTO departments (name, description) VALUES (?, ?)");
+                                $insertStmt->execute([$dept, 'Added via document edit']);
+                            }
+                        } catch(Exception $e) {}
+                    }
+                }
+            }
+
+            // Auto-save teams if provided
+            if (!empty($team)) {
+                $teamItems = array_filter(array_map('trim', explode("\n", $team)));
+                foreach ($teamItems as $t) {
+                    $t = preg_replace('/^\d+\.\s+/', '', $t);
+                    if (!empty($t)) {
+                        try {
+                            $checkStmt = $this->conn->prepare("SELECT id FROM teams WHERE name = ?");
+                            $checkStmt->execute([$t]);
+                            if ($checkStmt->rowCount() === 0) {
+                                $insertStmt = $this->conn->prepare("INSERT INTO teams (name, description) VALUES (?, ?)");
+                                $insertStmt->execute([$t, 'Added via document edit']);
+                            }
+                        } catch(Exception $e) {}
+                    }
+                }
+            }
+
+            // Handle file upload if provided
+            $newFilePath = null;
+            if (!empty($_FILES['edit_file']['tmp_name'])) {
+                // Delete old file if it exists
+                if (!empty($oldDocument['file_path'])) {
+                    $oldFile = __DIR__ . '/../../' . $oldDocument['file_path'];
+                    if (file_exists($oldFile)) {
+                        unlink($oldFile);
+                    }
+                }
+
+                // Upload new file
+                $uploadDir = __DIR__ . '/../../uploads/';
+                $fileName = basename($_FILES['edit_file']['name']);
+                $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+                
+                // Allow specific file types
+                $allowedExts = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'jpg', 'jpeg', 'png', 'gif', 'ppt', 'pptx'];
+                if (!in_array($fileExt, $allowedExts)) {
+                    echo json_encode(['success' => false, 'message' => 'File type not allowed']);
+                    exit;
+                }
+
+                // Check file size (50MB max)
+                if ($_FILES['edit_file']['size'] > 50 * 1024 * 1024) {
+                    echo json_encode(['success' => false, 'message' => 'File size exceeds 50MB limit']);
+                    exit;
+                }
+
+                // Generate unique filename
+                $uniqueFileName = uniqid() . '_' . time() . '_0.' . $fileExt;
+                $uploadPath = $uploadDir . $uniqueFileName;
+                $relativePath = 'uploads/' . $uniqueFileName;
+
+                if (move_uploaded_file($_FILES['edit_file']['tmp_name'], $uploadPath)) {
+                    $newFilePath = $relativePath;
+                } else {
+                    echo json_encode(['success' => false, 'message' => 'Failed to upload file']);
+                    exit;
+                }
+            }
+
+            // Update document
+            $updateFields = [
+                'ec' => $ec,
+                'item' => $items,
+                'department' => $department,
+                'team' => $team,
+                'recommending_approvals' => $recommending_approvals,
+                'approving_authority' => $approving_authority,
+                'control_point' => $control_point
+            ];
+
+            // Add file path to update if new file uploaded
+            if ($newFilePath) {
+                $updateFields['file_path'] = $newFilePath;
+                // Update filename if available
+                if (!empty($_FILES['edit_file']['name'])) {
+                    $updateFields['file_name'] = $_FILES['edit_file']['name'];
+                }
+            }
+
+            // Build SQL query dynamically
+            $setClauses = [];
+            $values = [];
+            foreach ($updateFields as $field => $value) {
+                $setClauses[] = "$field = ?";
+                $values[] = $value;
+            }
+            $values[] = $docId; // Add ID for WHERE clause
+
+            $stmt = $this->conn->prepare("
+                UPDATE manap SET " . implode(', ', $setClauses) . "
+                WHERE id = ?
+            ");
+
+            $result = $stmt->execute($values);
+
+            if ($result) {
+                // Create audit log
+                $description = "Document updated: '{$oldDocument['file_name']}' | ";
+                $description .= "EC: {$oldDocument['ec']} → {$ec} | ";
+                $description .= "Item: {$oldDocument['item']} → {$items}";
+
+                $documentData = [
+                    'id' => $docId,
+                    'old_ec' => $oldDocument['ec'],
+                    'new_ec' => $ec,
+                    'old_item' => $oldDocument['item'],
+                    'new_item' => $items,
+                    'old_department' => $oldDocument['department'],
+                    'new_department' => $department,
+                    'old_team' => $oldDocument['team'],
+                    'new_team' => $team,
+                    'file_name' => $oldDocument['file_name']
+                ];
+                $auditLogger->logUpdate('manap', $docId, $description, $documentData);
+
+                echo json_encode(['success' => true, 'message' => 'Document updated successfully']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Failed to update document']);
+            }
+
+        } catch(Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
      * Get all documents
      */
     public function getAllDocuments() {

@@ -17,6 +17,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $documentController->uploadDocument();
         exit;
     }
+    if (isset($_POST['action']) && $_POST['action'] === 'edit') {
+        $documentController->editDocument();
+        exit;
+    }
 }
 
 // Check for delete request
@@ -328,6 +332,11 @@ ob_start();
                         <?php endif; ?>
                         <?php endif; ?>
                         <?php if (isset($_SESSION['role']) && ($_SESSION['role'] === 'administrator' || $_SESSION['role'] === 'superadmin')): ?>
+                        <button onclick="openEditModal(<?php echo htmlspecialchars(json_encode($doc)); ?>)" title="Edit document" class="inline-flex items-center justify-center w-8 h-8 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded transition">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                            </svg>
+                        </button>
                         <button onclick="deleteDocument(<?php echo $doc['id']; ?>)" title="Delete document" class="inline-flex items-center justify-center w-8 h-8 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -584,6 +593,171 @@ ob_start();
                 </button>
                 <button id="submitBtn" type="submit" class="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-medium">
                     Upload Documents
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Document Modal -->
+<div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-gray-800 rounded-lg w-full max-w-6xl p-8 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-3xl font-bold text-gray-900 dark:text-white">Edit Document</h2>
+            <button id="closeEditModalBtn" onclick="document.getElementById('editModal').classList.add('hidden')" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+
+        <form id="editForm" class="space-y-6">
+            <input type="hidden" id="editDocId" name="doc_id">
+            <input type="hidden" name="action" value="edit">
+            
+            <!-- EC Selection -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                    Electric Cooperative <span class="text-red-500">*</span>
+                </label>
+                <div class="relative">
+                    <input type="text" id="editEcInput" placeholder="Select EC..." class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+                    <div id="editEcSuggestions" class="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+                </div>
+            </div>
+
+            <!-- Items -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Items <span class="text-red-500">*</span></label>
+                <div id="editItemsContainer" class="space-y-2">
+                    <div class="flex gap-2 items-end">
+                        <div class="flex-1 relative">
+                            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1.</span>
+                            <input type="text" name="edit_items[]" placeholder="Type to search item..." class="edit-item-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+                            <div class="edit-item-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+                        </div>
+                        <button type="button" onclick="this.parentElement.remove(); updateEditItemNumbers();" class="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition text-sm font-medium">Remove</button>
+                    </div>
+                </div>
+                <button type="button" onclick="addEditItem()" class="mt-2 px-4 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded hover:bg-green-200 dark:hover:bg-green-900/50 transition text-sm font-medium">+ Add Item</button>
+            </div>
+
+            <!-- Recommending Approvals -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Recommending Approvals</label>
+                <div id="editRecAppListContainer" class="space-y-2">
+                    <div class="flex gap-2 items-end">
+                        <div class="flex-1 relative">
+                            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1.</span>
+                            <input type="text" name="edit_recommending_approvals_list[]" placeholder="Type to search approval..." class="edit-rec-app-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+                            <div class="edit-rec-app-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+                        </div>
+                        <button type="button" onclick="this.parentElement.remove(); updateEditRecAppNumbers();" class="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition text-sm font-medium">Remove</button>
+                    </div>
+                </div>
+                <button type="button" onclick="addEditRecApp()" class="mt-2 px-4 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded hover:bg-green-200 dark:hover:bg-green-900/50 transition text-sm font-medium">+ Add Approval</button>
+            </div>
+
+            <!-- Approving Authority -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Approving Authority</label>
+                <div id="editAppAuthListContainer" class="space-y-2">
+                    <div class="flex gap-2 items-end">
+                        <div class="flex-1 relative">
+                            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1.</span>
+                            <input type="text" name="edit_approving_authority_list[]" placeholder="Type to search authority..." class="edit-app-auth-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+                            <div class="edit-app-auth-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+                        </div>
+                        <button type="button" onclick="this.parentElement.remove(); updateEditAppAuthNumbers();" class="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition text-sm font-medium">Remove</button>
+                    </div>
+                </div>
+                <button type="button" onclick="addEditAppAuth()" class="mt-2 px-4 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded hover:bg-green-200 dark:hover:bg-green-900/50 transition text-sm font-medium">+ Add Authority</button>
+            </div>
+
+            <!-- Control Points -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Control Points</label>
+                <div id="editControlPointsContainer" class="space-y-2">
+                    <div class="flex gap-2 items-end">
+                        <div class="flex-1 relative">
+                            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1.</span>
+                            <input type="text" name="edit_control_points[]" placeholder="Enter control point" class="edit-control-point-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+                        </div>
+                        <button type="button" onclick="this.parentElement.remove(); updateEditControlPointNumbers();" class="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition text-sm font-medium">Remove</button>
+                    </div>
+                </div>
+                <button type="button" onclick="addEditControlPoint()" class="mt-2 px-4 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded hover:bg-green-200 dark:hover:bg-green-900/50 transition text-sm font-medium">+ Add Control Point</button>
+            </div>
+
+            <!-- Departments -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Departments</label>
+                <div id="editDepartmentContainer" class="space-y-2">
+                    <div class="flex gap-2 items-end">
+                        <div class="flex-1 relative">
+                            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1.</span>
+                            <input type="text" name="edit_departments[]" placeholder="Type to search department..." class="edit-department-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+                            <div class="edit-department-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+                        </div>
+                        <button type="button" onclick="this.parentElement.remove(); updateEditDepartmentNumbers()" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">✕</button>
+                    </div>
+                </div>
+                <button type="button" onclick="addEditDepartment()" class="mt-2 px-4 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded hover:bg-green-200 dark:hover:bg-green-900/50 transition text-sm font-medium">+ Add Department</button>
+            </div>
+
+            <!-- Teams -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Teams</label>
+                <div id="editTeamContainer" class="space-y-2">
+                    <div class="flex gap-2 items-end">
+                        <div class="flex-1 relative">
+                            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1.</span>
+                            <input type="text" name="edit_teams[]" placeholder="Type to search team..." class="edit-team-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+                            <div class="edit-team-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+                        </div>
+                        <button type="button" onclick="this.parentElement.remove(); updateEditTeamNumbers()" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">✕</button>
+                    </div>
+                </div>
+                <button type="button" onclick="addEditTeam()" class="mt-2 px-4 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded hover:bg-green-200 dark:hover:bg-green-900/50 transition text-sm font-medium">+ Add Team</button>
+            </div>
+
+            <!-- File Upload -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Replace File (Optional)</label>
+                <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition cursor-pointer" id="editFileDropZone">
+                    <input type="file" name="edit_file" class="hidden" id="editFileInput">
+                    <label for="editFileInput" class="cursor-pointer text-center block">
+                        <svg class="w-10 h-10 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Click to select a file or drag and drop</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">PDF, Word, Excel, Image files (Max 50MB)</p>
+                    </label>
+                </div>
+                <div id="editFileList" class="mt-3 text-sm text-gray-600 dark:text-gray-400"></div>
+            </div>
+
+            <!-- Error Message -->
+            <div id="editMessage" class="hidden px-4 py-3 rounded-lg"></div>
+
+            <!-- Loading Indicator -->
+            <div id="editUploadLoading" class="hidden flex items-center justify-center gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+                <div class="animate-spin">
+                    <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+                <span class="text-blue-700 dark:text-blue-300 font-medium">Updating document...</span>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button id="editCancelBtn" type="button" onclick="document.getElementById('editModal').classList.add('hidden')" class="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition font-medium">
+                    Cancel
+                </button>
+                <button id="editSubmitBtn" type="submit" class="flex-1 px-4 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition font-medium">
+                    Save Changes
                 </button>
             </div>
         </form>
@@ -1298,10 +1472,481 @@ function deleteDocument(id) {
     });
 }
 
-// Debounced search - wait 1 second before searching
-let searchTimeout;
-const searchForm = document.getElementById('searchForm');
-const searchInput = document.getElementById('searchInput');
+// Open Edit Modal and populate with document data
+function openEditModal(doc) {
+    const modal = document.getElementById('editModal');
+    document.getElementById('editDocId').value = doc.id;
+    document.getElementById('editEcInput').value = doc.ec;
+    
+    // Clear and populate items
+    const itemsContainer = document.getElementById('editItemsContainer');
+    itemsContainer.innerHTML = '';
+    
+    if (doc.item) {
+        const items = doc.item.split('\n').filter(i => i.trim());
+        items.forEach((item, index) => {
+            addEditItemToModal(item, index + 1);
+        });
+    } else {
+        addEditItemToModal('', 1);
+    }
+    
+    // Clear and populate recommending approvals
+    const recAppContainer = document.getElementById('editRecAppListContainer');
+    recAppContainer.innerHTML = '';
+    
+    if (doc.recommending_approvals) {
+        const recApps = doc.recommending_approvals.split('\n');
+        recApps.forEach((app, index) => {
+            addEditRecAppToModal(app || '', index + 1);
+        });
+    } else {
+        addEditRecAppToModal('', 1);
+    }
+    
+    // Clear and populate approving authority
+    const appAuthContainer = document.getElementById('editAppAuthListContainer');
+    appAuthContainer.innerHTML = '';
+    
+    if (doc.approving_authority) {
+        const appAuths = doc.approving_authority.split('\n');
+        appAuths.forEach((auth, index) => {
+            addEditAppAuthToModal(auth || '', index + 1);
+        });
+    } else {
+        addEditAppAuthToModal('', 1);
+    }
+    
+    // Clear and populate control points
+    const cpContainer = document.getElementById('editControlPointsContainer');
+    cpContainer.innerHTML = '';
+    
+    if (doc.control_point) {
+        const points = doc.control_point.split('\n').filter(p => p.trim());
+        points.forEach((point, index) => {
+            addEditControlPointToModal(point, index + 1);
+        });
+    } else {
+        addEditControlPointToModal('', 1);
+    }
+    
+    // Clear and populate departments
+    const deptContainer = document.getElementById('editDepartmentContainer');
+    deptContainer.innerHTML = '';
+    
+    if (doc.department) {
+        const depts = doc.department.split('\n').filter(d => d.trim());
+        depts.forEach((dept, index) => {
+            addEditDepartmentToModal(dept, index + 1);
+        });
+    } else {
+        addEditDepartmentToModal('', 1);
+    }
+    
+    // Clear and populate teams
+    const teamContainer = document.getElementById('editTeamContainer');
+    teamContainer.innerHTML = '';
+    
+    if (doc.team) {
+        const teams = doc.team.split('\n').filter(t => t.trim());
+        teams.forEach((team, index) => {
+            addEditTeamToModal(team, index + 1);
+        });
+    } else {
+        addEditTeamToModal('', 1);
+    }
+    
+    // Setup autocomplete for all fields
+    setTimeout(() => {
+        setupAutocomplete('editEcInput', 'editEcSuggestions', ecData);
+        document.querySelectorAll('.edit-item-input').forEach(input => {
+            setupItemAutocomplete(input, itemsData);
+        });
+        document.querySelectorAll('.edit-rec-app-input').forEach(input => {
+            setupRecAppAutocomplete(input, recAppData);
+        });
+        document.querySelectorAll('.edit-app-auth-input').forEach(input => {
+            setupAppAuthAutocomplete(input, appAuthData);
+        });
+        document.querySelectorAll('.edit-department-input').forEach(input => {
+            setupDepartmentAutocomplete(input, departmentsData);
+        });
+        document.querySelectorAll('.edit-team-input').forEach(input => {
+            setupTeamAutocomplete(input, teamsData);
+        });
+    }, 100);
+    
+    // Setup file upload handling for edit form
+    setupEditFileUpload();
+    
+    modal.classList.remove('hidden');
+}
+
+// Setup file handling for edit form
+function setupEditFileUpload() {
+    const editFileInput = document.getElementById('editFileInput');
+    const editFileDropZone = editFileInput.parentElement;
+    const editFileList = document.getElementById('editFileList');
+    
+    editFileInput.addEventListener('change', updateEditFileList);
+    
+    editFileDropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        editFileDropZone.classList.add('bg-blue-100', 'dark:bg-blue-900/30', 'border-blue-400', 'dark:border-blue-500');
+    });
+    
+    editFileDropZone.addEventListener('dragleave', () => {
+        editFileDropZone.classList.remove('bg-blue-100', 'dark:bg-blue-900/30', 'border-blue-400', 'dark:border-blue-500');
+    });
+    
+    editFileDropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        editFileDropZone.classList.remove('bg-blue-100', 'dark:bg-blue-900/30', 'border-blue-400', 'dark:border-blue-500');
+        editFileInput.files = e.dataTransfer.files;
+        updateEditFileList();
+    });
+}
+
+function updateEditFileList() {
+    const editFileList = document.getElementById('editFileList');
+    const editFileInput = document.getElementById('editFileInput');
+    const files = editFileInput.files;
+    
+    if (files.length > 0) {
+        let html = '<div class="space-y-2">';
+        for (let file of files) {
+            const fileSize = (file.size / 1024 / 1024).toFixed(2);
+            html += `
+                <div class="flex items-center justify-between p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                    <span class="text-sm font-medium text-gray-900 dark:text-white">${file.name}</span>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">${fileSize} MB</span>
+                </div>
+            `;
+        }
+        html += '</div>';
+        editFileList.innerHTML = html;
+    } else {
+        editFileList.innerHTML = '';
+    }
+}
+
+function addEditItemToModal(value = '', number) {
+    const container = document.getElementById('editItemsContainer');
+    const div = document.createElement('div');
+    div.className = 'flex gap-2 items-end';
+    div.innerHTML = `
+        <div class="flex-1 relative">
+            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">${number}.</span>
+            <input type="text" name="edit_items[]" placeholder="Type to search item..." class="edit-item-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" value="${value}">
+            <div class="edit-item-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+        </div>
+        <button type="button" onclick="this.parentElement.remove(); updateEditItemNumbers();" class="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition text-sm font-medium">Remove</button>
+    `;
+    container.appendChild(div);
+    setupItemAutocomplete(div.querySelector('.edit-item-input'), itemsData);
+}
+
+function addEditRecAppToModal(value = '', number) {
+    const container = document.getElementById('editRecAppListContainer');
+    const div = document.createElement('div');
+    div.className = 'flex gap-2 items-end';
+    div.innerHTML = `
+        <div class="flex-1 relative">
+            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">${number}.</span>
+            <input type="text" name="edit_recommending_approvals_list[]" placeholder="Type to search approval..." class="edit-rec-app-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" value="${value}">
+            <div class="edit-rec-app-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+        </div>
+        <button type="button" onclick="this.parentElement.remove(); updateEditRecAppNumbers();" class="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition text-sm font-medium">Remove</button>
+    `;
+    container.appendChild(div);
+    setupRecAppAutocomplete(div.querySelector('.edit-rec-app-input'), recAppData);
+}
+
+function addEditAppAuthToModal(value = '', number) {
+    const container = document.getElementById('editAppAuthListContainer');
+    const div = document.createElement('div');
+    div.className = 'flex gap-2 items-end';
+    div.innerHTML = `
+        <div class="flex-1 relative">
+            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">${number}.</span>
+            <input type="text" name="edit_approving_authority_list[]" placeholder="Type to search authority..." class="edit-app-auth-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" value="${value}">
+            <div class="edit-app-auth-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+        </div>
+        <button type="button" onclick="this.parentElement.remove(); updateEditAppAuthNumbers();" class="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition text-sm font-medium">Remove</button>
+    `;
+    container.appendChild(div);
+    setupAppAuthAutocomplete(div.querySelector('.edit-app-auth-input'), appAuthData);
+}
+
+function addEditControlPointToModal(value = '', number) {
+    const container = document.getElementById('editControlPointsContainer');
+    const div = document.createElement('div');
+    div.className = 'flex gap-2 items-end';
+    div.innerHTML = `
+        <div class="flex-1 relative">
+            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">${number}.</span>
+            <input type="text" name="edit_control_points[]" placeholder="Enter control point" class="edit-control-point-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" value="${value}">
+        </div>
+        <button type="button" onclick="this.parentElement.remove(); updateEditControlPointNumbers();" class="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition text-sm font-medium">Remove</button>
+    `;
+    container.appendChild(div);
+}
+
+function addEditDepartmentToModal(value = '', number) {
+    const container = document.getElementById('editDepartmentContainer');
+    const div = document.createElement('div');
+    div.className = 'flex gap-2 items-end';
+    div.innerHTML = `
+        <div class="flex-1 relative">
+            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">${number}.</span>
+            <input type="text" name="edit_departments[]" placeholder="Type to search department..." class="edit-department-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" value="${value}">
+            <div class="edit-department-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+        </div>
+        <button type="button" onclick="this.parentElement.remove(); updateEditDepartmentNumbers()" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">✕</button>
+    `;
+    container.appendChild(div);
+    setupDepartmentAutocomplete(div.querySelector('.edit-department-input'), departmentsData);
+}
+
+function addEditTeamToModal(value = '', number) {
+    const container = document.getElementById('editTeamContainer');
+    const div = document.createElement('div');
+    div.className = 'flex gap-2 items-end';
+    div.innerHTML = `
+        <div class="flex-1 relative">
+            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">${number}.</span>
+            <input type="text" name="edit_teams[]" placeholder="Type to search team..." class="edit-team-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" value="${value}">
+            <div class="edit-team-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+        </div>
+        <button type="button" onclick="this.parentElement.remove(); updateEditTeamNumbers()" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">✕</button>
+    `;
+    container.appendChild(div);
+    setupTeamAutocomplete(div.querySelector('.edit-team-input'), teamsData);
+}
+
+function addEditItem() {
+    const container = document.getElementById('editItemsContainer');
+    const currentCount = container.querySelectorAll('input[name="edit_items[]"]').length + 1;
+    addEditItemToModal('', currentCount);
+}
+
+function addEditRecApp() {
+    const container = document.getElementById('editRecAppListContainer');
+    const currentCount = container.querySelectorAll('input[name="edit_recommending_approvals_list[]"]').length + 1;
+    addEditRecAppToModal('', currentCount);
+}
+
+function addEditAppAuth() {
+    const container = document.getElementById('editAppAuthListContainer');
+    const currentCount = container.querySelectorAll('input[name="edit_approving_authority_list[]"]').length + 1;
+    addEditAppAuthToModal('', currentCount);
+}
+
+function addEditControlPoint() {
+    const container = document.getElementById('editControlPointsContainer');
+    const currentCount = container.querySelectorAll('input[name="edit_control_points[]"]').length + 1;
+    addEditControlPointToModal('', currentCount);
+}
+
+function addEditDepartment() {
+    const container = document.getElementById('editDepartmentContainer');
+    const currentCount = container.querySelectorAll('input[name="edit_departments[]"]').length + 1;
+    addEditDepartmentToModal('', currentCount);
+}
+
+function addEditTeam() {
+    const container = document.getElementById('editTeamContainer');
+    const currentCount = container.querySelectorAll('input[name="edit_teams[]"]').length + 1;
+    addEditTeamToModal('', currentCount);
+}
+
+function updateEditItemNumbers() {
+    const container = document.getElementById('editItemsContainer');
+    const inputs = container.querySelectorAll('input[name="edit_items[]"]');
+    inputs.forEach((input, index) => {
+        const span = input.parentElement.querySelector('span');
+        span.textContent = (index + 1) + '.';
+    });
+}
+
+function updateEditRecAppNumbers() {
+    const container = document.getElementById('editRecAppListContainer');
+    const inputs = container.querySelectorAll('input[name="edit_recommending_approvals_list[]"]');
+    inputs.forEach((input, index) => {
+        const span = input.parentElement.querySelector('span');
+        span.textContent = (index + 1) + '.';
+    });
+}
+
+function updateEditAppAuthNumbers() {
+    const container = document.getElementById('editAppAuthListContainer');
+    const inputs = container.querySelectorAll('input[name="edit_approving_authority_list[]"]');
+    inputs.forEach((input, index) => {
+        const span = input.parentElement.querySelector('span');
+        span.textContent = (index + 1) + '.';
+    });
+}
+
+function updateEditControlPointNumbers() {
+    const container = document.getElementById('editControlPointsContainer');
+    const inputs = container.querySelectorAll('input[name="edit_control_points[]"]');
+    inputs.forEach((input, index) => {
+        const span = input.parentElement.querySelector('span');
+        span.textContent = (index + 1) + '.';
+    });
+}
+
+function updateEditDepartmentNumbers() {
+    const container = document.getElementById('editDepartmentContainer');
+    const inputs = container.querySelectorAll('input[name="edit_departments[]"]');
+    inputs.forEach((input, index) => {
+        const span = input.parentElement.querySelector('span');
+        span.textContent = (index + 1) + '.';
+    });
+}
+
+function updateEditTeamNumbers() {
+    const container = document.getElementById('editTeamContainer');
+    const inputs = container.querySelectorAll('input[name="edit_teams[]"]');
+    inputs.forEach((input, index) => {
+        const span = input.parentElement.querySelector('span');
+        span.textContent = (index + 1) + '.';
+    });
+}
+
+// Handle edit form submission
+document.getElementById('editForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const docId = document.getElementById('editDocId').value;
+    const submitBtn = document.getElementById('editSubmitBtn');
+    const cancelBtn = document.getElementById('editCancelBtn');
+    const closeBtn = document.getElementById('closeEditModalBtn');
+    const messageDiv = document.getElementById('editMessage');
+    
+    // Validate EC
+    const ec = document.getElementById('editEcInput').value.trim();
+    if (!ec) {
+        messageDiv.textContent = 'Please select an Electric Cooperative';
+        messageDiv.className = 'px-4 py-3 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400';
+        messageDiv.classList.remove('hidden');
+        return;
+    }
+    
+    // Validate items
+    const itemInputs = document.querySelectorAll('input[name="edit_items[]"]');
+    const items = [];
+    let isValid = true;
+    
+    itemInputs.forEach((input) => {
+        const value = input.value.trim();
+        if (!value) {
+            messageDiv.textContent = 'All items must have values';
+            messageDiv.className = 'px-4 py-3 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400';
+            messageDiv.classList.remove('hidden');
+            isValid = false;
+        }
+        if (value) items.push(value);
+    });
+    
+    if (!isValid || items.length === 0) return;
+    
+    // Get other field values
+    const recAppInputs = document.querySelectorAll('input[name="edit_recommending_approvals_list[]"]');
+    const recApps = [];
+    recAppInputs.forEach((input) => {
+        recApps.push(input.value.trim());
+    });
+    
+    const appAuthInputs = document.querySelectorAll('input[name="edit_approving_authority_list[]"]');
+    const appAuths = [];
+    appAuthInputs.forEach((input) => {
+        appAuths.push(input.value.trim());
+    });
+    
+    const cpInputs = document.querySelectorAll('input[name="edit_control_points[]"]');
+    const controlPoints = Array.from(cpInputs)
+        .map((input, index) => {
+            const value = input.value.trim();
+            return value ? (index + 1) + '. ' + value : null;
+        })
+        .filter(cp => cp !== null)
+        .join('\n');
+    
+    const deptInputs = document.querySelectorAll('input[name="edit_departments[]"]');
+    const departments = Array.from(deptInputs)
+        .map((input, index) => {
+            const value = input.value.trim();
+            return value ? (index + 1) + '. ' + value : null;
+        })
+        .filter(dept => dept !== null)
+        .join('\n');
+    
+    const teamInputs = document.querySelectorAll('input[name="edit_teams[]"]');
+    const teams = Array.from(teamInputs)
+        .map((input, index) => {
+            const value = input.value.trim();
+            return value ? (index + 1) + '. ' + value : null;
+        })
+        .filter(team => team !== null)
+        .join('\n');
+    
+    submitBtn.disabled = true;
+    cancelBtn.disabled = true;
+    closeBtn.disabled = true;
+    
+    const editUploadLoading = document.getElementById('editUploadLoading');
+    const editFileInput = document.getElementById('editFileInput');
+    editUploadLoading.classList.remove('hidden');
+    
+    try {
+        const formData = new FormData();
+        formData.append('action', 'edit');
+        formData.append('doc_id', docId);
+        formData.append('ec', ec);
+        formData.append('items', items.join('\n'));
+        formData.append('recommending_approvals', recApps.join('\n'));
+        formData.append('approving_authority', appAuths.join('\n'));
+        formData.append('control_point', controlPoints);
+        formData.append('department', departments);
+        formData.append('team', teams);
+        
+        // Add file if selected
+        if (editFileInput.files.length > 0) {
+            formData.append('edit_file', editFileInput.files[0]);
+        }
+        
+        const response = await fetch('', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            messageDiv.textContent = 'Document updated successfully!';
+            messageDiv.className = 'px-4 py-3 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400';
+            messageDiv.classList.remove('hidden');
+            
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            messageDiv.textContent = 'Error: ' + data.message;
+            messageDiv.className = 'px-4 py-3 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400';
+            messageDiv.classList.remove('hidden');
+        }
+    } catch (error) {
+        messageDiv.textContent = 'Error updating document';
+        messageDiv.className = 'px-4 py-3 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400';
+        messageDiv.classList.remove('hidden');
+    } finally {
+        editUploadLoading.classList.add('hidden');
+        submitBtn.disabled = false;
+        cancelBtn.disabled = false;
+        closeBtn.disabled = false;
+    }
+});
 
 // Excel Preview Function
 function previewExcel(filePath) {

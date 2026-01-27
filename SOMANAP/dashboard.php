@@ -72,6 +72,68 @@ $stmt = $conn->prepare("SELECT item, COUNT(*) as count FROM manap GROUP BY item 
 $stmt->execute();
 $itemStats = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+// Count documents by Department
+$deptCount = [];
+$stmt = $conn->prepare("SELECT department, COUNT(*) as count FROM manap WHERE department IS NOT NULL AND department != '' GROUP BY department ORDER BY count DESC");
+$stmt->execute();
+$deptRawStats = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Process department data to remove numbering
+$deptStats = [];
+$processedDepts = [];
+foreach ($deptRawStats as $record) {
+    if (!empty($record['department'])) {
+        $depts = array_filter(array_map('trim', explode("\n", $record['department'])));
+        foreach ($depts as $dept) {
+            $deptName = preg_replace('/^\d+\.\s+/', '', $dept);
+            if (!in_array($deptName, $processedDepts)) {
+                $processedDepts[] = $deptName;
+            }
+        }
+    }
+}
+
+// Count actual department occurrences
+foreach ($processedDepts as $deptName) {
+    $countStmt = $conn->prepare("SELECT COUNT(*) as count FROM manap WHERE department LIKE ?");
+    $searchTerm = '%' . $deptName . '%';
+    $countStmt->execute([$searchTerm]);
+    $countResult = $countStmt->fetch(PDO::FETCH_ASSOC);
+    $deptStats[] = ['department' => $deptName, 'count' => $countResult['count']];
+}
+usort($deptStats, function($a, $b) { return $b['count'] - $a['count']; });
+
+// Count documents by Team
+$teamCount = [];
+$stmt = $conn->prepare("SELECT team, COUNT(*) as count FROM manap WHERE team IS NOT NULL AND team != '' GROUP BY team ORDER BY count DESC");
+$stmt->execute();
+$teamRawStats = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Process team data to remove numbering
+$teamStats = [];
+$processedTeams = [];
+foreach ($teamRawStats as $record) {
+    if (!empty($record['team'])) {
+        $teams = array_filter(array_map('trim', explode("\n", $record['team'])));
+        foreach ($teams as $team) {
+            $teamName = preg_replace('/^\d+\.\s+/', '', $team);
+            if (!in_array($teamName, $processedTeams)) {
+                $processedTeams[] = $teamName;
+            }
+        }
+    }
+}
+
+// Count actual team occurrences
+foreach ($processedTeams as $teamName) {
+    $countStmt = $conn->prepare("SELECT COUNT(*) as count FROM manap WHERE team LIKE ?");
+    $searchTerm = '%' . $teamName . '%';
+    $countStmt->execute([$searchTerm]);
+    $countResult = $countStmt->fetch(PDO::FETCH_ASSOC);
+    $teamStats[] = ['team' => $teamName, 'count' => $countResult['count']];
+}
+usort($teamStats, function($a, $b) { return $b['count'] - $a['count']; });
+
 // Get PPE Provident Fund remaining balance - Calculate from actual PPE table data
 $ppeStmt = $conn->prepare("SELECT balance FROM ppe ORDER BY id DESC LIMIT 1");
 $ppeStmt->execute();
@@ -182,9 +244,28 @@ ob_start();
 
         <!-- Item Distribution Chart -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Documents by Type</h2>
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Documents by Item</h2>
             <div style="height: 300px;">
                 <canvas id="itemChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Additional Charts Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <!-- Department Distribution Chart -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Documents by Department</h2>
+            <div style="height: 300px;">
+                <canvas id="deptChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Team Distribution Chart -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Documents by Team</h2>
+            <div style="height: 300px;">
+                <canvas id="teamChart"></canvas>
             </div>
         </div>
     </div>
@@ -362,6 +443,112 @@ ob_start();
                 plugins: {
                     legend: {
                         display: false
+                    }
+                }
+            }
+        });
+
+        // Department Distribution Chart
+        const deptData = <?php echo json_encode($deptStats); ?>;
+        const deptLabels = deptData.map(item => item.department);
+        const deptValues = deptData.map(item => item.count);
+
+        const deptBackgroundColors = deptLabels.map((_, index) => autumnColors[index % autumnColors.length]);
+        const deptBorderColors = deptBackgroundColors.map(color => color.replace('0.8', '1'));
+
+        const deptCtx = document.getElementById('deptChart').getContext('2d');
+        new Chart(deptCtx, {
+            type: 'bar',
+            data: {
+                labels: deptLabels,
+                datasets: [{
+                    label: 'Number of Documents',
+                    data: deptValues,
+                    backgroundColor: deptBackgroundColors,
+                    borderColor: deptBorderColors,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: document.documentElement.classList.contains('dark') ? '#e5e7eb' : '#374151'
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            color: document.documentElement.classList.contains('dark') ? '#e5e7eb' : '#374151'
+                        },
+                        grid: {
+                            color: document.documentElement.classList.contains('dark') ? 'rgba(55, 65, 81, 0.3)' : 'rgba(0, 0, 0, 0.1)'
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            color: document.documentElement.classList.contains('dark') ? '#e5e7eb' : '#374151'
+                        },
+                        grid: {
+                            color: document.documentElement.classList.contains('dark') ? 'rgba(55, 65, 81, 0.3)' : 'rgba(0, 0, 0, 0.1)'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Team Distribution Chart
+        const teamData = <?php echo json_encode($teamStats); ?>;
+        const teamLabels = teamData.map(item => item.team);
+        const teamValues = teamData.map(item => item.count);
+
+        const teamBackgroundColors = teamLabels.map((_, index) => autumnColors[index % autumnColors.length]);
+        const teamBorderColors = teamBackgroundColors.map(color => color.replace('0.8', '1'));
+
+        const teamCtx = document.getElementById('teamChart').getContext('2d');
+        new Chart(teamCtx, {
+            type: 'bar',
+            data: {
+                labels: teamLabels,
+                datasets: [{
+                    label: 'Number of Documents',
+                    data: teamValues,
+                    backgroundColor: teamBackgroundColors,
+                    borderColor: teamBorderColors,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: document.documentElement.classList.contains('dark') ? '#e5e7eb' : '#374151'
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            color: document.documentElement.classList.contains('dark') ? '#e5e7eb' : '#374151'
+                        },
+                        grid: {
+                            color: document.documentElement.classList.contains('dark') ? 'rgba(55, 65, 81, 0.3)' : 'rgba(0, 0, 0, 0.1)'
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            color: document.documentElement.classList.contains('dark') ? '#e5e7eb' : '#374151'
+                        },
+                        grid: {
+                            color: document.documentElement.classList.contains('dark') ? 'rgba(55, 65, 81, 0.3)' : 'rgba(0, 0, 0, 0.1)'
+                        }
                     }
                 }
             }

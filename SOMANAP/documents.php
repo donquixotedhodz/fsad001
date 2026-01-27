@@ -847,7 +847,7 @@ function setupItemAutocomplete(input, data) {
     if (!input) return;
     
     input.addEventListener('input', function() {
-        const query = this.value.toLowerCase();
+        const query = this.value.toLowerCase().trim();
         const suggestionsDiv = this.nextElementSibling;
         
         if (query.length === 0) {
@@ -855,7 +855,11 @@ function setupItemAutocomplete(input, data) {
             return;
         }
         
-        const filtered = data.filter(item => item.toLowerCase().includes(query));
+        const filtered = data.filter(item => {
+            const itemLower = item.toLowerCase().trim();
+            // Include if it contains the query and is not an exact match
+            return itemLower.includes(query) && itemLower !== query;
+        });
         
         if (filtered.length === 0) {
             suggestionsDiv.classList.add('hidden');
@@ -867,6 +871,13 @@ function setupItemAutocomplete(input, data) {
         ).join('');
         
         suggestionsDiv.classList.remove('hidden');
+    });
+    
+    document.addEventListener('click', function(e) {
+        const suggestionsDiv = input.nextElementSibling;
+        if (!input.contains(e.target) && !suggestionsDiv.contains(e.target)) {
+            suggestionsDiv.classList.add('hidden');
+        }
     });
 }
 

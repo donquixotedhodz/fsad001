@@ -87,16 +87,18 @@ ob_start();
         <table class="w-full border-collapse">
             <thead>
                 <tr class="bg-gray-100 dark:bg-gray-700">
-                    <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-900 dark:text-white">Electric Cooperative (EC)</th>
                     <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-900 dark:text-white">Item</th>
                     <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-900 dark:text-white">Recommending Approval</th>
                     <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-900 dark:text-white">Approving Authority</th>
+                    <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-900 dark:text-white">Department</th>
+                    <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-900 dark:text-white">Electric Cooperative (EC)</th>
+                    <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-900 dark:text-white">Team</th>
                 </tr>
             </thead>
             <tbody>
                 <?php
                 try {
-                    $query = "SELECT ec, item, recommending_approvals, approving_authority FROM manap WHERE 1=1";
+                    $query = "SELECT item, recommending_approvals, approving_authority, department, ec, team FROM manap WHERE 1=1";
                     
                     if (!empty($filterEC)) {
                         $query .= " AND ec = :ec";
@@ -105,7 +107,7 @@ ob_start();
                         $query .= " AND item = :item";
                     }
                     
-                    $query .= " ORDER BY ec ASC";
+                    $query .= " ORDER BY item ASC";
                     
                     $stmt = $conn->prepare($query);
                     
@@ -122,17 +124,39 @@ ob_start();
                     if (count($manapRecords) > 0) {
                         foreach ($manapRecords as $record) {
                             echo '<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">';
-                            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['ec']) . '</td>';
                             echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['item']) . '</td>';
                             echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['recommending_approvals'] ?? '') . '</td>';
                             echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['approving_authority'] ?? '') . '</td>';
+                            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">';
+                            if (!empty($record['department'])) {
+                                $depts = array_filter(array_map('trim', explode("\n", $record['department'])));
+                                foreach ($depts as $dept) {
+                                    $deptName = preg_replace('/^\d+\.\s+/', '', $dept);
+                                    echo htmlspecialchars($deptName) . '<br>';
+                                }
+                            } else {
+                                echo '-';
+                            }
+                            echo '</td>';
+                            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['ec']) . '</td>';
+                            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">';
+                            if (!empty($record['team'])) {
+                                $teams = array_filter(array_map('trim', explode("\n", $record['team'])));
+                                foreach ($teams as $team) {
+                                    $teamName = preg_replace('/^\d+\.\s+/', '', $team);
+                                    echo htmlspecialchars($teamName) . '<br>';
+                                }
+                            } else {
+                                echo '-';
+                            }
+                            echo '</td>';
                             echo '</tr>';
                         }
                     } else {
-                        echo '<tr><td colspan="4" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-gray-500">No MANAP documents found</td></tr>';
+                        echo '<tr><td colspan="6" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-gray-500">No MANAP documents found</td></tr>';
                     }
                 } catch (Exception $e) {
-                    echo '<tr><td colspan="4" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-red-500">Error loading data: ' . htmlspecialchars($e->getMessage()) . '</td></tr>';
+                    echo '<tr><td colspan="6" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-red-500">Error loading data: ' . htmlspecialchars($e->getMessage()) . '</td></tr>';
                 }
                 ?>
             </tbody>

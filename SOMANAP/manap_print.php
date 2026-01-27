@@ -4,7 +4,7 @@ require_once __DIR__ . '/../config.php';
 
 // Fetch MANAP data from database
 try {
-    $stmt = $conn->prepare("SELECT ec, item, recommending_approvals, approving_authority FROM manap ORDER BY ec ASC");
+    $stmt = $conn->prepare("SELECT item, recommending_approvals, approving_authority, department, ec, team FROM manap ORDER BY item ASC");
     $stmt->execute();
     $manapRecords = $stmt->fetchAll();
 } catch (Exception $e) {
@@ -192,10 +192,12 @@ $dateGenerated = date('F d, Y');
         <table>
             <thead>
                 <tr>
-                    <th style="width: 20%;">Electric Cooperative (EC)</th>
-                    <th style="width: 20%;">Item</th>
-                    <th style="width: 30%;">Recommending Approval</th>
-                    <th style="width: 30%;">Approving Authority</th>
+                    <th style="width: 15%;">Item</th>
+                    <th style="width: 15%;">Recommending Approval</th>
+                    <th style="width: 15%;">Approving Authority</th>
+                    <th style="width: 15%;">Department</th>
+                    <th style="width: 15%;">Electric Cooperative (EC)</th>
+                    <th style="width: 15%;">Team</th>
                 </tr>
             </thead>
             <tbody>
@@ -203,14 +205,36 @@ $dateGenerated = date('F d, Y');
                 if (count($manapRecords) > 0) {
                     foreach ($manapRecords as $record) {
                         echo '<tr>';
-                        echo '<td>' . htmlspecialchars($record['ec'] ?? '') . '</td>';
                         echo '<td>' . htmlspecialchars($record['item'] ?? '') . '</td>';
                         echo '<td>' . htmlspecialchars($record['recommending_approvals'] ?? '') . '</td>';
                         echo '<td>' . htmlspecialchars($record['approving_authority'] ?? '') . '</td>';
+                        echo '<td>';
+                        if (!empty($record['department'])) {
+                            $depts = array_filter(array_map('trim', explode("\n", $record['department'])));
+                            foreach ($depts as $dept) {
+                                $deptName = preg_replace('/^\d+\.\s+/', '', $dept);
+                                echo htmlspecialchars($deptName) . '<br>';
+                            }
+                        } else {
+                            echo '-';
+                        }
+                        echo '</td>';
+                        echo '<td>' . htmlspecialchars($record['ec'] ?? '') . '</td>';
+                        echo '<td>';
+                        if (!empty($record['team'])) {
+                            $teams = array_filter(array_map('trim', explode("\n", $record['team'])));
+                            foreach ($teams as $team) {
+                                $teamName = preg_replace('/^\d+\.\s+/', '', $team);
+                                echo htmlspecialchars($teamName) . '<br>';
+                            }
+                        } else {
+                            echo '-';
+                        }
+                        echo '</td>';
                         echo '</tr>';
                     }
                 } else {
-                    echo '<tr><td colspan="4" class="text-center">NO RECORDS FOUND</td></tr>';
+                    echo '<tr><td colspan="6" class="text-center">NO RECORDS FOUND</td></tr>';
                 }
                 ?>
             </tbody>

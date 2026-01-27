@@ -272,7 +272,8 @@ ob_start();
                             if (!empty($depts)) {
                                 echo '<div class="space-y-1">';
                                 foreach ($depts as $dept) {
-                                    echo '<div class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">' . htmlspecialchars($dept) . '</div>';
+                                    $deptName = preg_replace('/^\d+\.\s+/', '', $dept);
+                                    echo '<div class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">' . htmlspecialchars($deptName) . '</div>';
                                 }
                                 echo '</div>';
                             } else {
@@ -293,7 +294,8 @@ ob_start();
                             if (!empty($teams)) {
                                 echo '<div class="space-y-1">';
                                 foreach ($teams as $team) {
-                                    echo '<div class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">' . htmlspecialchars($team) . '</div>';
+                                    $teamName = preg_replace('/^\d+\.\s+/', '', $team);
+                                    echo '<div class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">' . htmlspecialchars($teamName) . '</div>';
                                 }
                                 echo '</div>';
                             } else {

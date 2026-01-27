@@ -12,9 +12,144 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <style>
+        /* Color theme CSS variables */
+        :root {
+            --theme-primary: #ea580c;
+            --theme-secondary: #f59e0b;
+            --theme-accent: #dc2626;
+            --theme-danger: #991b1b;
+            --theme-success: #059669;
+            --theme-warning: #d97706;
+            --theme-info: #3b82f6;
+        }
+
+        /* Dynamic theme button styles using CSS classes */
+        .btn-primary {
+            background-color: var(--theme-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+        }
+
+        .btn-secondary {
+            background-color: var(--theme-secondary);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            opacity: 0.9;
+        }
+
+        .btn-danger {
+            background-color: var(--theme-danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            opacity: 0.9;
+        }
+
+        .btn-success {
+            background-color: var(--theme-success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            opacity: 0.9;
+        }
+    </style>
     <script>
         // Set PDF worker
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // Color theme definitions
+        const colorThemes = {
+            autumn: {
+                primary: '#ea580c',      // orange-500
+                secondary: '#f59e0b',    // amber-500
+                accent: '#dc2626',       // red-600
+                danger: '#991b1b',       // red-900
+                success: '#059669',      // emerald-600
+                warning: '#d97706',      // amber-600
+                info: '#3b82f6'          // blue-500
+            },
+            winter: {
+                primary: '#3b82f6',      // blue-500
+                secondary: '#06b6d4',    // cyan-500
+                accent: '#4f46e5',       // indigo-600
+                danger: '#dc2626',       // red-600
+                success: '#059669',      // emerald-600
+                warning: '#0284c7',      // sky-600
+                info: '#3b82f6'          // blue-500
+            },
+            spring: {
+                primary: '#10b981',      // emerald-500
+                secondary: '#ec4899',    // pink-500
+                accent: '#059669',       // emerald-600
+                danger: '#dc2626',       // red-600
+                success: '#10b981',      // emerald-500
+                warning: '#f59e0b',      // amber-500
+                info: '#06b6d4'          // cyan-500
+            },
+            summer: {
+                primary: '#eab308',      // yellow-500
+                secondary: '#f43f5e',    // rose-500
+                accent: '#ca8a04',       // yellow-600
+                danger: '#dc2626',       // red-600
+                success: '#10b981',      // emerald-500
+                warning: '#f97316',      // orange-500
+                info: '#fbbf24'          // amber-400
+            },
+            monochrome: {
+                primary: '#4b5563',      // gray-600
+                secondary: '#6b7280',    // gray-500
+                accent: '#1f2937',       // gray-800
+                danger: '#374151',       // gray-700
+                success: '#4b5563',      // gray-600
+                warning: '#6b7280',      // gray-500
+                info: '#6b7280'          // gray-500
+            }
+        };
+
+        // Apply color theme to CSS variables
+        function applyColorTheme(themeName) {
+            const theme = colorThemes[themeName] || colorThemes.autumn;
+            const root = document.documentElement;
+            
+            root.style.setProperty('--theme-primary', theme.primary);
+            root.style.setProperty('--theme-secondary', theme.secondary);
+            root.style.setProperty('--theme-accent', theme.accent);
+            root.style.setProperty('--theme-danger', theme.danger);
+            root.style.setProperty('--theme-success', theme.success);
+            root.style.setProperty('--theme-warning', theme.warning);
+            root.style.setProperty('--theme-info', theme.info);
+
+            // Store in localStorage for persistence
+            localStorage.setItem('colorTheme', themeName);
+        }
+
+        // Load and apply color theme on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            const savedColorTheme = localStorage.getItem('colorTheme') || 'autumn';
+            applyColorTheme(savedColorTheme);
+        });
+
+        // Listen for color theme changes from other tabs/windows
+        window.addEventListener('storage', function(e) {
+            if (e.key === 'colorTheme') {
+                applyColorTheme(e.newValue || 'autumn');
+            }
+        });
+
+        // Listen for color theme changes from custom events
+        window.addEventListener('colorThemeChanged', function(e) {
+            if (e.detail && e.detail.theme) {
+                applyColorTheme(e.detail.theme);
+            }
+        });
     </script>
 </head>
 <body

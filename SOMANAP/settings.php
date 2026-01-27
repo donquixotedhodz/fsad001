@@ -57,6 +57,9 @@ ob_start();
                 <a href="#preferences" class="block px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg mb-2">
                     Preferences
                 </a>
+                <a href="#color-theme" class="block px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg mb-2">
+                    Color Theme
+                </a>
                 <a href="#privacy" class="block px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg mb-2">
                     Privacy & Security
                 </a>
@@ -213,6 +216,94 @@ ob_start();
                     <div>
                         <button type="submit" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition">
                             Save Preferences
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Color Theme Settings -->
+            <div id="color-theme" class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
+                <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Color Theme</h2>
+
+                <form id="colorThemeForm" class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-4">Select Color Scheme</label>
+                        <div class="space-y-4">
+                            <!-- Autumn Theme -->
+                            <label class="flex items-start gap-4 cursor-pointer p-4 border-2 border-gray-200 dark:border-gray-600 rounded-lg hover:border-orange-400 dark:hover:border-orange-400 transition" onclick="selectColorTheme('autumn')">
+                                <input type="radio" name="colorTheme" value="autumn" class="w-4 h-4 text-orange-600 mt-1">
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-gray-900 dark:text-white">Autumn</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Warm orange, amber, and red tones</p>
+                                    <div class="flex gap-2 mt-3">
+                                        <div class="w-8 h-8 bg-orange-500 rounded"></div>
+                                        <div class="w-8 h-8 bg-amber-500 rounded"></div>
+                                        <div class="w-8 h-8 bg-red-600 rounded"></div>
+                                    </div>
+                                </div>
+                            </label>
+
+                            <!-- Winter Theme -->
+                            <label class="flex items-start gap-4 cursor-pointer p-4 border-2 border-gray-200 dark:border-gray-600 rounded-lg hover:border-blue-400 dark:hover:border-blue-400 transition" onclick="selectColorTheme('winter')">
+                                <input type="radio" name="colorTheme" value="winter" class="w-4 h-4 text-blue-600 mt-1">
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-gray-900 dark:text-white">Winter</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Cool blues, cyans, and ice tones</p>
+                                    <div class="flex gap-2 mt-3">
+                                        <div class="w-8 h-8 bg-blue-500 rounded"></div>
+                                        <div class="w-8 h-8 bg-cyan-500 rounded"></div>
+                                        <div class="w-8 h-8 bg-indigo-600 rounded"></div>
+                                    </div>
+                                </div>
+                            </label>
+
+                            <!-- Spring Theme -->
+                            <label class="flex items-start gap-4 cursor-pointer p-4 border-2 border-gray-200 dark:border-gray-600 rounded-lg hover:border-green-400 dark:hover:border-green-400 transition" onclick="selectColorTheme('spring')">
+                                <input type="radio" name="colorTheme" value="spring" class="w-4 h-4 text-green-600 mt-1">
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-gray-900 dark:text-white">Spring</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Fresh greens, pinks, and pastels</p>
+                                    <div class="flex gap-2 mt-3">
+                                        <div class="w-8 h-8 bg-green-500 rounded"></div>
+                                        <div class="w-8 h-8 bg-pink-500 rounded"></div>
+                                        <div class="w-8 h-8 bg-emerald-600 rounded"></div>
+                                    </div>
+                                </div>
+                            </label>
+
+                            <!-- Summer Theme -->
+                            <label class="flex items-start gap-4 cursor-pointer p-4 border-2 border-gray-200 dark:border-gray-600 rounded-lg hover:border-yellow-400 dark:hover:border-yellow-400 transition" onclick="selectColorTheme('summer')">
+                                <input type="radio" name="colorTheme" value="summer" class="w-4 h-4 text-yellow-600 mt-1">
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-gray-900 dark:text-white">Summer</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Bright yellows, vibrant colors</p>
+                                    <div class="flex gap-2 mt-3">
+                                        <div class="w-8 h-8 bg-yellow-500 rounded"></div>
+                                        <div class="w-8 h-8 bg-rose-500 rounded"></div>
+                                        <div class="w-8 h-8 bg-yellow-600 rounded"></div>
+                                    </div>
+                                </div>
+                            </label>
+
+                            <!-- Monochrome Theme -->
+                            <label class="flex items-start gap-4 cursor-pointer p-4 border-2 border-gray-200 dark:border-gray-600 rounded-lg hover:border-gray-400 dark:hover:border-gray-400 transition" onclick="selectColorTheme('monochrome')">
+                                <input type="radio" name="colorTheme" value="monochrome" class="w-4 h-4 text-gray-600 mt-1">
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-gray-900 dark:text-white">Monochrome</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Professional grays and neutral tones</p>
+                                    <div class="flex gap-2 mt-3">
+                                        <div class="w-8 h-8 bg-gray-400 rounded"></div>
+                                        <div class="w-8 h-8 bg-gray-600 rounded"></div>
+                                        <div class="w-8 h-8 bg-gray-800 rounded"></div>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <button type="submit" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition">
+                            Apply Color Theme
                         </button>
                     </div>
                 </form>
@@ -558,7 +649,132 @@ require_once __DIR__ . '/app/views/layouts/master.php';
 ?>
 
 <script>
-// Load theme preference on page load
+// Load color theme preference on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const savedColorTheme = localStorage.getItem('colorTheme') || 'autumn';
+    const colorThemeRadios = document.querySelectorAll('input[name="colorTheme"]');
+    
+    colorThemeRadios.forEach(radio => {
+        if (radio.value === savedColorTheme) {
+            radio.checked = true;
+        }
+    });
+    
+    // Apply saved color theme
+    applyColorThemeSettings(savedColorTheme);
+});
+
+// Handle color theme form submission
+const colorThemeForm = document.getElementById('colorThemeForm');
+if (colorThemeForm) {
+    colorThemeForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const selectedColorTheme = document.querySelector('input[name="colorTheme"]:checked').value;
+        
+        // Apply theme immediately
+        applyColorThemeSettings(selectedColorTheme);
+        
+        // Dispatch custom event so other tabs/windows and the current page can update
+        window.dispatchEvent(new CustomEvent('colorThemeChanged', { detail: { theme: selectedColorTheme } }));
+        
+        // Show success message
+        const button = colorThemeForm.querySelector('button[type="submit"]');
+        const originalText = button.textContent;
+        button.textContent = '✓ Applied';
+        button.classList.add('bg-green-600', 'hover:bg-green-700');
+        button.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+        
+        setTimeout(() => {
+            button.textContent = originalText;
+            button.classList.remove('bg-green-600', 'hover:bg-green-700');
+            button.classList.add('bg-blue-600', 'hover:bg-blue-700');
+        }, 2000);
+    });
+}
+
+// Color theme definitions (same as master.php)
+const colorThemesSettings = {
+    autumn: {
+        primary: '#ea580c',      // orange-500
+        secondary: '#f59e0b',    // amber-500
+        accent: '#dc2626',       // red-600
+        danger: '#991b1b',       // red-900
+        success: '#059669',      // emerald-600
+        warning: '#d97706',      // amber-600
+        info: '#3b82f6'          // blue-500
+    },
+    winter: {
+        primary: '#3b82f6',      // blue-500
+        secondary: '#06b6d4',    // cyan-500
+        accent: '#4f46e5',       // indigo-600
+        danger: '#dc2626',       // red-600
+        success: '#059669',      // emerald-600
+        warning: '#0284c7',      // sky-600
+        info: '#3b82f6'          // blue-500
+    },
+    spring: {
+        primary: '#10b981',      // emerald-500
+        secondary: '#ec4899',    // pink-500
+        accent: '#059669',       // emerald-600
+        danger: '#dc2626',       // red-600
+        success: '#10b981',      // emerald-500
+        warning: '#f59e0b',      // amber-500
+        info: '#06b6d4'          // cyan-500
+    },
+    summer: {
+        primary: '#eab308',      // yellow-500
+        secondary: '#f43f5e',    // rose-500
+        accent: '#ca8a04',       // yellow-600
+        danger: '#dc2626',       // red-600
+        success: '#10b981',      // emerald-500
+        warning: '#f97316',      // orange-500
+        info: '#fbbf24'          // amber-400
+    },
+    monochrome: {
+        primary: '#4b5563',      // gray-600
+        secondary: '#6b7280',    // gray-500
+        accent: '#1f2937',       // gray-800
+        danger: '#374151',       // gray-700
+        success: '#4b5563',      // gray-600
+        warning: '#6b7280',      // gray-500
+        info: '#6b7280'          // gray-500
+    }
+};
+
+// Function to apply color theme - update CSS variables in root
+function applyColorThemeSettings(themeName) {
+    const theme = colorThemesSettings[themeName] || colorThemesSettings.autumn;
+    const root = document.documentElement;
+    
+    // Set CSS variables matching master.php
+    root.style.setProperty('--theme-primary', theme.primary);
+    root.style.setProperty('--theme-secondary', theme.secondary);
+    root.style.setProperty('--theme-accent', theme.accent);
+    root.style.setProperty('--theme-danger', theme.danger);
+    root.style.setProperty('--theme-success', theme.success);
+    root.style.setProperty('--theme-warning', theme.warning);
+    root.style.setProperty('--theme-info', theme.info);
+
+    // Store in localStorage for persistence
+    localStorage.setItem('colorTheme', themeName);
+}
+
+// Select color theme function
+function selectColorTheme(themeName) {
+    const radio = document.querySelector(`input[name="colorTheme"][value="${themeName}"]`);
+    if (radio) {
+        radio.checked = true;
+    }
+}
+
+// Load color theme on page load
+window.addEventListener('load', function() {
+    const savedColorTheme = localStorage.getItem('colorTheme') || 'autumn';
+    applyColorTheme(savedColorTheme);
+});
+
+// Store and load theme preference
 document.addEventListener('DOMContentLoaded', function() {
     const savedTheme = localStorage.getItem('theme') || 'system';
     const themeRadios = document.querySelectorAll('input[name="theme"]');

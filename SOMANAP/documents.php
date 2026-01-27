@@ -313,26 +313,24 @@ ob_start();
                         <?php if (!empty($doc['file_path'])): ?>
                         <?php 
                         $filePath = $doc['file_path'];
-                        $fileExt = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
-                        $isExcel = in_array($fileExt, ['xlsx', 'xls', 'csv']);
-                        $fullPath = '../' . $filePath;
-                        $jsPath = json_encode($fullPath);
+                        $fileExt = strtolower(pathinfo($doc['file_name'], PATHINFO_EXTENSION));
+                        $previewableTypes = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
                         ?>
-                        <?php if ($isExcel): ?>
-                        <button onclick="previewExcel(<?php echo $jsPath; ?>)" title="Preview file" class="inline-flex items-center justify-center w-8 h-8 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition">
+                        <!-- Preview Button (Eye Icon) -->
+                        <?php if (in_array($fileExt, $previewableTypes)): ?>
+                        <button onclick="openPreviewModal(<?php echo $doc['id']; ?>, '<?php echo htmlspecialchars($doc['file_name']); ?>')" title="Preview document" class="inline-flex items-center justify-center w-8 h-8 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded transition">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                             </svg>
                         </button>
-                        <?php else: ?>
-                        <a href="<?php echo htmlspecialchars($fullPath); ?>" target="_blank" title="Preview file" class="inline-flex items-center justify-center w-8 h-8 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition">
+                        <?php endif; ?>
+                        <!-- Download Link -->
+                        <a href="<?php echo htmlspecialchars('../' . $filePath); ?>" download title="Download file" class="inline-flex items-center justify-center w-8 h-8 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
                             </svg>
                         </a>
-                        <?php endif; ?>
                         <?php endif; ?>
                         <?php if (isset($_SESSION['role']) && ($_SESSION['role'] === 'administrator' || $_SESSION['role'] === 'superadmin')): ?>
                         <button onclick="openEditModal(<?php echo htmlspecialchars(json_encode($doc)); ?>)" title="Edit document" class="inline-flex items-center justify-center w-8 h-8 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded transition">
@@ -405,30 +403,6 @@ ob_start();
         </div>
     </div>
     <?php endif; ?>
-
-<!-- Excel Preview Modal -->
-<div id="excelPreviewModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-    <div class="bg-white dark:bg-gray-800 rounded-lg w-full max-w-6xl p-8 max-h-[90vh] overflow-y-auto">
-        <div class="flex items-center justify-between mb-6">
-            <h2 class="text-3xl font-bold text-gray-900 dark:text-white">Excel Preview</h2>
-            <button onclick="document.getElementById('excelPreviewModal').classList.add('hidden')" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-            </button>
-        </div>
-        
-        <!-- Sheet Tabs -->
-        <div id="sheetTabs" class="flex gap-2 mb-6 border-b border-gray-200 dark:border-gray-700 overflow-x-auto"></div>
-        
-        <!-- Sheet Content -->
-        <div id="sheetContent" class="overflow-x-auto">
-            <table class="border-collapse border border-gray-300 dark:border-gray-600">
-                <tbody id="sheetData"></tbody>
-            </table>
-        </div>
-    </div>
-</div>
 
 <!-- Upload Modal -->
 <div id="uploadModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
@@ -764,6 +738,43 @@ ob_start();
                 </button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Document Preview Modal -->
+<div id="previewModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-screen overflow-y-auto">
+        <!-- Modal Header -->
+        <div class="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
+            <h2 id="previewTitle" class="text-2xl font-bold text-gray-900 dark:text-white truncate"></h2>
+            <button onclick="closePreviewModal()" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Modal Content -->
+        <div class="p-6">
+            <div id="previewContent" class="flex items-center justify-center min-h-[300px] bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <div class="flex items-center justify-center gap-3">
+                    <div class="animate-spin">
+                        <svg class="w-8 h-8 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </div>
+                    <span class="text-gray-600 dark:text-gray-300 font-medium">Loading preview...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="sticky bottom-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-6 py-4">
+            <button onclick="closePreviewModal()" class="w-full px-4 py-3 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition font-medium">
+                Close
+            </button>
+        </div>
     </div>
 </div>
 
@@ -1962,133 +1973,6 @@ document.getElementById('editForm').addEventListener('submit', async (e) => {
     }
 });
 
-// Excel Preview Function
-function previewExcel(filePath) {
-    // Show loading modal
-    const modal = document.getElementById('excelPreviewModal');
-    const sheetData = document.getElementById('sheetData');
-    
-    if (!modal) {
-        alert('Preview modal not found');
-        return;
-    }
-    
-    sheetData.innerHTML = '<tr><td colspan="10" class="px-4 py-8 text-center text-gray-600">Loading...</td></tr>';
-    modal.classList.remove('hidden');
-    
-    // Wait for XLSX library to load with retry mechanism
-    if (typeof XLSX === 'undefined') {
-        console.warn('XLSX library not loaded, retrying...');
-        setTimeout(() => previewExcel(filePath), 500); // Retry after 500ms
-        return;
-    }
-    
-    console.log('Loading file:', filePath);
-    
-    // Ensure the path is correct
-    let actualPath = filePath;
-    if (!actualPath.startsWith('/') && !actualPath.startsWith('http')) {
-        // Relative path - make sure it's correct
-        actualPath = filePath;
-    }
-    
-    fetch(actualPath)
-        .then(response => {
-            console.log('Response status:', response.status);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status} - File may not exist at path: ${actualPath}`);
-            }
-            return response.arrayBuffer();
-        })
-        .then(data => {
-            console.log('File loaded, size:', data.byteLength);
-            try {
-                const workbook = XLSX.read(data, { type: 'array' });
-                console.log('Workbook sheets:', workbook.SheetNames);
-                
-                if (workbook.SheetNames.length === 0) {
-                    sheetData.innerHTML = '<tr><td colspan="10" class="px-4 py-4 text-center text-red-600">Error: No sheets found in file</td></tr>';
-                    return;
-                }
-                
-                const firstSheet = workbook.SheetNames[0];
-                
-                // Create sheet tabs
-                const sheetTabs = document.getElementById('sheetTabs');
-                sheetTabs.innerHTML = '';
-                
-                workbook.SheetNames.forEach((sheetName, index) => {
-                    const tab = document.createElement('button');
-                    tab.textContent = sheetName;
-                    tab.className = `px-4 py-2 border-b-2 transition font-medium ${index === 0 ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300'}`;
-                    tab.type = 'button';
-                    tab.onclick = (e) => {
-                        e.preventDefault();
-                        displaySheet(workbook, sheetName, index);
-                    };
-                    sheetTabs.appendChild(tab);
-                });
-                
-                // Display first sheet
-                displaySheet(workbook, firstSheet, 0);
-            } catch (error) {
-                console.error('Error parsing Excel:', error);
-                sheetData.innerHTML = `<tr><td colspan="10" class="px-4 py-4 text-center text-red-600">Error: ${error.message}</td></tr>`;
-            }
-        })
-        .catch(error => {
-            console.error('Error loading Excel file:', error);
-            sheetData.innerHTML = `<tr><td colspan="10" class="px-4 py-4 text-center text-red-600">Error: ${error.message || 'Failed to load file'}</td></tr>`;
-        });
-}
-
-function displaySheet(workbook, sheetName, tabIndex) {
-    try {
-        const worksheet = workbook.Sheets[sheetName];
-        const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-        
-        const sheetData = document.getElementById('sheetData');
-        sheetData.innerHTML = '';
-        
-        // Update active tab styling
-        const tabs = document.querySelectorAll('#sheetTabs button');
-        tabs.forEach((tab, index) => {
-            if (index === tabIndex) {
-                tab.classList.remove('border-transparent', 'text-gray-600', 'dark:text-gray-400');
-                tab.classList.add('border-blue-500', 'text-blue-600', 'dark:text-blue-400');
-            } else {
-                tab.classList.add('border-transparent', 'text-gray-600', 'dark:text-gray-400');
-                tab.classList.remove('border-blue-500', 'text-blue-600', 'dark:text-blue-400');
-            }
-        });
-        
-        // Render data
-        data.forEach((row, rowIndex) => {
-            const tr = document.createElement('tr');
-            tr.className = rowIndex === 0 ? 'bg-gray-100 dark:bg-gray-700' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50';
-            
-            row.forEach((cell, cellIndex) => {
-                let element;
-                if (rowIndex === 0) {
-                    element = document.createElement('th');
-                    element.className = 'border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 bg-gray-100 dark:bg-gray-700';
-                } else {
-                    element = document.createElement('td');
-                    element.className = 'border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm text-gray-900 dark:text-gray-100';
-                }
-                element.textContent = cell !== null && cell !== undefined ? cell : '';
-                tr.appendChild(element);
-            });
-            
-            sheetData.appendChild(tr);
-        });
-    } catch (error) {
-        console.error('Error displaying sheet:', error);
-        const sheetData = document.getElementById('sheetData');
-        sheetData.innerHTML = `<tr><td colspan="10" class="px-4 py-4 text-center text-red-600">Error displaying sheet: ${error.message}</td></tr>`;
-    }
-}
-
 if (searchInput) {
     searchInput.addEventListener('input', function() {
         clearTimeout(searchTimeout);
@@ -2117,6 +2001,223 @@ function deleteDocument(id) {
         }
     });
 }
+
+// PDF Preview Variables
+let pdfDoc = null;
+let currentPdfPage = 1;
+let totalPdfPages = 0;
+let pdfFilePath = '';
+
+// PDF Preview Function
+function previewPDF(filePath) {
+    console.log('previewPDF called with:', filePath);
+    
+    try {
+        // Resolve relative path to absolute URL
+        const absolutePath = new URL(filePath, window.location.href).href;
+        console.log('Resolved path:', absolutePath);
+        pdfFilePath = absolutePath;
+        const modal = document.getElementById('pdfPreviewModal');
+        
+        if (!modal) {
+            console.error('PDF preview modal not found');
+            window.open(filePath, '_blank');
+            return;
+        }
+        
+        // Show loading state
+        const pdfContainer = document.getElementById('pdfContainer');
+        pdfContainer.innerHTML = '<div style="text-align: center; padding: 2rem; color: #666;">Loading PDF...</div>';
+        modal.classList.remove('hidden');
+        
+        console.log('Modal opened, loading PDF from:', absolutePath);
+        
+        // Check if PDF.js is available
+        if (typeof pdfjsLib === 'undefined') {
+            console.error('PDF.js library not loaded');
+            pdfContainer.innerHTML = '<div style="text-align: center; padding: 2rem; color: red;">PDF viewer library not loaded. <a href="' + absolutePath + '" target="_blank">Click to open in new tab</a></div>';
+            return;
+        }
+        
+        // Fetch the PDF file and load it
+        fetch(absolutePath)
+            .then(function(response) {
+                console.log('Fetch response status:', response.status);
+                if (!response.ok) {
+                    throw new Error('HTTP error! status: ' + response.status);
+                }
+                return response.arrayBuffer();
+            })
+            .then(function(arrayBuffer) {
+                console.log('PDF loaded, size:', arrayBuffer.byteLength, 'bytes');
+                return pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            })
+            .then(function(pdf) {
+                console.log('PDF document loaded, pages:', pdf.numPages);
+                pdfDoc = pdf;
+                totalPdfPages = pdf.numPages;
+                currentPdfPage = 1;
+                
+                // Update page info
+                document.getElementById('totalPages').textContent = totalPdfPages;
+                document.getElementById('currentPage').textContent = currentPdfPage;
+                document.getElementById('pdfPageInput').max = totalPdfPages;
+                document.getElementById('pdfPageInput').value = currentPdfPage;
+                
+                // Render first page
+                renderPdfPage(currentPdfPage);
+            })
+            .catch(function(error) {
+                console.error('Error loading PDF:', error);
+                pdfContainer.innerHTML = '<div style="text-align: center; padding: 2rem; color: red;">Error: ' + error.message + '<br><a href="' + filePath + '" target="_blank">Click to open in new tab</a></div>';
+            });
+    } catch (e) {
+        console.error('Exception in previewPDF:', e);
+        alert('Error: ' + e.message);
+    }
+}
+
+function renderPdfPage(pageNum) {
+    if (!pdfDoc) {
+        console.error('PDF not loaded');
+        return;
+    }
+    
+    console.log('Rendering page:', pageNum);
+    
+    try {
+        pdfDoc.getPage(pageNum).then(function(page) {
+            const canvas = document.getElementById('pdfCanvas');
+            if (!canvas) {
+                console.error('Canvas element not found');
+                return;
+            }
+            
+            const context = canvas.getContext('2d');
+            const scale = 1.5;
+            const viewport = page.getViewport({ scale: scale });
+            
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            
+            console.log('Rendering page', pageNum, 'at scale', scale, 'viewport:', viewport.width, 'x', viewport.height);
+            
+            const renderContext = {
+                canvasContext: context,
+                viewport: viewport
+            };
+            
+            page.render(renderContext).promise.then(function() {
+                console.log('Page ' + pageNum + ' rendered successfully');
+            }).catch(function(error) {
+                console.error('Error rendering page:', error);
+            });
+            
+            // Update page info
+            document.getElementById('currentPage').textContent = pageNum;
+            document.getElementById('pdfPageInput').value = pageNum;
+        }).catch(function(error) {
+            console.error('Error getting page:', error);
+            document.getElementById('pdfContainer').innerHTML = '<div style="text-align: center; padding: 2rem; color: red;">Error: ' + error.message + '</div>';
+        });
+    } catch (e) {
+        console.error('Exception in renderPdfPage:', e);
+    }
+}
+
+function nextPdfPage() {
+    console.log('nextPdfPage called, current:', currentPdfPage, 'total:', totalPdfPages);
+    if (pdfDoc && currentPdfPage < totalPdfPages) {
+        currentPdfPage++;
+        renderPdfPage(currentPdfPage);
+    }
+}
+
+function previousPdfPage() {
+    console.log('previousPdfPage called, current:', currentPdfPage);
+    if (pdfDoc && currentPdfPage > 1) {
+        currentPdfPage--;
+        renderPdfPage(currentPdfPage);
+    }
+}
+
+function goToPage() {
+    const pageInput = document.getElementById('pdfPageInput');
+    const pageNum = parseInt(pageInput.value);
+    console.log('goToPage called with:', pageNum);
+    
+    if (pdfDoc && pageNum >= 1 && pageNum <= totalPdfPages) {
+        currentPdfPage = pageNum;
+        renderPdfPage(currentPdfPage);
+    }
+}
+
+function downloadPdf() {
+    console.log('downloadPdf called with path:', pdfFilePath);
+    if (pdfFilePath) {
+        window.open(pdfFilePath, '_blank');
+    }
+}
+
+// Preview Modal Functions
+function openPreviewModal(documentId, fileName) {
+    const modal = document.getElementById('previewModal');
+    const previewContent = document.getElementById('previewContent');
+    const previewTitle = document.getElementById('previewTitle');
+    const fileExt = fileName.split('.').pop().toLowerCase();
+    
+    previewTitle.textContent = fileName;
+    
+    // Determine file type
+    const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(fileExt);
+    const isPDF = fileExt === 'pdf';
+    
+    if (isImage) {
+        // Display image
+        previewContent.innerHTML = `<img src="preview_document.php?id=${documentId}" alt="${fileName}" class="max-w-full max-h-[600px] object-contain mx-auto rounded">`;
+    } else if (isPDF) {
+        // Display PDF in iframe
+        previewContent.innerHTML = `<iframe src="preview_document.php?id=${documentId}" class="w-full h-[600px] border-0 rounded"></iframe>`;
+    } else {
+        previewContent.innerHTML = '<div class="text-center py-8 text-gray-600">Preview not available for this file type</div>';
+    }
+    
+    modal.classList.remove('hidden');
+}
+
+function closePreviewModal() {
+    const modal = document.getElementById('previewModal');
+    modal.classList.add('hidden');
+    document.getElementById('previewContent').innerHTML = '';
+}
+
+// Close preview modal when clicking outside
+document.addEventListener('click', function(e) {
+    const modal = document.getElementById('previewModal');
+    if (e.target === modal) {
+        closePreviewModal();
+    }
+});
+
+// Close preview modal with Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closePreviewModal();
+    }
+});
+
+// Test to verify functions are available
+console.log('PDF Preview functions loaded:', {
+    previewPDF: typeof previewPDF,
+    renderPdfPage: typeof renderPdfPage,
+    nextPdfPage: typeof nextPdfPage,
+    previousPdfPage: typeof previousPdfPage,
+    goToPage: typeof goToPage,
+    downloadPdf: typeof downloadPdf,
+    openPreviewModal: typeof openPreviewModal,
+    closePreviewModal: typeof closePreviewModal,
+    pdfjsLib: typeof pdfjsLib
+});
 </script>
 
 <?php

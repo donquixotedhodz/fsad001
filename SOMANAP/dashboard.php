@@ -450,10 +450,10 @@ ob_start();
 
         // Department Distribution Chart
         const deptData = <?php echo json_encode($deptStats); ?>;
-        const deptLabels = [];
+        const deptLabels = deptData.map(item => item.department);
         const deptValues = deptData.map(item => item.count);
 
-        const deptBackgroundColors = deptData.map((_, index) => autumnColors[index % autumnColors.length]);
+        const deptBackgroundColors = deptLabels.map((_, index) => autumnColors[index % autumnColors.length]);
         const deptBorderColors = deptBackgroundColors.map(color => color.replace('0.8', '1'));
 
         const deptCtx = document.getElementById('deptChart').getContext('2d');

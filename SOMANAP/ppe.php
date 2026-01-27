@@ -25,7 +25,39 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     $debit = floatval($_POST['debit'] ?? 0);
     $credit = floatval($_POST['credit'] ?? 0);
     
-    if (!empty($particulars) && ($check_no > 0 || $check_no === 'ONLINE')) {
+    $filePath = null;
+    $fileName = null;
+    
+    // Handle file upload
+    if (!empty($_FILES['ppe_file']['tmp_name'])) {
+        $uploadDir = __DIR__ . '/uploads/ppe/';
+        
+        // Create upload directory if it doesn't exist
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+        
+        $fileExt = strtolower(pathinfo($_FILES['ppe_file']['name'], PATHINFO_EXTENSION));
+        $allowedExts = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'jpg', 'jpeg', 'png', 'gif', 'ppt', 'pptx'];
+        
+        if (!in_array($fileExt, $allowedExts)) {
+            $errorMessage = "File type not allowed. Only PDF, Word, Excel, Image and PowerPoint files are accepted.";
+        } elseif ($_FILES['ppe_file']['size'] > 50 * 1024 * 1024) {
+            $errorMessage = "File size exceeds 50MB limit.";
+        } else {
+            $uniqueFileName = uniqid() . '_' . time() . '.' . $fileExt;
+            $uploadPath = $uploadDir . $uniqueFileName;
+            
+            if (move_uploaded_file($_FILES['ppe_file']['tmp_name'], $uploadPath)) {
+                $filePath = 'uploads/ppe/' . $uniqueFileName;
+                $fileName = $_FILES['ppe_file']['name'];
+            } else {
+                $errorMessage = "Failed to upload file.";
+            }
+        }
+    }
+    
+    if (!isset($errorMessage) && !empty($particulars) && ($check_no > 0 || $check_no === 'ONLINE')) {
         try {
             // Get the last balance
             $stmt = $conn->prepare("SELECT balance FROM ppe ORDER BY id DESC LIMIT 1");
@@ -37,8 +69,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             $newBalance = $lastBalance - $debit + $credit;
             
             // Insert new record
-            $stmt = $conn->prepare("INSERT INTO ppe (date, particulars, check_no, dv_or_no, debit, credit, balance) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$date, $particulars, $check_no, $dv_or_no, $debit, $credit, $newBalance]);
+            $stmt = $conn->prepare("INSERT INTO ppe (date, particulars, check_no, dv_or_no, debit, credit, balance, file_path, file_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$date, $particulars, $check_no, $dv_or_no, $debit, $credit, $newBalance, $filePath, $fileName]);
             
             // Update PPE Provident Fund remaining balance
             $updateFundStmt = $conn->prepare("UPDATE ppe_funds SET remaining_balance = ? WHERE fund_name = 'PPE Provident Fund'");
@@ -48,7 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         } catch (Exception $e) {
             $errorMessage = "Error adding record: " . htmlspecialchars($e->getMessage());
         }
-    } else {
+    } elseif (!isset($errorMessage)) {
         $errorMessage = "Please fill in all required fields.";
     }
 }
@@ -110,7 +142,67 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     $debit = floatval($_POST['debit'] ?? 0);
     $credit = floatval($_POST['credit'] ?? 0);
     
-    if ($ppe_id > 0 && !empty($particulars) && ($check_no > 0 || $check_no === 'ONLINE')) {
+    $filePath = null;
+    $fileName = null;
+    $deleteExistingFile = false;
+    
+    // Handle file upload
+    if (!empty($_FILES['ppe_file']['tmp_name'])) {
+        $uploadDir = __DIR__ . '/uploads/ppe/';
+        
+        // Create upload directory if it doesn't exist
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+        
+        $fileExt = strtolower(pathinfo($_FILES['ppe_file']['name'], PATHINFO_EXTENSION));
+        $allowedExts = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'jpg', 'jpeg', 'png', 'gif', 'ppt', 'pptx'];
+        
+        if (!in_array($fileExt, $allowedExts)) {
+            $errorMessage = "File type not allowed. Only PDF, Word, Excel, Image and PowerPoint files are accepted.";
+        } elseif ($_FILES['ppe_file']['size'] > 50 * 1024 * 1024) {
+            $errorMessage = "File size exceeds 50MB limit.";
+        } else {
+            // Get the old file path to delete it
+            $stmt = $conn->prepare("SELECT file_path FROM ppe WHERE id = ?");
+            $stmt->execute([$ppe_id]);
+            $oldRecord = $stmt->fetch();
+            
+            // Delete old file if it exists
+            if ($oldRecord && !empty($oldRecord['file_path'])) {
+                $oldFile = __DIR__ . '/' . $oldRecord['file_path'];
+                if (file_exists($oldFile)) {
+                    unlink($oldFile);
+                }
+            }
+            
+            $uniqueFileName = uniqid() . '_' . time() . '.' . $fileExt;
+            $uploadPath = $uploadDir . $uniqueFileName;
+            
+            if (move_uploaded_file($_FILES['ppe_file']['tmp_name'], $uploadPath)) {
+                $filePath = 'uploads/ppe/' . $uniqueFileName;
+                $fileName = $_FILES['ppe_file']['name'];
+            } else {
+                $errorMessage = "Failed to upload file.";
+            }
+        }
+    } else {
+        // No new file uploaded - check if we should delete existing file
+        // If this is from an edit form without file selection, mark to delete existing file
+        $stmt = $conn->prepare("SELECT file_path FROM ppe WHERE id = ?");
+        $stmt->execute([$ppe_id]);
+        $oldRecord = $stmt->fetch();
+        
+        if ($oldRecord && !empty($oldRecord['file_path'])) {
+            $oldFile = __DIR__ . '/' . $oldRecord['file_path'];
+            if (file_exists($oldFile)) {
+                unlink($oldFile);
+            }
+            $deleteExistingFile = true;
+        }
+    }
+    
+    if (!isset($errorMessage) && $ppe_id > 0 && !empty($particulars) && ($check_no > 0 || $check_no === 'ONLINE')) {
         try {
             // Get the current record
             $stmt = $conn->prepare("SELECT debit, credit FROM ppe WHERE id = ?");
@@ -127,8 +219,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             $newBalance = $prevBalance - $debit + $credit;
             
             // Update the record
-            $stmt = $conn->prepare("UPDATE ppe SET date = ?, particulars = ?, check_no = ?, dv_or_no = ?, debit = ?, credit = ?, balance = ? WHERE id = ?");
-            $stmt->execute([$date, $particulars, $check_no, $dv_or_no, $debit, $credit, $newBalance, $ppe_id]);
+            if ($filePath && $fileName) {
+                // New file uploaded
+                $stmt = $conn->prepare("UPDATE ppe SET date = ?, particulars = ?, check_no = ?, dv_or_no = ?, debit = ?, credit = ?, balance = ?, file_path = ?, file_name = ? WHERE id = ?");
+                $stmt->execute([$date, $particulars, $check_no, $dv_or_no, $debit, $credit, $newBalance, $filePath, $fileName, $ppe_id]);
+            } elseif ($deleteExistingFile) {
+                // Delete existing file
+                $stmt = $conn->prepare("UPDATE ppe SET date = ?, particulars = ?, check_no = ?, dv_or_no = ?, debit = ?, credit = ?, balance = ?, file_path = NULL, file_name = NULL WHERE id = ?");
+                $stmt->execute([$date, $particulars, $check_no, $dv_or_no, $debit, $credit, $newBalance, $ppe_id]);
+            } else {
+                // Keep existing file
+                $stmt = $conn->prepare("UPDATE ppe SET date = ?, particulars = ?, check_no = ?, dv_or_no = ?, debit = ?, credit = ?, balance = ? WHERE id = ?");
+                $stmt->execute([$date, $particulars, $check_no, $dv_or_no, $debit, $credit, $newBalance, $ppe_id]);
+            }
             
             // Recalculate balances for all records after this one
             $stmt = $conn->prepare("SELECT id, debit, credit FROM ppe WHERE id > ? ORDER BY id ASC");
@@ -210,7 +313,7 @@ ob_start();
     <dialog id="addPPEModal" class="rounded-lg shadow-lg max-w-2xl w-full p-8 dark:bg-gray-800">
         <h2 class="text-xl font-bold mb-6 text-gray-900 dark:text-white">Add PPE Record</h2>
         
-        <form method="POST" class="space-y-6" id="addPPEForm" onsubmit="prepareAddPPESubmit(event)">
+        <form method="POST" class="space-y-6" id="addPPEForm" onsubmit="prepareAddPPESubmit(event)" enctype="multipart/form-data">
             <input type="hidden" name="action" value="add_ppe">
             
             <div class="grid grid-cols-2 gap-6">
@@ -267,6 +370,22 @@ ob_start();
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Debit</label>
                     <input type="number" name="debit" step="0.01" min="0" value="0" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
+
+                <!-- File Upload (Optional) -->
+                <div class="col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Attach File (Optional)</label>
+                    <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition cursor-pointer" id="addPPEFileDropZone">
+                        <input type="file" name="ppe_file" class="hidden" id="addPPEFileInput">
+                        <label for="addPPEFileInput" class="cursor-pointer text-center block">
+                            <svg class="w-10 h-10 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Click to select file or drag and drop</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">PDF, Word, Excel, Image files (Max 50MB)</p>
+                        </label>
+                    </div>
+                    <div id="addPPEFileList" class="mt-3 text-sm text-gray-600 dark:text-gray-400"></div>
+                </div>
             </div>
 
             <!-- Buttons -->
@@ -285,7 +404,7 @@ ob_start();
     <dialog id="editPPEModal" class="rounded-lg shadow-lg max-w-2xl w-full p-8 dark:bg-gray-800">
         <h2 class="text-xl font-bold mb-6 text-gray-900 dark:text-white">Edit PPE Record</h2>
         
-        <form method="POST" class="space-y-6" id="editPPEForm" onsubmit="prepareEditPPESubmit(event)">
+        <form method="POST" class="space-y-6" id="editPPEForm" onsubmit="prepareEditPPESubmit(event)" enctype="multipart/form-data">
             <input type="hidden" name="action" value="edit_ppe">
             <input type="hidden" id="editPPEId" name="ppe_id" value="">
             
@@ -343,6 +462,22 @@ ob_start();
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Debit</label>
                     <input type="number" id="editDebit" name="debit" step="0.01" min="0" value="0" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
+
+                <!-- File Upload (Optional) -->
+                <div class="col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Attach File (Optional)</label>
+                    <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition cursor-pointer" id="editPPEFileDropZone">
+                        <input type="file" name="ppe_file" class="hidden" id="editPPEFileInput">
+                        <label for="editPPEFileInput" class="cursor-pointer text-center block">
+                            <svg class="w-10 h-10 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Click to select file or drag and drop</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">PDF, Word, Excel, Image files (Max 50MB)</p>
+                        </label>
+                    </div>
+                    <div id="editPPEFileList" class="mt-3 text-sm text-gray-600 dark:text-gray-400"></div>
+                </div>
             </div>
 
             <!-- Buttons -->
@@ -399,6 +534,7 @@ ob_start();
                     <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-right font-semibold text-gray-900 dark:text-white">Debit</th>
                     <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-right font-semibold text-gray-900 dark:text-white">Credit</th>
                     <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-right font-semibold text-gray-900 dark:text-white">Balance</th>
+                    <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center font-semibold text-gray-900 dark:text-white">File</th>
                     <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center font-semibold text-gray-900 dark:text-white">Actions</th>
                 </tr>
             </thead>
@@ -449,13 +585,22 @@ ob_start();
                             echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-right text-gray-700 dark:text-gray-300">' . number_format($record['credit'], 2) . '</td>';
                             echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-right font-semibold text-gray-900 dark:text-white">' . number_format($record['balance'], 2) . '</td>';
                             echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center">';
+                            if (!empty($record['file_path']) && file_exists(__DIR__ . '/' . $record['file_path'])) {
+                                echo '<a href="../' . htmlspecialchars($record['file_path']) . '" target="_blank" class="inline-flex items-center justify-center w-8 h-8 bg-green-500 text-white rounded hover:bg-green-600 transition" title="Download file">';
+                                echo '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>';
+                                echo '</a>';
+                            } else {
+                                echo '<span class="text-gray-400 text-sm">-</span>';
+                            }
+                            echo '</td>';
+                            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center">';
                             echo '<button onclick="editPPE(' . $record['id'] . ')" class="inline-flex items-center justify-center w-8 h-8 bg-blue-500 text-white rounded hover:bg-blue-600 transition mr-2" title="Edit" style="font-size: 14px;"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>';
                             echo '<button onclick="deletePPE(' . $record['id'] . ')" class="inline-flex items-center justify-center w-8 h-8 bg-red-500 text-white rounded hover:bg-red-600 transition" title="Delete"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>';
                             echo '</td>';
                             echo '</tr>';
                         }
                     } else {
-                        echo '<tr><td colspan="8" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-gray-500">No records found</td></tr>';
+                        echo '<tr><td colspan="9" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-gray-500">No records found</td></tr>';
                     }
                 } catch (Exception $e) {
                     echo '<tr><td colspan="8" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-red-500">Error loading data: ' . htmlspecialchars($e->getMessage()) . '</td></tr>';
@@ -632,6 +777,110 @@ function editPPE(id) {
     });
 }
 
+// PPE File Upload Handling
+const addPPEFileInput = document.getElementById('addPPEFileInput');
+const addPPEFileDropZone = document.getElementById('addPPEFileDropZone');
+
+addPPEFileInput.addEventListener('change', updateAddPPEFileList);
+
+addPPEFileDropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    addPPEFileDropZone.classList.add('bg-blue-100', 'dark:bg-blue-900/30', 'border-blue-400', 'dark:border-blue-500');
+});
+
+addPPEFileDropZone.addEventListener('dragleave', () => {
+    addPPEFileDropZone.classList.remove('bg-blue-100', 'dark:bg-blue-900/30', 'border-blue-400', 'dark:border-blue-500');
+});
+
+addPPEFileDropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    addPPEFileDropZone.classList.remove('bg-blue-100', 'dark:bg-blue-900/30', 'border-blue-400', 'dark:border-blue-500');
+    addPPEFileInput.files = e.dataTransfer.files;
+    updateAddPPEFileList();
+});
+
+function updateAddPPEFileList() {
+    const fileList = document.getElementById('addPPEFileList');
+    const files = addPPEFileInput.files;
+    
+    if (files.length > 0) {
+        let html = '<div class="space-y-2">';
+        for (let file of files) {
+            const fileSize = (file.size / 1024 / 1024).toFixed(2);
+            html += `<div class="flex items-center justify-between p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                <span class="text-sm font-medium text-gray-900 dark:text-white">${file.name}</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400">${fileSize} MB</span>
+            </div>`;
+        }
+        html += '</div>';
+        fileList.innerHTML = html;
+    } else {
+        fileList.innerHTML = '';
+    }
+}
+
+// Edit PPE File Upload Handling
+const editPPEFileInput = document.getElementById('editPPEFileInput');
+const editPPEFileDropZone = document.getElementById('editPPEFileDropZone');
+
+editPPEFileInput.addEventListener('change', updateEditPPEFileList);
+
+editPPEFileDropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    editPPEFileDropZone.classList.add('bg-blue-100', 'dark:bg-blue-900/30', 'border-blue-400', 'dark:border-blue-500');
+});
+
+editPPEFileDropZone.addEventListener('dragleave', () => {
+    editPPEFileDropZone.classList.remove('bg-blue-100', 'dark:bg-blue-900/30', 'border-blue-400', 'dark:border-blue-500');
+});
+
+editPPEFileDropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    editPPEFileDropZone.classList.remove('bg-blue-100', 'dark:bg-blue-900/30', 'border-blue-400', 'dark:border-blue-500');
+    editPPEFileInput.files = e.dataTransfer.files;
+    updateEditPPEFileList();
+});
+
+function updateEditPPEFileList() {
+    const fileList = document.getElementById('editPPEFileList');
+    const files = editPPEFileInput.files;
+    
+    if (files.length > 0) {
+        let html = '<div class="space-y-2">';
+        for (let file of files) {
+            const fileSize = (file.size / 1024 / 1024).toFixed(2);
+            html += `<div class="flex items-center justify-between p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                <span class="text-sm font-medium text-gray-900 dark:text-white">${file.name}</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400">${fileSize} MB</span>
+            </div>`;
+        }
+        html += '</div>';
+        fileList.innerHTML = html;
+    } else {
+        fileList.innerHTML = '';
+    }
+}
+
+function prepareAddPPESubmit(event) {
+    event.preventDefault();
+    
+    // The form will be submitted with multipart/form-data
+    // JavaScript form submission needs to be handled for file upload
+    const form = document.getElementById('addPPEForm');
+    const formData = new FormData(form);
+    
+    // Submit the form via fetch
+    fetch('', {
+        method: 'POST',
+        body: formData
+    }).then(response => {
+        // Form will reload after submission via PHP redirect or page refresh
+        location.reload();
+    }).catch(error => {
+        console.error('Error:', error);
+    });
+}
+
 function deletePPE(id) {
     if (confirm('Are you sure you want to delete this record? This will recalculate all subsequent balances.')) {
         const form = document.createElement('form');
@@ -646,18 +895,11 @@ function deletePPE(id) {
 }
 
 // Form submission handlers to set correct DV/OR value
-function prepareAddPPESubmit(event) {
-    const checkType = document.getElementById('checkType').value;
-    const hiddenDV = document.getElementById('addDVNumber');
-    
-    if (checkType === 'online') {
-        const manualDV = document.getElementById('addDVManual').value;
-        hiddenDV.value = manualDV;
-    }
-    // For actual, the hidden field is already populated by updateFullDVNumber()
-}
-
 function prepareEditPPESubmit(event) {
+    event.preventDefault();
+    
+    const form = document.getElementById('editPPEForm');
+    const formData = new FormData(form);
     const checkType = document.getElementById('editCheckType').value;
     const hiddenDV = document.getElementById('editDVNumber');
     
@@ -665,7 +907,20 @@ function prepareEditPPESubmit(event) {
         const manualDV = document.getElementById('editDVManual').value;
         hiddenDV.value = manualDV;
     }
-    // For actual, the hidden field is already populated by updateFullEditDVNumber()
+    
+    // Update the FormData with the corrected DV value
+    formData.set('dv_or_no', hiddenDV.value);
+    
+    // Submit the form via fetch
+    fetch('', {
+        method: 'POST',
+        body: formData
+    }).then(response => {
+        // Form will reload after submission via PHP redirect or page refresh
+        location.reload();
+    }).catch(error => {
+        console.error('Error:', error);
+    });
 }
 
 // Initialize on page load

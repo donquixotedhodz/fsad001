@@ -228,6 +228,7 @@ ob_start();
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Recommending Approvals</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Approving Authority</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Control Point</th>
+                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Department</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">EC</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Team</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Date</th>
@@ -254,6 +255,24 @@ ob_start();
                                 echo '<div class="space-y-1">';
                                 foreach ($points as $point) {
                                     echo '<div class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">' . htmlspecialchars($point) . '</div>';
+                                }
+                                echo '</div>';
+                            } else {
+                                echo '-';
+                            }
+                        } else {
+                            echo '-';
+                        }
+                        ?>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
+                        <?php 
+                        if (!empty($doc['department'])) {
+                            $depts = array_filter(array_map('trim', explode("\n", $doc['department'])));
+                            if (!empty($depts)) {
+                                echo '<div class="space-y-1">';
+                                foreach ($depts as $dept) {
+                                    echo '<div class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">' . htmlspecialchars($dept) . '</div>';
                                 }
                                 echo '</div>';
                             } else {

@@ -172,6 +172,9 @@ ob_start();
             <a href="ppe_check_issued_print.php<?php echo $queryString; ?>" target="_blank" class="block w-full px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition text-center font-medium">
                 📋 Check Issued
             </a>
+            <a href="ppe_remittance_print.php<?php echo $queryString; ?>" target="_blank" class="block w-full px-6 py-3 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition text-center font-medium">
+                💳 Remittance
+            </a>
             <a href="ppe_print.php<?php echo $queryString; ?>" target="_blank" class="block w-full px-6 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition text-center font-medium">
                 📑 Check Issued - Receiving
             </a>

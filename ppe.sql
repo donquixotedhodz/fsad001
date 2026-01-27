@@ -29,6 +29,8 @@ CREATE TABLE IF NOT EXISTS `ppe` (
   `debit` decimal(12,2) DEFAULT '0.00',
   `credit` decimal(12,2) DEFAULT '0.00',
   `balance` decimal(12,2) DEFAULT '0.00',
+  `file_path` varchar(255) DEFAULT NULL,
+  `file_name` varchar(255) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)

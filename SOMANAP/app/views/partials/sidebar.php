@@ -104,6 +104,19 @@
             </a>
             <?php endif; ?>
 
+            <!-- Divider -->
+            <div class="my-4 border-t border-gray-200 dark:border-gray-700"></div>
+
+            <!-- Maintenance - Only for Superadmin -->
+            <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'superadmin'): ?>
+            <a href="maintenance.php" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo $currentPage === 'maintenance' ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+                <span class="font-medium">Maintenance</span>
+            </a>
+            <?php endif; ?>
+
             <!-- Logout -->
             <a href="logout.php" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-gray-700 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

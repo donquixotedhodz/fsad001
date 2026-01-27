@@ -318,28 +318,28 @@ ob_start();
                         ?>
                         <!-- Preview Button (Eye Icon) -->
                         <?php if (in_array($fileExt, $previewableTypes)): ?>
-                        <button onclick="openPreviewModal(<?php echo $doc['id']; ?>, '<?php echo htmlspecialchars($doc['file_name']); ?>')" title="Preview document" class="inline-flex items-center justify-center w-8 h-8 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded transition">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <button onclick="openPreviewModal(<?php echo $doc['id']; ?>, '<?php echo htmlspecialchars($doc['file_name']); ?>')" title="Preview document" class="inline-flex items-center justify-center w-8 h-8 bg-orange-500 text-white rounded hover:bg-orange-600 transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                             </svg>
                         </button>
                         <?php endif; ?>
                         <!-- Download Link -->
-                        <a href="<?php echo htmlspecialchars('../' . $filePath); ?>" download title="Download file" class="inline-flex items-center justify-center w-8 h-8 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <a href="<?php echo htmlspecialchars('../' . $filePath); ?>" download title="Download file" class="inline-flex items-center justify-center w-8 h-8 bg-amber-500 text-white rounded hover:bg-amber-600 transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
                             </svg>
                         </a>
                         <?php endif; ?>
                         <?php if (isset($_SESSION['role']) && ($_SESSION['role'] === 'administrator' || $_SESSION['role'] === 'superadmin')): ?>
-                        <button onclick="openEditModal(<?php echo htmlspecialchars(json_encode($doc)); ?>)" title="Edit document" class="inline-flex items-center justify-center w-8 h-8 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded transition">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <button onclick="openEditModal(<?php echo htmlspecialchars(json_encode($doc)); ?>)" title="Edit document" class="inline-flex items-center justify-center w-8 h-8 bg-amber-500 text-white rounded hover:bg-amber-600 transition mr-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                             </svg>
                         </button>
-                        <button onclick="deleteDocument(<?php echo $doc['id']; ?>)" title="Delete document" class="inline-flex items-center justify-center w-8 h-8 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <button onclick="deleteDocument(<?php echo htmlspecialchars(json_encode($doc)); ?>)" title="Delete document" class="inline-flex items-center justify-center w-8 h-8 bg-red-600 text-white rounded hover:bg-red-700 transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                             </svg>
                         </button>
@@ -1477,22 +1477,81 @@ function changeLimit() {
     window.location.href = url;
 }
 
-function deleteDocument(id) {
-    if (!confirm('Are you sure you want to delete this document?')) {
-        return;
+function deleteDocument(doc) {
+    if (typeof doc === 'string') {
+        doc = JSON.parse(doc);
+    } else if (typeof doc === 'number') {
+        // Fallback for old single-id parameter
+        doc = { id: doc, file_name: 'Document' };
     }
     
-    fetch(window.location.href, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ id: id })
-    }).then(response => response.json()).then(data => {
-        if (data.success) {
-            location.reload();
-        } else {
-            alert('Failed to delete document: ' + data.message);
+    const fileName = doc.file_name || 'Document';
+    const ec = doc.ec || 'N/A';
+    const item = doc.item || 'N/A';
+    
+    Swal.fire({
+        title: 'Delete Document',
+        html: `
+            <div class="text-left">
+                <p class="mb-4 text-gray-700 dark:text-gray-300"><strong>Are you sure you want to delete this document?</strong></p>
+                <div class="bg-gray-100 dark:bg-gray-700 rounded-lg p-4 text-sm space-y-2">
+                    <div><span class="font-semibold text-gray-800 dark:text-gray-200">File Name:</span> <span class="text-gray-600 dark:text-gray-400">${fileName}</span></div>
+                    <div><span class="font-semibold text-gray-800 dark:text-gray-200">Electric Cooperative:</span> <span class="text-gray-600 dark:text-gray-400">${ec}</span></div>
+                    <div><span class="font-semibold text-gray-800 dark:text-gray-200">Item:</span> <span class="text-gray-600 dark:text-gray-400">${item}</span></div>
+                </div>
+            </div>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Yes, delete it!',
+        cancelButtonText: 'Cancel',
+        allowOutsideClick: false,
+        allowEscapeKey: true,
+        didOpen: (modal) => {
+            // Apply dark mode if active
+            if (document.body.classList.contains('dark')) {
+                modal.classList.add('dark');
+            }
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(window.location.href, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ id: doc.id })
+            }).then(response => response.json()).then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        title: 'Deleted!',
+                        text: 'Document has been deleted successfully.',
+                        icon: 'success',
+                        timer: 2000,
+                        timerProgressBar: true,
+                        didOpen: (modal) => {
+                            if (document.body.classList.contains('dark')) {
+                                modal.classList.add('dark');
+                            }
+                        }
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Error!',
+                        text: 'Failed to delete document: ' + data.message,
+                        icon: 'error',
+                        didOpen: (modal) => {
+                            if (document.body.classList.contains('dark')) {
+                                modal.classList.add('dark');
+                            }
+                        }
+                    });
+                }
+            });
         }
     });
 }
@@ -1979,26 +2038,6 @@ if (searchInput) {
         searchTimeout = setTimeout(() => {
             searchForm.submit();
         }, 1000);
-    });
-}
-
-function deleteDocument(id) {
-    if (!confirm('Are you sure you want to delete this document?')) {
-        return;
-    }
-    
-    fetch(window.location.href, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ id: id })
-    }).then(response => response.json()).then(data => {
-        if (data.success) {
-            location.reload();
-        } else {
-            alert('Failed to delete document: ' + data.message);
-        }
     });
 }
 

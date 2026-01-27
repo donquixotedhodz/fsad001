@@ -43,11 +43,19 @@ try {
     }
     
     // Verify file exists
+    // The file_path is stored as 'uploads/filename.pdf', so we need to construct the full path
     $filePath = __DIR__ . '/' . $document['file_path'];
     
+    // Debug: Check various possible paths
     if (!file_exists($filePath)) {
-        http_response_code(404);
-        die('File not found: ' . htmlspecialchars($document['file_name']));
+        // Try without the uploads/ prefix if it was stored with it
+        $altPath = __DIR__ . '/' . str_replace('uploads/', '', $document['file_path']);
+        if (file_exists($altPath)) {
+            $filePath = $altPath;
+        } else {
+            http_response_code(404);
+            die('File not found at: ' . htmlspecialchars($filePath) . ' (alt: ' . htmlspecialchars($altPath) . ')');
+        }
     }
     
     // Get file extension

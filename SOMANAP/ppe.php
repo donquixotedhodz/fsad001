@@ -586,7 +586,7 @@ ob_start();
                             echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-right font-semibold text-gray-900 dark:text-white">' . number_format($record['balance'], 2) . '</td>';
                             echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center">';
                             if (!empty($record['file_path']) && file_exists(__DIR__ . '/' . $record['file_path'])) {
-                                echo '<a href="../' . htmlspecialchars($record['file_path']) . '" target="_blank" class="inline-flex items-center justify-center w-8 h-8 bg-green-500 text-white rounded hover:bg-green-600 transition" title="Download file">';
+                                echo '<a href="../' . htmlspecialchars($record['file_path']) . '" target="_blank" class="inline-flex items-center justify-center w-8 h-8 bg-amber-500 text-white rounded hover:bg-amber-600 transition" title="Download file">';
                                 echo '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>';
                                 echo '</a>';
                             } else {
@@ -594,8 +594,8 @@ ob_start();
                             }
                             echo '</td>';
                             echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center">';
-                            echo '<button onclick="editPPE(' . $record['id'] . ')" class="inline-flex items-center justify-center w-8 h-8 bg-blue-500 text-white rounded hover:bg-blue-600 transition mr-2" title="Edit" style="font-size: 14px;"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>';
-                            echo '<button onclick="deletePPE(' . $record['id'] . ')" class="inline-flex items-center justify-center w-8 h-8 bg-red-500 text-white rounded hover:bg-red-600 transition" title="Delete"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>';
+                            echo '<button onclick="editPPE(' . $record['id'] . ')" class="inline-flex items-center justify-center w-8 h-8 bg-amber-500 text-white rounded hover:bg-amber-600 transition mr-2" title="Edit" style="font-size: 14px;"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>';
+                            echo '<button onclick="deletePPE(' . htmlspecialchars(json_encode($record)) . ')" class="inline-flex items-center justify-center w-8 h-8 bg-red-600 text-white rounded hover:bg-red-700 transition" title="Delete"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>';
                             echo '</td>';
                             echo '</tr>';
                         }
@@ -881,17 +881,59 @@ function prepareAddPPESubmit(event) {
     });
 }
 
-function deletePPE(id) {
-    if (confirm('Are you sure you want to delete this record? This will recalculate all subsequent balances.')) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.innerHTML = `
-            <input type="hidden" name="action" value="delete_ppe">
-            <input type="hidden" name="ppe_id" value="${id}">
-        `;
-        document.body.appendChild(form);
-        form.submit();
+function deletePPE(record) {
+    if (typeof record === 'string') {
+        record = JSON.parse(record);
+    } else if (typeof record === 'number') {
+        // Fallback for old single-id parameter
+        record = { id: record, particulars: 'PPE Record' };
     }
+    
+    const particulars = record.particulars || 'PPE Record';
+    const checkNo = record.check_no || 'N/A';
+    const dvNo = record.dv_or_no || 'N/A';
+    const balance = record.balance ? parseFloat(record.balance).toFixed(2) : '0.00';
+    
+    Swal.fire({
+        title: 'Delete PPE Record',
+        html: `
+            <div class="text-left">
+                <p class="mb-4 text-gray-700 dark:text-gray-300"><strong>Are you sure you want to delete this record?</strong></p>
+                <p class="mb-4 text-sm text-yellow-600 dark:text-yellow-400 font-semibold"><strong>⚠️ Warning:</strong> This will recalculate all subsequent balances.</p>
+                <div class="bg-gray-100 dark:bg-gray-700 rounded-lg p-4 text-sm space-y-2">
+                    <div><span class="font-semibold text-gray-800 dark:text-gray-200">Particulars:</span> <span class="text-gray-600 dark:text-gray-400">${particulars}</span></div>
+                    <div><span class="font-semibold text-gray-800 dark:text-gray-200">Check No.:</span> <span class="text-gray-600 dark:text-gray-400">${checkNo}</span></div>
+                    <div><span class="font-semibold text-gray-800 dark:text-gray-200">DV/OR No.:</span> <span class="text-gray-600 dark:text-gray-400">${dvNo}</span></div>
+                    <div><span class="font-semibold text-gray-800 dark:text-gray-200">Balance:</span> <span class="text-gray-600 dark:text-gray-400">${balance}</span></div>
+                </div>
+            </div>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Yes, delete it!',
+        cancelButtonText: 'Cancel',
+        allowOutsideClick: false,
+        allowEscapeKey: true,
+        didOpen: (modal) => {
+            // Apply dark mode if active
+            if (document.body.classList.contains('dark')) {
+                modal.classList.add('dark');
+            }
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.innerHTML = `
+                <input type="hidden" name="action" value="delete_ppe">
+                <input type="hidden" name="ppe_id" value="${record.id}">
+            `;
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
 }
 
 // Form submission handlers to set correct DV/OR value

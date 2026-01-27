@@ -224,12 +224,11 @@ ob_start();
         <table class="w-full">
             <thead class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
                 <tr>
-                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">EC</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Item</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Recommending Approvals</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Approving Authority</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Control Point</th>
-                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Department</th>
+                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">EC</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Team</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Date</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Actions</th>
@@ -238,9 +237,6 @@ ob_start();
             <tbody>
                 <?php foreach ($documents as $doc): ?>
                 <tr class="border-b border-gray-200 dark:border-gray-700 transition <?php echo isset($ecColors[$doc['ec']]) ? $ecColors[$doc['ec']] : ''; ?>">
-                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
-                        <?php echo htmlspecialchars($doc['ec']); ?>
-                    </td>
                     <td class="px-6 py-4 text-sm text-gray-900 dark:text-white font-medium">
                         <?php echo htmlspecialchars($doc['item']); ?>
                     </td>
@@ -269,22 +265,7 @@ ob_start();
                         ?>
                     </td>
                     <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
-                        <?php 
-                        if (!empty($doc['department'])) {
-                            $depts = array_filter(array_map('trim', explode("\n", $doc['department'])));
-                            if (!empty($depts)) {
-                                echo '<div class="space-y-1">';
-                                foreach ($depts as $dept) {
-                                    echo '<div class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">' . htmlspecialchars($dept) . '</div>';
-                                }
-                                echo '</div>';
-                            } else {
-                                echo '-';
-                            }
-                        } else {
-                            echo '-';
-                        }
-                        ?>
+                        <?php echo htmlspecialchars($doc['ec']); ?>
                     </td>
                     <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
                         <?php 
@@ -451,8 +432,8 @@ ob_start();
                 </div>
             </div>
 
-            <!-- Two Column Layout: Items and Recommending Approvals -->
-            <div class="grid grid-cols-2 gap-6">
+            <!-- Three Column Layout: Items, Recommending Approvals, and Approving Authority -->
+            <div class="grid grid-cols-3 gap-6">
                 <!-- Items Section -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Items *</label>
@@ -486,23 +467,23 @@ ob_start();
                         + Add Approving Approval
                     </button>
                 </div>
-            </div>
 
-            <!-- Approving Authority Section (Full Width) -->
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Approving Authority</label>
-                <div id="appAuthListContainer" class="space-y-2 mb-3">
-                    <div class="flex gap-2 items-end">
-                        <div class="flex-1 relative">
-                            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1.</span>
-                            <input type="text" name="approving_authority_list[]" placeholder="Type to search authority..." class="app-auth-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
-                            <div class="app-auth-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+                <!-- Approving Authority Section -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Approving Authority</label>
+                    <div id="appAuthListContainer" class="space-y-2 mb-3">
+                        <div class="flex gap-2 items-end">
+                            <div class="flex-1 relative">
+                                <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1.</span>
+                                <input type="text" name="approving_authority_list[]" placeholder="Type to search authority..." class="app-auth-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+                                <div class="app-auth-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+                            </div>
                         </div>
                     </div>
+                    <button type="button" onclick="addAppAuth()" class="text-sm px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition font-medium">
+                        + Add Approving Authority
+                    </button>
                 </div>
-                <button type="button" onclick="addAppAuth()" class="text-sm px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition font-medium">
-                    + Add Approving Authority
-                </button>
             </div>
 
             <!-- Full Width Control Points -->

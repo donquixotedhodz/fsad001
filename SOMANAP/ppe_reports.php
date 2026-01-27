@@ -19,9 +19,14 @@ ob_start();
     <div class="mb-6">
         <div class="flex justify-between items-center mb-4">
             <h1 class="text-3xl font-bold text-gray-900 dark:text-white">PPE Provident Fund - Reports</h1>
-            <button onclick="document.getElementById('printModal').showModal()" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">
-                Print
-            </button>
+            <div class="flex gap-3">
+                <button onclick="document.getElementById('printModal').showModal()" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">
+                    Print
+                </button>
+                <button onclick="exportToExcel()" class="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition">
+                    Export to Excel
+                </button>
+            </div>
         </div>
 
         <!-- Filters -->
@@ -49,7 +54,7 @@ ob_start();
                 </div>
                 <div class="flex gap-2 col-span-1 md:col-span-5">
                     <button type="submit" class="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition font-medium">
-                        🔍 Filter
+                        Filter
                     </button>
                     <a href="?>" class="px-6 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500 transition font-medium">
                         Clear Filters
@@ -189,6 +194,30 @@ ob_start();
             </button>
         </div>
     </dialog>
+
+    <script>
+        function exportToExcel() {
+            // Get filter parameters from form
+            const dateFrom = document.querySelector('input[name="date_from"]').value;
+            const dateTo = document.querySelector('input[name="date_to"]').value;
+            const checkNo = document.querySelector('input[name="check_no"]').value;
+            const dvOrNo = document.querySelector('input[name="dv_or_no"]').value;
+            const particulars = document.querySelector('input[name="particulars"]').value;
+            
+            // Build query string
+            let params = [];
+            if (dateFrom) params.push('date_from=' + encodeURIComponent(dateFrom));
+            if (dateTo) params.push('date_to=' + encodeURIComponent(dateTo));
+            if (checkNo) params.push('check_no=' + encodeURIComponent(checkNo));
+            if (dvOrNo) params.push('dv_or_no=' + encodeURIComponent(dvOrNo));
+            if (particulars) params.push('particulars=' + encodeURIComponent(particulars));
+            
+            const queryString = params.length > 0 ? '?' + params.join('&') : '';
+            
+            // Redirect to export handler
+            window.location.href = 'ppe_export.php' + queryString;
+        }
+    </script>
 </div>
 
 <?php

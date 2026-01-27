@@ -315,17 +315,18 @@ ob_start();
                         $filePath = $doc['file_path'];
                         $fileExt = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
                         $isExcel = in_array($fileExt, ['xlsx', 'xls', 'csv']);
-                        $fullPath = htmlspecialchars('../' . $filePath);
+                        $fullPath = '../' . $filePath;
+                        $jsPath = json_encode($fullPath);
                         ?>
                         <?php if ($isExcel): ?>
-                        <button onclick="previewExcel('<?php echo $fullPath; ?>')" title="Preview file" class="inline-flex items-center justify-center w-8 h-8 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition">
+                        <button onclick="previewExcel(<?php echo $jsPath; ?>)" title="Preview file" class="inline-flex items-center justify-center w-8 h-8 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                             </svg>
                         </button>
                         <?php else: ?>
-                        <a href="<?php echo $fullPath; ?>" target="_blank" title="Preview file" class="inline-flex items-center justify-center w-8 h-8 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition">
+                        <a href="<?php echo htmlspecialchars($fullPath); ?>" target="_blank" title="Preview file" class="inline-flex items-center justify-center w-8 h-8 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
@@ -1963,25 +1964,39 @@ document.getElementById('editForm').addEventListener('submit', async (e) => {
 
 // Excel Preview Function
 function previewExcel(filePath) {
+    // Show loading modal
+    const modal = document.getElementById('excelPreviewModal');
+    const sheetData = document.getElementById('sheetData');
+    
+    if (!modal) {
+        alert('Preview modal not found');
+        return;
+    }
+    
+    sheetData.innerHTML = '<tr><td colspan="10" class="px-4 py-8 text-center text-gray-600">Loading...</td></tr>';
+    modal.classList.remove('hidden');
+    
     // Wait for XLSX library to load with retry mechanism
     if (typeof XLSX === 'undefined') {
+        console.warn('XLSX library not loaded, retrying...');
         setTimeout(() => previewExcel(filePath), 500); // Retry after 500ms
         return;
     }
     
-    // Show loading modal
-    const modal = document.getElementById('excelPreviewModal');
-    const sheetData = document.getElementById('sheetData');
-    sheetData.innerHTML = '<tr><td colspan="10" class="px-4 py-8 text-center text-gray-600">Loading...</td></tr>';
-    modal.classList.remove('hidden');
-    
     console.log('Loading file:', filePath);
     
-    fetch(filePath)
+    // Ensure the path is correct
+    let actualPath = filePath;
+    if (!actualPath.startsWith('/') && !actualPath.startsWith('http')) {
+        // Relative path - make sure it's correct
+        actualPath = filePath;
+    }
+    
+    fetch(actualPath)
         .then(response => {
             console.log('Response status:', response.status);
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                throw new Error(`HTTP error! status: ${response.status} - File may not exist at path: ${actualPath}`);
             }
             return response.arrayBuffer();
         })
@@ -1990,6 +2005,12 @@ function previewExcel(filePath) {
             try {
                 const workbook = XLSX.read(data, { type: 'array' });
                 console.log('Workbook sheets:', workbook.SheetNames);
+                
+                if (workbook.SheetNames.length === 0) {
+                    sheetData.innerHTML = '<tr><td colspan="10" class="px-4 py-4 text-center text-red-600">Error: No sheets found in file</td></tr>';
+                    return;
+                }
+                
                 const firstSheet = workbook.SheetNames[0];
                 
                 // Create sheet tabs
@@ -2001,7 +2022,10 @@ function previewExcel(filePath) {
                     tab.textContent = sheetName;
                     tab.className = `px-4 py-2 border-b-2 transition font-medium ${index === 0 ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300'}`;
                     tab.type = 'button';
-                    tab.onclick = () => displaySheet(workbook, sheetName, index);
+                    tab.onclick = (e) => {
+                        e.preventDefault();
+                        displaySheet(workbook, sheetName, index);
+                    };
                     sheetTabs.appendChild(tab);
                 });
                 
@@ -2015,50 +2039,54 @@ function previewExcel(filePath) {
         .catch(error => {
             console.error('Error loading Excel file:', error);
             sheetData.innerHTML = `<tr><td colspan="10" class="px-4 py-4 text-center text-red-600">Error: ${error.message || 'Failed to load file'}</td></tr>`;
-            alert('Error loading Excel file: ' + error.message);
         });
 }
 
 function displaySheet(workbook, sheetName, tabIndex) {
-    const worksheet = workbook.Sheets[sheetName];
-    const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-    
-    const sheetData = document.getElementById('sheetData');
-    sheetData.innerHTML = '';
-    
-    // Update active tab styling
-    const tabs = document.querySelectorAll('#sheetTabs button');
-    tabs.forEach((tab, index) => {
-        if (index === tabIndex) {
-            tab.classList.remove('border-transparent', 'text-gray-600', 'dark:text-gray-400');
-            tab.classList.add('border-blue-500', 'text-blue-600', 'dark:text-blue-400');
-        } else {
-            tab.classList.add('border-transparent', 'text-gray-600', 'dark:text-gray-400');
-            tab.classList.remove('border-blue-500', 'text-blue-600', 'dark:text-blue-400');
-        }
-    });
-    
-    // Render data
-    data.forEach((row, rowIndex) => {
-        const tr = document.createElement('tr');
-        tr.className = rowIndex === 0 ? 'bg-gray-100 dark:bg-gray-700' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50';
+    try {
+        const worksheet = workbook.Sheets[sheetName];
+        const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
         
-        row.forEach((cell) => {
-            const td = document.createElement('td');
-            td.className = 'border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm text-gray-900 dark:text-gray-100';
-            td.textContent = cell !== null && cell !== undefined ? cell : '';
-            if (rowIndex === 0) {
-                const th = document.createElement('th');
-                th.className = 'border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 bg-gray-100 dark:bg-gray-700';
-                th.textContent = cell !== null && cell !== undefined ? cell : '';
-                tr.appendChild(th);
+        const sheetData = document.getElementById('sheetData');
+        sheetData.innerHTML = '';
+        
+        // Update active tab styling
+        const tabs = document.querySelectorAll('#sheetTabs button');
+        tabs.forEach((tab, index) => {
+            if (index === tabIndex) {
+                tab.classList.remove('border-transparent', 'text-gray-600', 'dark:text-gray-400');
+                tab.classList.add('border-blue-500', 'text-blue-600', 'dark:text-blue-400');
             } else {
-                tr.appendChild(td);
+                tab.classList.add('border-transparent', 'text-gray-600', 'dark:text-gray-400');
+                tab.classList.remove('border-blue-500', 'text-blue-600', 'dark:text-blue-400');
             }
         });
         
-        sheetData.appendChild(tr);
-    });
+        // Render data
+        data.forEach((row, rowIndex) => {
+            const tr = document.createElement('tr');
+            tr.className = rowIndex === 0 ? 'bg-gray-100 dark:bg-gray-700' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50';
+            
+            row.forEach((cell, cellIndex) => {
+                let element;
+                if (rowIndex === 0) {
+                    element = document.createElement('th');
+                    element.className = 'border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 bg-gray-100 dark:bg-gray-700';
+                } else {
+                    element = document.createElement('td');
+                    element.className = 'border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm text-gray-900 dark:text-gray-100';
+                }
+                element.textContent = cell !== null && cell !== undefined ? cell : '';
+                tr.appendChild(element);
+            });
+            
+            sheetData.appendChild(tr);
+        });
+    } catch (error) {
+        console.error('Error displaying sheet:', error);
+        const sheetData = document.getElementById('sheetData');
+        sheetData.innerHTML = `<tr><td colspan="10" class="px-4 py-4 text-center text-red-600">Error displaying sheet: ${error.message}</td></tr>`;
+    }
 }
 
 if (searchInput) {

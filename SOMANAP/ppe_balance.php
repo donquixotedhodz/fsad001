@@ -58,6 +58,30 @@ $ppeStats = $ppeStmt->fetch(PDO::FETCH_ASSOC);
 $totalDebit = $ppeStats['total_debit'] ?? 0;
 $totalCredit = $ppeStats['total_credit'] ?? 0;
 
+// Fetch daily debit and credit data for chart
+$chartStmt = $conn->prepare("
+    SELECT DATE(date) as chart_date, 
+           COALESCE(SUM(debit), 0) as daily_debit, 
+           COALESCE(SUM(credit), 0) as daily_credit,
+           MAX(balance) as daily_balance
+    FROM ppe 
+    GROUP BY DATE(date) 
+    ORDER BY DATE(date) ASC 
+    LIMIT 30
+");
+$chartStmt->execute();
+$chartData = $chartStmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Process chart data
+$chartDates = [];
+$chartDebits = [];
+$chartCredits = [];
+foreach ($chartData as $row) {
+    $chartDates[] = date('M d', strtotime($row['chart_date']));
+    $chartDebits[] = floatval($row['daily_debit']);
+    $chartCredits[] = floatval($row['daily_credit']);
+}
+
 // Start output buffering to capture content
 ob_start();
 ?>
@@ -118,26 +142,11 @@ ob_start();
         </div>
     </div>
 
-    <!-- Summary Section -->
+    <!-- Summary Section - Line Chart -->
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Summary</h2>
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div class="text-center">
-                <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Current Balance</p>
-                <p class="text-2xl font-bold text-purple-600 dark:text-purple-400">₱<?php echo number_format($remainingBalance, 2); ?></p>
-            </div>
-            <div class="text-center">
-                <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Total Debits</p>
-                <p class="text-2xl font-bold text-red-600 dark:text-red-400">₱<?php echo number_format($totalDebit, 2); ?></p>
-            </div>
-            <div class="text-center">
-                <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Total Credits</p>
-                <p class="text-2xl font-bold text-green-600 dark:text-green-400">₱<?php echo number_format($totalCredit, 2); ?></p>
-            </div>
-            <div class="text-center">
-                <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Net Difference</p>
-                <p class="text-2xl font-bold <?php echo ($totalCredit - $totalDebit) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'; ?>">₱<?php echo number_format($totalCredit - $totalDebit, 2); ?></p>
-            </div>
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Debit & Credit Trend</h2>
+        <div class="overflow-x-auto">
+            <div id="ppeLineChart" style="min-height: 350px;"></div>
         </div>
     </div>
 
@@ -229,6 +238,7 @@ ob_start();
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@latest/dist/apexcharts.min.js"></script>
 <script>
 function refreshBalance() {
     const refreshIcon = document.getElementById('refreshIcon');
@@ -248,6 +258,117 @@ function refreshBalance() {
             refreshIcon.style.animation = 'none';
         });
 }
+
+// PPE Line Chart
+const chartDates = <?php echo json_encode($chartDates); ?>;
+const chartDebits = <?php echo json_encode($chartDebits); ?>;
+const chartCredits = <?php echo json_encode($chartCredits); ?>;
+
+const ppeLineChartOptions = {
+    series: [
+        {
+            name: "Debit",
+            data: chartDebits,
+        },
+        {
+            name: "Credit",
+            data: chartCredits,
+        }
+    ],
+    legend: {
+        show: true,
+        position: "top",
+        horizontalAlign: "right",
+    },
+    colors: ["#DC2626", "#16A34A"],
+    chart: {
+        fontFamily: "Outfit, sans-serif",
+        height: 350,
+        type: "line",
+        toolbar: {
+            show: false,
+        },
+    },
+    fill: {
+        gradient: {
+            enabled: true,
+            opacityFrom: 0.55,
+            opacityTo: 0,
+        },
+    },
+    stroke: {
+        curve: "smooth",
+        width: [2, 2],
+    },
+    markers: {
+        size: 4,
+        colors: ["#DC2626", "#16A34A"],
+        strokeColors: "#fff",
+        strokeWidth: 2,
+        hover: {
+            size: 6,
+        }
+    },
+    grid: {
+        xaxis: {
+            lines: {
+                show: false,
+            },
+        },
+        yaxis: {
+            lines: {
+                show: true,
+            },
+        },
+    },
+    dataLabels: {
+        enabled: false,
+    },
+    tooltip: {
+        theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
+        x: {
+            format: "dd MMM",
+        },
+        y: {
+            formatter: function(value) {
+                return '₱' + value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+        }
+    },
+    xaxis: {
+        type: "category",
+        categories: chartDates,
+        axisBorder: {
+            show: false,
+        },
+        axisTicks: {
+            show: false,
+        },
+    },
+    yaxis: {
+        title: {
+            style: {
+                fontSize: "0px",
+            },
+        },
+    },
+    responsive: [
+        {
+            breakpoint: 1024,
+            options: {
+                chart: {
+                    height: 300,
+                },
+            },
+        },
+    ],
+};
+
+const ppeLineChart = new ApexCharts(
+    document.querySelector("#ppeLineChart"),
+    ppeLineChartOptions
+);
+ppeLineChart.render();
 </script>
 
 <style>

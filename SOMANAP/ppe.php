@@ -12,7 +12,7 @@ $currentPage = 'ppe';
 $username = $_SESSION['username'] ?? 'User';
 
 // Constants for PPE
-$STARTING_CHECK_NO = 69001;
+$STARTING_CHECK_NO = 690001;
 $STARTING_BALANCE = 0.00;
 
 // Handle form submission for adding PPE

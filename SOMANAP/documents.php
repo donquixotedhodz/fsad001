@@ -228,7 +228,7 @@ ob_start();
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Recommending Approvals</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Approving Authority</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Control Point</th>
-                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Department</th>
+                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Department/Office</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">EC</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Team</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Date</th>

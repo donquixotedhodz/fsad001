@@ -16,12 +16,19 @@
         /* Color theme CSS variables */
         :root {
             --theme-primary: #ea580c;
+            --theme-primary-rgb: 234, 88, 12;
             --theme-secondary: #f59e0b;
+            --theme-secondary-rgb: 245, 158, 11;
             --theme-accent: #dc2626;
+            --theme-accent-rgb: 220, 38, 38;
             --theme-danger: #991b1b;
+            --theme-danger-rgb: 153, 27, 27;
             --theme-success: #059669;
+            --theme-success-rgb: 5, 150, 105;
             --theme-warning: #d97706;
+            --theme-warning-rgb: 217, 119, 6;
             --theme-info: #3b82f6;
+            --theme-info-rgb: 59, 130, 246;
         }
 
         /* Dynamic theme button styles using CSS classes */
@@ -69,48 +76,83 @@
         const colorThemes = {
             autumn: {
                 primary: '#ea580c',      // orange-500
+                primaryRgb: '234, 88, 12',
                 secondary: '#f59e0b',    // amber-500
+                secondaryRgb: '245, 158, 11',
                 accent: '#dc2626',       // red-600
+                accentRgb: '220, 38, 38',
                 danger: '#991b1b',       // red-900
+                dangerRgb: '153, 27, 27',
                 success: '#059669',      // emerald-600
+                successRgb: '5, 150, 105',
                 warning: '#d97706',      // amber-600
-                info: '#3b82f6'          // blue-500
+                warningRgb: '217, 119, 6',
+                info: '#3b82f6',         // blue-500
+                infoRgb: '59, 130, 246'
             },
             winter: {
                 primary: '#3b82f6',      // blue-500
+                primaryRgb: '59, 130, 246',
                 secondary: '#06b6d4',    // cyan-500
+                secondaryRgb: '6, 182, 212',
                 accent: '#4f46e5',       // indigo-600
+                accentRgb: '79, 70, 229',
                 danger: '#dc2626',       // red-600
+                dangerRgb: '220, 38, 38',
                 success: '#059669',      // emerald-600
+                successRgb: '5, 150, 105',
                 warning: '#0284c7',      // sky-600
-                info: '#3b82f6'          // blue-500
+                warningRgb: '2, 132, 199',
+                info: '#3b82f6',         // blue-500
+                infoRgb: '59, 130, 246'
             },
             spring: {
                 primary: '#10b981',      // emerald-500
+                primaryRgb: '16, 185, 129',
                 secondary: '#ec4899',    // pink-500
+                secondaryRgb: '236, 72, 153',
                 accent: '#059669',       // emerald-600
+                accentRgb: '5, 150, 105',
                 danger: '#dc2626',       // red-600
+                dangerRgb: '220, 38, 38',
                 success: '#10b981',      // emerald-500
+                successRgb: '16, 185, 129',
                 warning: '#f59e0b',      // amber-500
-                info: '#06b6d4'          // cyan-500
+                warningRgb: '245, 158, 11',
+                info: '#06b6d4',         // cyan-500
+                infoRgb: '6, 182, 212'
             },
             summer: {
                 primary: '#eab308',      // yellow-500
+                primaryRgb: '234, 179, 8',
                 secondary: '#f43f5e',    // rose-500
+                secondaryRgb: '244, 63, 94',
                 accent: '#ca8a04',       // yellow-600
+                accentRgb: '202, 138, 4',
                 danger: '#dc2626',       // red-600
+                dangerRgb: '220, 38, 38',
                 success: '#10b981',      // emerald-500
+                successRgb: '16, 185, 129',
                 warning: '#f97316',      // orange-500
-                info: '#fbbf24'          // amber-400
+                warningRgb: '249, 115, 22',
+                info: '#fbbf24',         // amber-400
+                infoRgb: '251, 191, 36'
             },
             monochrome: {
                 primary: '#4b5563',      // gray-600
+                primaryRgb: '75, 85, 99',
                 secondary: '#6b7280',    // gray-500
+                secondaryRgb: '107, 114, 128',
                 accent: '#1f2937',       // gray-800
+                accentRgb: '31, 41, 55',
                 danger: '#374151',       // gray-700
+                dangerRgb: '55, 65, 81',
                 success: '#4b5563',      // gray-600
+                successRgb: '75, 85, 99',
                 warning: '#6b7280',      // gray-500
-                info: '#6b7280'          // gray-500
+                warningRgb: '107, 114, 128',
+                info: '#6b7280',         // gray-500
+                infoRgb: '107, 114, 128'
             }
         };
 
@@ -120,12 +162,19 @@
             const root = document.documentElement;
             
             root.style.setProperty('--theme-primary', theme.primary);
+            root.style.setProperty('--theme-primary-rgb', theme.primaryRgb);
             root.style.setProperty('--theme-secondary', theme.secondary);
+            root.style.setProperty('--theme-secondary-rgb', theme.secondaryRgb);
             root.style.setProperty('--theme-accent', theme.accent);
+            root.style.setProperty('--theme-accent-rgb', theme.accentRgb);
             root.style.setProperty('--theme-danger', theme.danger);
+            root.style.setProperty('--theme-danger-rgb', theme.dangerRgb);
             root.style.setProperty('--theme-success', theme.success);
+            root.style.setProperty('--theme-success-rgb', theme.successRgb);
             root.style.setProperty('--theme-warning', theme.warning);
+            root.style.setProperty('--theme-warning-rgb', theme.warningRgb);
             root.style.setProperty('--theme-info', theme.info);
+            root.style.setProperty('--theme-info-rgb', theme.infoRgb);
 
             // Store in localStorage for persistence
             localStorage.setItem('colorTheme', themeName);

@@ -2,6 +2,12 @@
 session_start();
 require_once __DIR__ . '/../config.php';
 
+// Get report name for filename
+$reportName = 'Remittance';
+
+// Handle export formats
+$format = $_GET['format'] ?? 'html';
+
 // Build filter conditions - only show remittances
 $whereConditions = ["particulars LIKE '%REMITTANCE%'"];
 $params = [];
@@ -38,6 +44,93 @@ try {
 } catch (Exception $e) {
     $ppeRecords = [];
     $error = htmlspecialchars($e->getMessage());
+}
+
+// Handle Excel export
+if ($format === 'excel') {
+    $filename = $reportName . '_' . date('Y-m-d_His') . '.xls';
+    header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    
+    echo '<!DOCTYPE html>';
+    echo '<html>';
+    echo '<head>';
+    echo '<meta charset="UTF-8">';
+    echo '<style>';
+    echo 'body { font-family: Arial, sans-serif; margin: 20px; }';
+    echo 'h1 { font-size: 16px; font-weight: bold; margin: 10px 0 5px 0; text-transform: uppercase; }';
+    echo 'h2 { font-size: 14px; font-weight: normal; margin: 5px 0 10px 0; text-transform: uppercase; }';
+    echo '.date { font-size: 12px; margin-bottom: 15px; text-transform: uppercase; }';
+    echo 'table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; font-family: Arial, sans-serif; }';
+    echo 'th { background-color: #e0e0e0; border: 1px solid #000; padding: 8px; text-align: left; font-weight: bold; font-size: 11px; text-transform: uppercase; }';
+    echo 'td { border: 1px solid #ccc; padding: 8px; height: 20px; }';
+    echo '.text-right { text-align: right; }';
+    echo '.total-row { font-weight: bold; background-color: #f5f5f5; }';
+    echo '</style>';
+    echo '</head>';
+    echo '<body>';
+    echo '<h1>PPE PROVIDENT FUND INC.</h1>';
+    echo '<h2>Remittance</h2>';
+    echo '<div class="date">' . strtoupper(date('F d, Y')) . '</div>';
+    
+    echo '<table>';
+    echo '<thead>';
+    echo '<tr>';
+    echo '<th style="width: 15%;">Date</th>';
+    echo '<th style="width: 15%;">Check No.</th>';
+    echo '<th style="width: 15%;">DV No.</th>';
+    echo '<th style="width: 40%;">Name</th>';
+    echo '<th style="width: 15%; text-align: right;">Amount</th>';
+    echo '</tr>';
+    echo '</thead>';
+    echo '<tbody>';
+    
+    $totalAmount = 0;
+    foreach ($ppeRecords as $record) {
+        $totalAmount += $record['amount'];
+        $formattedDate = date('m/d/Y', strtotime($record['date']));
+        echo '<tr>';
+        echo '<td>' . strtoupper($formattedDate) . '</td>';
+        echo '<td>' . strtoupper(htmlspecialchars($record['check_no'] ?? '')) . '</td>';
+        echo '<td>' . strtoupper(htmlspecialchars($record['dv_or_no'] ?? '')) . '</td>';
+        echo '<td>' . strtoupper(htmlspecialchars($record['particulars'])) . '</td>';
+        echo '<td class="text-right">' . number_format($record['amount'], 2) . '</td>';
+        echo '</tr>';
+    }
+    
+    echo '<tr class="total-row">';
+    echo '<td colspan="4" style="text-align: right;">TOTAL</td>';
+    echo '<td class="text-right">' . number_format($totalAmount, 2) . '</td>';
+    echo '</tr>';
+    
+    echo '</tbody>';
+    echo '</table>';
+    echo '</body>';
+    echo '</html>';
+    exit;
+}
+
+// Handle PDF export
+if ($format === 'pdf') {
+    // Include the controller
+    require_once __DIR__ . '/app/controllers/PPEReportController.php';
+    
+    $controller = new PPEReportController($conn);
+    
+    // Prepare filters
+    $filters = [
+        'date_from' => $_GET['date_from'] ?? null,
+        'date_to' => $_GET['date_to'] ?? null,
+        'check_no' => $_GET['check_no'] ?? null,
+        'dv_or_no' => $_GET['dv_or_no'] ?? null,
+        'particulars' => $_GET['particulars'] ?? null,
+    ];
+    
+    try {
+        $controller->exportRemittancePDF($filters);
+    } catch (Exception $e) {
+        die('Error generating PDF: ' . htmlspecialchars($e->getMessage()));
+    }
 }
 ?>
 

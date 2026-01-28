@@ -156,10 +156,10 @@ ob_start();
     </div>
 
     <!-- Print Modal -->
-    <dialog id="printModal" class="rounded-lg shadow-lg max-w-md w-full p-8 dark:bg-gray-800">
-        <h2 class="text-xl font-bold mb-6 text-gray-900 dark:text-white">Select Print Report</h2>
+    <dialog id="printModal" class="rounded-lg shadow-lg max-w-2xl w-full p-8 dark:bg-gray-800">
+        <h2 class="text-xl font-bold mb-6 text-gray-900 dark:text-white">Select Report & Export Format</h2>
         
-        <div class="space-y-4">
+        <div class="space-y-6">
             <?php
             // Build query string from current filters
             $queryString = '';
@@ -173,19 +173,47 @@ ob_start();
             if (!empty($filterParams)) {
                 $queryString = '?' . implode('&', $filterParams);
             }
+            
+            $reports = [
+                [
+                    'title' => 'Check Issued',
+                    'printUrl' => 'ppe_check_issued_print.php',
+                    'color' => 'blue'
+                ],
+                [
+                    'title' => 'Remittance',
+                    'printUrl' => 'ppe_remittance_print.php',
+                    'color' => 'indigo'
+                ],
+                [
+                    'title' => 'Check Issued - Receiving',
+                    'printUrl' => 'ppe_print.php',
+                    'color' => 'purple'
+                ],
+                [
+                    'title' => 'Cash Balance',
+                    'printUrl' => 'ppe_table_print.php',
+                    'color' => 'green'
+                ]
+            ];
+            
+            foreach ($reports as $report):
             ?>
-            <a href="ppe_check_issued_print.php<?php echo $queryString; ?>" target="_blank" class="block w-full px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition text-center font-medium">
-                📋 Check Issued
-            </a>
-            <a href="ppe_remittance_print.php<?php echo $queryString; ?>" target="_blank" class="block w-full px-6 py-3 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition text-center font-medium">
-                💳 Remittance
-            </a>
-            <a href="ppe_print.php<?php echo $queryString; ?>" target="_blank" class="block w-full px-6 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition text-center font-medium">
-                📑 Check Issued - Receiving
-            </a>
-            <a href="ppe_table_print.php<?php echo $queryString; ?>" target="_blank" class="block w-full px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition text-center font-medium">
-                📊 Cash Balance
-            </a>
+                <div class="border border-gray-300 dark:border-gray-600 rounded-lg p-4">
+                    <h3 class="font-semibold text-gray-900 dark:text-white mb-3"><?php echo $report['title']; ?></h3>
+                    <div class="grid grid-cols-3 gap-2">
+                        <a href="<?php echo $report['printUrl'] . $queryString; ?>" target="_blank" class="px-4 py-2 bg-<?php echo $report['color']; ?>-500 text-white rounded-lg hover:bg-<?php echo $report['color']; ?>-600 transition text-center text-sm font-medium">
+                            Print
+                        </a>
+                        <a href="<?php echo $report['printUrl'] . ($queryString ? $queryString . '&format=pdf' : '?format=pdf'); ?>" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition text-center text-sm font-medium">
+                            Export PDF
+                        </a>
+                        <a href="<?php echo $report['printUrl'] . ($queryString ? $queryString . '&format=excel' : '?format=excel'); ?>" class="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition text-center text-sm font-medium">
+                            Export Excel
+                        </a>
+                    </div>
+                </div>
+            <?php endforeach; ?>
         </div>
 
         <div class="mt-6">

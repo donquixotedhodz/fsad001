@@ -212,6 +212,26 @@
     <?php
     $username = $_SESSION['username'] ?? 'User';
     $currentPage = isset($_SESSION['currentPage']) ? $_SESSION['currentPage'] : 'dashboard';
+    $userId = $_SESSION['user_id'] ?? null;
+    
+    // Get user's profile image and full name
+    $userProfileImage = null;
+    $userFullName = $username;
+    
+    if ($userId) {
+        try {
+            $stmt = $conn->prepare("SELECT profile_image, full_name FROM users WHERE id = ?");
+            $stmt->execute([$userId]);
+            $userInfo = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($userInfo) {
+                $userProfileImage = $userInfo['profile_image'] ?? null;
+                $userFullName = $userInfo['full_name'] ?? $username;
+            }
+        } catch (PDOException $e) {
+            // If query fails, use defaults
+        }
+    }
+    
     require_once __DIR__ . '/../partials/sidebar.php';
     ?>
 
@@ -233,6 +253,30 @@
                             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
                         </svg>
                     </button>
+
+                    <!-- User Profile Section -->
+                    <div class="flex items-center gap-3 pl-6 border-l border-gray-200 dark:border-gray-700">
+                        <!-- Profile Image -->
+                        <a href="settings.php" class="block">
+                            <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center overflow-hidden hover:ring-2 hover:ring-blue-400 transition">
+                                <?php if ($userProfileImage): ?>
+                                    <img src="uploads/profile_images/<?php echo htmlspecialchars($userProfileImage); ?>" alt="<?php echo htmlspecialchars($userFullName); ?>" class="w-full h-full object-cover">
+                                <?php else: ?>
+                                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                    </svg>
+                                <?php endif; ?>
+                            </div>
+                        </a>
+                        
+                        <!-- User Info -->
+                        <a href="settings.php" class="hidden sm:block hover:text-blue-600 dark:hover:text-blue-400 transition">
+                            <div class="flex flex-col">
+                                <span class="text-sm font-semibold text-gray-900 dark:text-white"><?php echo htmlspecialchars($userFullName); ?></span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400"><?php echo htmlspecialchars($username); ?></span>
+                            </div>
+                        </a>
+                    </div>
                 </div>
             </div>
         </header>

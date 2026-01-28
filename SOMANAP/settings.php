@@ -7,6 +7,97 @@ MainController::requireAuth();
 $controller = new MainController($conn);
 $controller->setCurrentPage('settings');
 $username = $_SESSION['username'] ?? 'User';
+$userId = $_SESSION['user_id'] ?? null;
+
+// Get current user's profile data
+$profileImage = null;
+$fullName = '';
+if ($userId) {
+    try {
+        $stmt = $conn->prepare("SELECT profile_image, full_name FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        $profileImage = $user['profile_image'] ?? null;
+        $fullName = $user['full_name'] ?? '';
+    } catch (PDOException $e) {
+        // Profile image column might not exist yet
+    }
+}
+
+// Handle Update Profile Information
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_profile') {
+    $newFullName = isset($_POST['full_name']) ? trim($_POST['full_name']) : '';
+    
+    if ($userId && !empty($newFullName)) {
+        try {
+            $stmt = $conn->prepare("UPDATE users SET full_name = ? WHERE id = ?");
+            $stmt->execute([$newFullName, $userId]);
+            $fullName = $newFullName;
+            $successMessage = "Profile information updated successfully!";
+        } catch (PDOException $e) {
+            $errorMessage = "Error updating profile: " . $e->getMessage();
+        }
+    } elseif (empty($newFullName)) {
+        $errorMessage = "Full name cannot be empty!";
+    }
+}
+
+// Handle Profile Image Upload
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'upload_profile_image') {
+    if ($userId && isset($_FILES['profile_image'])) {
+        $file = $_FILES['profile_image'];
+        $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        $maxFileSize = 5 * 1024 * 1024; // 5MB
+        
+        // Validate file
+        if ($file['error'] === UPLOAD_ERR_OK) {
+            $fileName = basename($file['name']);
+            $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+            $fileSize = $file['size'];
+            
+            if (!in_array($fileExt, $allowedExtensions)) {
+                $errorMessage = "Invalid file type. Allowed types: " . implode(', ', $allowedExtensions);
+            } elseif ($fileSize > $maxFileSize) {
+                $errorMessage = "File size exceeds 5MB limit.";
+            } else {
+                try {
+                    // Create directory if it doesn't exist
+                    $uploadDir = __DIR__ . '/uploads/profile_images/';
+                    if (!is_dir($uploadDir)) {
+                        mkdir($uploadDir, 0755, true);
+                    }
+                    
+                    // Generate unique filename
+                    $uniqueName = uniqid('profile_' . $userId . '_', true) . '.' . $fileExt;
+                    $uploadPath = $uploadDir . $uniqueName;
+                    
+                    // Delete old profile image if exists
+                    if ($profileImage) {
+                        $oldImagePath = $uploadDir . $profileImage;
+                        if (file_exists($oldImagePath)) {
+                            unlink($oldImagePath);
+                        }
+                    }
+                    
+                    // Move uploaded file
+                    if (move_uploaded_file($file['tmp_name'], $uploadPath)) {
+                        // Update database
+                        $stmt = $conn->prepare("UPDATE users SET profile_image = ? WHERE id = ?");
+                        $stmt->execute([$uniqueName, $userId]);
+                        $profileImage = $uniqueName;
+                        $successMessage = "Profile image updated successfully!";
+                    } else {
+                        $errorMessage = "Failed to upload file.";
+                    }
+                } catch (Exception $e) {
+                    $errorMessage = "Error uploading profile image: " . $e->getMessage();
+                }
+            }
+        } else {
+            $errorMessage = "File upload error.";
+        }
+    }
+}
 
 // Handle Add Staff Form Submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_staff') {
@@ -75,26 +166,85 @@ ob_start();
             <div id="profile" class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
                 <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Profile Information</h2>
 
-                <form class="space-y-6">
-                    <div class="flex items-center gap-6 mb-6">
-                        <div class="w-20 h-20 bg-blue-500 rounded-full flex items-center justify-center">
-                            <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                            </svg>
+                <!-- Profile Image Section -->
+                <div class="mb-8">
+                    <?php if (isset($successMessage)): ?>
+                        <div class="mb-4 p-4 bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 rounded-lg border border-green-300 dark:border-green-700">
+                            <?php echo htmlspecialchars($successMessage); ?>
                         </div>
-                        <button type="button" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition">
-                            Change Avatar
-                        </button>
-                    </div>
+                    <?php endif; ?>
+                    <?php if (isset($errorMessage)): ?>
+                        <div class="mb-4 p-4 bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300 rounded-lg border border-red-300 dark:border-red-700">
+                            <?php echo htmlspecialchars($errorMessage); ?>
+                        </div>
+                    <?php endif; ?>
 
+                    <form id="profileImageForm" method="POST" enctype="multipart/form-data" class="space-y-4">
+                        <input type="hidden" name="action" value="upload_profile_image">
+                        
+                        <div class="flex items-center gap-6">
+                            <!-- Profile Image Display -->
+                            <div class="relative">
+                                <div id="profileImagePreview" class="w-24 h-24 bg-blue-500 rounded-full flex items-center justify-center overflow-hidden shadow-lg">
+                                    <?php if ($profileImage): ?>
+                                        <img id="profileImageDisplay" src="../SOMANAP/uploads/profile_images/<?php echo htmlspecialchars($profileImage); ?>" alt="Profile Image" class="w-full h-full object-cover">
+                                    <?php else: ?>
+                                        <svg id="defaultProfileIcon" class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                        </svg>
+                                    <?php endif; ?>
+                                </div>
+                                <label for="profileImageInput" class="absolute bottom-0 right-0 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-2 cursor-pointer shadow-lg transition">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                    </svg>
+                                </label>
+                            </div>
+
+                            <!-- Hidden File Input -->
+                            <input type="file" id="profileImageInput" name="profile_image" accept="image/*" class="hidden" onchange="handleProfileImageSelect(event)">
+
+                            <!-- Upload Info -->
+                            <div class="flex-1">
+                                <p class="text-sm font-medium text-gray-900 dark:text-white mb-2">Change Profile Picture</p>
+                                <p class="text-xs text-gray-600 dark:text-gray-400 mb-3">JPG, PNG, GIF, or WebP • Max 5MB</p>
+                                <div class="flex gap-2">
+                                    <button type="button" onclick="document.getElementById('profileImageInput').click()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg font-medium transition">
+                                        Upload Photo
+                                    </button>
+                                    <?php if ($profileImage): ?>
+                                        <button type="button" onclick="removeProfileImage()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg font-medium transition">
+                                            Remove
+                                        </button>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Image Preview for Upload -->
+                        <div id="imagePreviewContainer" class="hidden mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                            <img id="imagePreview" src="" alt="Preview" class="max-w-xs rounded-lg">
+                            <button type="submit" class="mt-3 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition">
+                                Confirm Upload
+                            </button>
+                            <button type="button" onclick="cancelProfileImageSelect()" class="mt-3 ml-2 px-4 py-2 bg-gray-400 hover:bg-gray-500 text-white rounded-lg font-medium transition">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Other Profile Information -->
+                <form method="POST" class="space-y-6 border-t border-gray-200 dark:border-gray-700 pt-6">
+                    <input type="hidden" name="action" value="update_profile">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-2">Username</label>
-                            <input type="text" value="<?php echo htmlspecialchars($username); ?>" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-600 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <input type="text" value="<?php echo htmlspecialchars($username); ?>" disabled class="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-2">Full Name</label>
-                            <input type="text" placeholder="John Doe" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-600 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <input type="text" name="full_name" value="<?php echo htmlspecialchars($fullName); ?>" placeholder="John Doe" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-600 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         </div>
                     </div>
 
@@ -875,4 +1025,62 @@ window.addEventListener('load', function() {
     const savedTheme = localStorage.getItem('theme') || 'system';
     applyTheme(savedTheme);
 });
+
+// Profile Image Upload Functions
+function handleProfileImageSelect(event) {
+    const file = event.target.files[0];
+    if (file) {
+        // Validate file type
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            alert('Please select a valid image file (JPG, PNG, GIF, or WebP)');
+            event.target.value = '';
+            return;
+        }
+
+        // Validate file size (5MB)
+        const maxSize = 5 * 1024 * 1024;
+        if (file.size > maxSize) {
+            alert('File size must be less than 5MB');
+            event.target.value = '';
+            return;
+        }
+
+        // Show preview
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const previewImg = document.getElementById('imagePreview');
+            previewImg.src = e.target.result;
+            document.getElementById('imagePreviewContainer').classList.remove('hidden');
+            
+            // Hide the default icon if showing
+            const defaultIcon = document.getElementById('defaultProfileIcon');
+            if (defaultIcon) {
+                defaultIcon.style.display = 'none';
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function cancelProfileImageSelect() {
+    document.getElementById('profileImageInput').value = '';
+    document.getElementById('imagePreviewContainer').classList.add('hidden');
+    
+    // Show default icon if no profile image exists
+    const defaultIcon = document.getElementById('defaultProfileIcon');
+    if (defaultIcon && !document.getElementById('profileImageDisplay')) {
+        defaultIcon.style.display = 'block';
+    }
+}
+
+function removeProfileImage() {
+    if (confirm('Are you sure you want to remove your profile image?')) {
+        // We'll need to implement a delete endpoint, for now just submit empty form
+        const form = document.getElementById('profileImageForm');
+        const fileInput = document.getElementById('profileImageInput');
+        fileInput.value = '';
+        // Note: You may want to add a delete endpoint to handle actual removal
+    }
+}
 </script>

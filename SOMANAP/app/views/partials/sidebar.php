@@ -139,17 +139,17 @@
     </nav>
 
     <!-- Sidebar Footer -->
-    <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+    <!-- <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
         <div class="flex items-center gap-3">
             <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
                 <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                 </svg>
-            </div>
-            <div class="flex-1 min-w-0">
+            </div> -->
+            <!-- <div class="flex-1 min-w-0">
                 <p class="text-sm font-medium text-gray-900 dark:text-white truncate"><?php echo htmlspecialchars($username ?? 'User'); ?></p>
                 <p class="text-xs text-gray-500 dark:text-gray-400">User Account</p>
-            </div>
+            </div> -->
         </div>
     </div>
 </aside>

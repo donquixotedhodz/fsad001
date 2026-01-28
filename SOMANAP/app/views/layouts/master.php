@@ -202,7 +202,7 @@
     </script>
 </head>
 <body
-    x-data="{ darkMode: false, sidebarOpen: false }"
+    x-data="{ darkMode: false }"
     x-init="initTheme()"
     @keydown.window="if(event.key === 'd' && event.ctrlKey) { darkMode = !darkMode; applyDarkMode(); }"
     :class="{ 'dark bg-gray-900': darkMode === true }"
@@ -220,13 +220,6 @@
         <!-- Top Header -->
         <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-20">
             <div class="flex items-center justify-between h-20 px-6">
-                <!-- Mobile Menu Button -->
-                <button @click="document.getElementById('sidebar').classList.toggle('-translate-x-full'); document.getElementById('sidebarOverlay').classList.toggle('hidden')" class="lg:hidden text-gray-500 hover:text-gray-900 dark:hover:text-white">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-                    </svg>
-                </button>
-
                 <div class="flex-1"></div>
 
                 <!-- Right Header Items -->
@@ -245,7 +238,7 @@
         </header>
 
         <!-- Page Content -->
-        <main class="p-6 lg:p-8">
+        <main class="p-6 lg:p-8 pb-20">
             <?php echo $content; ?>
         </main>
     </div>
@@ -296,5 +289,14 @@
         applyTheme(savedTheme);
     });
     </script>
+
+    <!-- Footer -->
+    <!-- <footer class="fixed bottom-0 right-0 lg:ml-64 w-full lg:w-auto lg:flex-1">
+        <div class="flex flex-col items-center justify-between gap-4 px-6 py-4 sm:flex-row">
+            <p class="text-sm text-gray-600 dark:text-gray-400">
+                &copy; 2026 donquixotedhodz. All rights reserved.
+            </p>
+        </div>
+    </footer> -->
 </body>
 </html>

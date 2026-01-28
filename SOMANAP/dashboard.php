@@ -273,7 +273,7 @@ ob_start();
     <!-- Main Content Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Recent Documents -->
-        <div class="lg:col-span-2">
+        <!-- <div class="lg:col-span-2">
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                 <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Recent Documents</h2>
                 <div class="space-y-3">
@@ -306,10 +306,10 @@ ob_start();
                     View all documents →
                 </a>
             </div>
-        </div>
+        </div> -->
 
         <!-- Quick Actions -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <!-- <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
             <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
             <div class="space-y-3">
                 <a href="documents.php" class="flex items-center gap-3 p-3 rounded-lg hover:opacity-90 transition" style="background-color: rgba(var(--theme-primary-rgb), 0.1); color: var(--theme-primary);">
@@ -334,7 +334,7 @@ ob_start();
                     <span class="text-sm font-medium">Settings</span>
                 </a>
             </div>
-        </div>
+        </div> -->
     </div>
 
     <!-- Chart.js Script -->

@@ -1,12 +1,12 @@
 <!-- Sidebar -->
-<aside id="sidebar" x-data="{ sidebarOpen: true }" class="fixed top-0 left-0 z-40 w-64 h-screen transition-transform -translate-x-full bg-white border-r border-gray-200 lg:translate-x-0 dark:bg-gray-900 dark:border-gray-700">
+<aside id="sidebar" class="fixed top-0 left-0 z-40 w-64 h-screen transition-transform duration-300 bg-white border-r border-gray-200 lg:translate-x-0 dark:bg-gray-900 dark:border-gray-700 -translate-x-full lg:-translate-x-0">
     <!-- Sidebar Header -->
     <div class="h-20 flex items-center justify-between px-6 border-b border-gray-200 dark:border-gray-700">
         <div class="flex items-center gap-3">
             <img src="app/views/partials/nealogo.png" alt="NEA" class="w-10 h-10 object-contain">
             <h2 class="text-2xl font-bold text-gray-900 dark:text-white">IAQSMO</h2>
         </div>
-        <button @click="sidebarOpen = !sidebarOpen" class="lg:hidden text-gray-500 hover:text-gray-900 dark:hover:text-white">
+        <button onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full')" class="lg:hidden text-gray-500 hover:text-gray-900 dark:hover:text-white">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
@@ -79,6 +79,17 @@
                 </div>
             </div>
             <?php endif; ?>
+
+            <!-- Divider -->
+            <div class="my-4 border-t border-gray-200 dark:border-gray-700"></div>
+
+            <!-- Manage EC -->
+            <a href="manage_ec.php" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo $currentPage === 'manage_ec' ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"></path>
+                </svg>
+                <span class="font-medium">Manage EC</span>
+            </a>
 
             <!-- Divider -->
             <div class="my-4 border-t border-gray-200 dark:border-gray-700"></div>

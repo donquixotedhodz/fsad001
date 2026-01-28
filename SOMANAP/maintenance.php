@@ -34,36 +34,87 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $message = 'Error: No tables found in the database.';
             $messageType = 'error';
         } else {
-            $sqlDump = "-- Database backup of {$dbName}\n";
-            $sqlDump .= "-- Created: " . date('Y-m-d H:i:s') . "\n";
-            $sqlDump .= "-- ------------------------------------------------\n\n";
+            // Start with MySQL settings (HeidiSQL format)
+            $sqlDump = "/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;\n";
+            $sqlDump .= "/*!40101 SET NAMES utf8 */;\n";
+            $sqlDump .= "/*!50503 SET NAMES utf8mb4 */;\n";
+            $sqlDump .= "/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;\n";
+            $sqlDump .= "/*!40103 SET TIME_ZONE='+00:00' */;\n";
+            $sqlDump .= "/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;\n";
+            $sqlDump .= "/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;\n";
+            $sqlDump .= "/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;\n\n";
+            
+            // Create database
+            $sqlDump .= "CREATE DATABASE IF NOT EXISTS `{$dbName}` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;\n";
+            $sqlDump .= "USE `{$dbName}`;\n\n";
             
             // Export each table
             foreach ($tables as $table) {
                 // Get CREATE TABLE statement
                 $createStmt = $conn->query("SHOW CREATE TABLE {$table}");
                 $createResult = $createStmt->fetch(PDO::FETCH_ASSOC);
-                $sqlDump .= "DROP TABLE IF EXISTS `{$table}`;\n";
-                $sqlDump .= $createResult['Create Table'] . ";\n\n";
                 
-                // Get all data from table
+                // Add comment for table
+                $sqlDump .= "-- Dumping structure for table {$dbName}.{$table}\n";
+                $sqlDump .= "CREATE TABLE IF NOT EXISTS `{$table}` (\n";
+                
+                // Extract column definitions from CREATE TABLE
+                $createTableSQL = $createResult['Create Table'];
+                preg_match('/\((.*)\)\s*ENGINE/s', $createTableSQL, $matches);
+                if (!empty($matches[1])) {
+                    $sqlDump .= $matches[1] . "\n";
+                }
+                
+                // Get table engine and charset
+                preg_match('/ENGINE=(\w+).*CHARSET=(\w+).*COLLATE=(\w+)/s', $createTableSQL, $engineMatch);
+                if (!empty($engineMatch)) {
+                    $engine = $engineMatch[1] ?? 'InnoDB';
+                    $charset = $engineMatch[2] ?? 'utf8mb4';
+                    $collate = $engineMatch[3] ?? 'utf8mb4_0900_ai_ci';
+                    $sqlDump .= ") ENGINE={$engine} DEFAULT CHARSET={$charset} COLLATE={$collate};\n\n";
+                } else {
+                    $sqlDump .= ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n\n";
+                }
+                
+                // Get all data from table - fetch ALL rows without limit
                 $dataStmt = $conn->query("SELECT * FROM {$table}");
                 $rows = $dataStmt->fetchAll(PDO::FETCH_ASSOC);
                 
                 if (!empty($rows)) {
+                    // Get column names from the first row
+                    $columns = array_keys(reset($rows));
+                    $columnNames = implode('`, `', $columns);
+                    
+                    // Add data dump comment
+                    $rowCount = count($rows);
+                    $sqlDump .= "-- Dumping data for table {$dbName}.{$table}: ~{$rowCount} rows (approximately)\n";
+                    $sqlDump .= "INSERT INTO `{$table}` (`{$columnNames}`) VALUES\n";
+                    
+                    $valuesList = [];
+                    // Export all data rows
                     foreach ($rows as $row) {
                         $values = array_map(function($value) use ($conn) {
                             if ($value === null) {
                                 return 'NULL';
                             }
-                            return "'" . $conn->quote($value) . "'";
+                            // Use PDO::quote which adds the necessary quotes
+                            return $conn->quote($value);
                         }, $row);
                         
-                        $sqlDump .= "INSERT INTO `{$table}` VALUES (" . implode(', ', $values) . ");\n";
+                        $valuesList[] = "\t(" . implode(', ', $values) . ")";
                     }
-                    $sqlDump .= "\n";
+                    
+                    // Use single INSERT INTO with multiple VALUES with proper formatting
+                    $sqlDump .= implode(",\n", $valuesList) . ";\n\n";
                 }
             }
+            
+            // End with MySQL settings
+            $sqlDump .= "/*!40103 SET TIME_ZONE=IFNULL(@OLD_TIME_ZONE, 'system') */;\n";
+            $sqlDump .= "/*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;\n";
+            $sqlDump .= "/*!40014 SET FOREIGN_KEY_CHECKS=IFNULL(@OLD_FOREIGN_KEY_CHECKS, 1) */;\n";
+            $sqlDump .= "/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;\n";
+            $sqlDump .= "/*!40111 SET @OLD_SQL_NOTES=IFNULL(@OLD_SQL_NOTES, 1) */;\n";
             
             // Log the export
             $auditLogger->log('export', 'maintenance', 0, "Database exported: {$filename}");
@@ -100,7 +151,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $sqlContent = file_get_contents($file['tmp_name']);
                 
                 // Split SQL statements
-                $statements = array_filter(array_map('trim', preg_split('/;(?=([^\']*\'[^\']*\')*[^\']*$)/', $sqlContent)));
+                $splitResult = preg_split('/;(?=([^\']*\'[^\']*\')*[^\']*$)/', $sqlContent);
+                if ($splitResult === false) {
+                    $splitResult = explode(';', $sqlContent);
+                }
+                $statements = array_filter(array_map('trim', $splitResult));
                 
                 $successCount = 0;
                 $errorCount = 0;

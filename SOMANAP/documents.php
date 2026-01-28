@@ -284,7 +284,7 @@ ob_start();
                         }
                         ?>
                     </td>
-                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
+                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 font-bold">
                         <?php echo htmlspecialchars($doc['ec']); ?>
                     </td>
                     <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">

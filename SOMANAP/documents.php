@@ -428,58 +428,36 @@ ob_start();
                 </div>
             </div>
 
-            <!-- Three Column Layout: Items, Recommending Approvals, and Approving Authority -->
-            <div class="grid grid-cols-3 gap-6">
-                <!-- Items Section -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Items *</label>
-                    <div id="itemsContainer" class="space-y-2 mb-3">
-                        <div class="flex gap-2 items-end">
-                            <div class="flex-1 relative">
-                                <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1.</span>
-                                <input type="text" name="items[]" placeholder="Type to search item..." class="item-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
-                                <div class="item-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
-                            </div>
+            <!-- Combined Items, Recommending Approvals, and Approving Authority Section -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Items * / Recommending Approvals / Approving Authority</label>
+                <div id="combinedListContainer" class="space-y-2 mb-3">
+                    <div class="grid grid-cols-3 gap-3 items-end">
+                        <!-- Item -->
+                        <div class="relative">
+                            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1. Item</span>
+                            <input type="text" name="items[]" placeholder="Type to search item..." class="item-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+                            <div class="item-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
                         </div>
-                    </div>
-                    <button type="button" onclick="addItem()" class="text-sm px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition font-medium">
-                        + Add Item
-                    </button>
-                </div>
-
-                <!-- Recommending Approvals Section -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Recommending Approvals</label>
-                    <div id="recAppListContainer" class="space-y-2 mb-3">
-                        <div class="flex gap-2 items-end">
-                            <div class="flex-1 relative">
-                                <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1.</span>
-                                <input type="text" name="recommending_approvals_list[]" placeholder="Type to search approval..." class="rec-app-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
-                                <div class="rec-app-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
-                            </div>
+                        <!-- Recommending Approval -->
+                        <div class="relative">
+                            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">Rec. Approval</span>
+                            <input type="text" name="recommending_approvals_list[]" placeholder="Type to search approval..." class="rec-app-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+                            <div class="rec-app-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
                         </div>
-                    </div>
-                    <button type="button" onclick="addRecApp()" class="text-sm px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition font-medium">
-                        + Add Approving Approval
-                    </button>
-                </div>
-
-                <!-- Approving Authority Section -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Approving Authority</label>
-                    <div id="appAuthListContainer" class="space-y-2 mb-3">
-                        <div class="flex gap-2 items-end">
-                            <div class="flex-1 relative">
-                                <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1.</span>
+                        <!-- Approving Authority -->
+                        <div class="relative flex gap-2 items-end">
+                            <div class="flex-1">
+                                <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">App. Authority</span>
                                 <input type="text" name="approving_authority_list[]" placeholder="Type to search authority..." class="app-auth-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
                                 <div class="app-auth-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
                             </div>
                         </div>
                     </div>
-                    <button type="button" onclick="addAppAuth()" class="text-sm px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition font-medium">
-                        + Add Approving Authority
-                    </button>
                 </div>
+                <button type="button" onclick="addCombinedRow()" class="text-sm px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition font-medium">
+                    + Add Row
+                </button>
             </div>
 
             <!-- Full Width Control Points -->
@@ -603,52 +581,35 @@ ob_start();
                 </div>
             </div>
 
-            <!-- Items -->
+            <!-- Combined Items, Recommending Approvals, and Approving Authority Section -->
             <div>
-                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Items <span class="text-red-500">*</span></label>
-                <div id="editItemsContainer" class="space-y-2">
-                    <div class="flex gap-2 items-end">
-                        <div class="flex-1 relative">
-                            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1.</span>
+                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Items <span class="text-red-500">*</span> / Recommending Approvals / Approving Authority</label>
+                <div id="editCombinedListContainer" class="space-y-2">
+                    <div class="grid grid-cols-3 gap-3 items-start">
+                        <!-- Item -->
+                        <div class="relative">
+                            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1. Item</span>
                             <input type="text" name="edit_items[]" placeholder="Type to search item..." class="edit-item-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
                             <div class="edit-item-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
                         </div>
-                        <button type="button" onclick="this.parentElement.remove(); updateEditItemNumbers();" class="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition text-sm font-medium">Remove</button>
-                    </div>
-                </div>
-                <button type="button" onclick="addEditItem()" class="mt-2 px-4 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded hover:bg-green-200 dark:hover:bg-green-900/50 transition text-sm font-medium">+ Add Item</button>
-            </div>
-
-            <!-- Recommending Approvals -->
-            <div>
-                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Recommending Approvals</label>
-                <div id="editRecAppListContainer" class="space-y-2">
-                    <div class="flex gap-2 items-end">
-                        <div class="flex-1 relative">
-                            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1.</span>
+                        <!-- Recommending Approval -->
+                        <div class="relative">
+                            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">Rec. Approval</span>
                             <input type="text" name="edit_recommending_approvals_list[]" placeholder="Type to search approval..." class="edit-rec-app-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
                             <div class="edit-rec-app-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
                         </div>
-                        <button type="button" onclick="this.parentElement.remove(); updateEditRecAppNumbers();" class="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition text-sm font-medium">Remove</button>
-                    </div>
-                </div>
-                <button type="button" onclick="addEditRecApp()" class="mt-2 px-4 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded hover:bg-green-200 dark:hover:bg-green-900/50 transition text-sm font-medium">+ Add Approval</button>
-            </div>
-
-            <!-- Approving Authority -->
-            <div>
-                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Approving Authority</label>
-                <div id="editAppAuthListContainer" class="space-y-2">
-                    <div class="flex gap-2 items-end">
-                        <div class="flex-1 relative">
-                            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1.</span>
-                            <input type="text" name="edit_approving_authority_list[]" placeholder="Type to search authority..." class="edit-app-auth-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
-                            <div class="edit-app-auth-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+                        <!-- Approving Authority + Remove Button -->
+                        <div class="relative flex gap-2 items-end">
+                            <div class="flex-1">
+                                <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">App. Authority</span>
+                                <input type="text" name="edit_approving_authority_list[]" placeholder="Type to search authority..." class="edit-app-auth-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+                                <div class="edit-app-auth-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+                            </div>
+                            <button type="button" onclick="removeCombinedRow(this)" class="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition text-sm font-medium">Remove</button>
                         </div>
-                        <button type="button" onclick="this.parentElement.remove(); updateEditAppAuthNumbers();" class="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition text-sm font-medium">Remove</button>
                     </div>
                 </div>
-                <button type="button" onclick="addEditAppAuth()" class="mt-2 px-4 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded hover:bg-green-200 dark:hover:bg-green-900/50 transition text-sm font-medium">+ Add Authority</button>
+                <button type="button" onclick="addEditCombinedRow()" class="mt-2 px-4 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded hover:bg-green-200 dark:hover:bg-green-900/50 transition text-sm font-medium">+ Add Row</button>
             </div>
 
             <!-- Control Points -->
@@ -986,102 +947,65 @@ function selectAppAuthSuggestion(element) {
 
 // Initialize EC autocomplete
 setupAutocomplete('ecInput', 'ecSuggestions', ecData);
-setupItemAutocomplete(document.querySelector('#itemsContainer .item-input'), itemsData);
-setupRecAppAutocomplete(document.querySelector('#recAppListContainer .rec-app-input'), recAppData);
-setupAppAuthAutocomplete(document.querySelector('#appAuthListContainer .app-auth-input'), appAuthData);
+setupItemAutocomplete(document.querySelector('#combinedListContainer .item-input'), itemsData);
+setupRecAppAutocomplete(document.querySelector('#combinedListContainer .rec-app-input'), recAppData);
+setupAppAuthAutocomplete(document.querySelector('#combinedListContainer .app-auth-input'), appAuthData);
 setupDepartmentAutocomplete(document.querySelector('#departmentContainer .department-input'), departmentsData);
 setupTeamAutocomplete(document.querySelector('#teamContainer .team-input'), teamsData);
 
-// Handle Item bulk adding
-function addItem() {
-    const container = document.getElementById('itemsContainer');
+// Handle combined row adding (Item, Recommending Approval, Approving Authority)
+function addCombinedRow() {
+    const container = document.getElementById('combinedListContainer');
     const currentCount = container.querySelectorAll('[name="items[]"]').length + 1;
     
     const div = document.createElement('div');
-    div.className = 'flex gap-2 items-end';
+    div.className = 'grid grid-cols-3 gap-3 items-end';
     div.innerHTML = `
-        <div class="flex-1 relative">
-            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">${currentCount}.</span>
+        <!-- Item -->
+        <div class="relative">
+            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">${currentCount}. Item</span>
             <input type="text" name="items[]" placeholder="Type to search item..." class="item-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
             <div class="item-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
         </div>
-        <button type="button" onclick="this.parentElement.remove(); updateItemNumbers();" class="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition text-sm font-medium">
-            Remove
-        </button>
-    `;
-    container.appendChild(div);
-    setupItemAutocomplete(div.querySelector('.item-input'), itemsData);
-}
-
-// Handle Recommending Approvals bulk adding
-function addRecApp() {
-    const container = document.getElementById('recAppListContainer');
-    const currentCount = container.querySelectorAll('[name="recommending_approvals_list[]"]').length + 1;
-    
-    const div = document.createElement('div');
-    div.className = 'flex gap-2 items-end';
-    div.innerHTML = `
-        <div class="flex-1 relative">
-            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">${currentCount}.</span>
+        <!-- Recommending Approval -->
+        <div class="relative">
+            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">Rec. Approval</span>
             <input type="text" name="recommending_approvals_list[]" placeholder="Type to search approval..." class="rec-app-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
             <div class="rec-app-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
         </div>
-        <button type="button" onclick="this.parentElement.remove(); updateRecAppNumbers();" class="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition text-sm font-medium">
-            Remove
-        </button>
-    `;
-    container.appendChild(div);
-    setupRecAppAutocomplete(div.querySelector('.rec-app-input'), recAppData);
-}
-
-// Handle Approving Authority bulk adding
-function addAppAuth() {
-    const container = document.getElementById('appAuthListContainer');
-    const currentCount = container.querySelectorAll('[name="approving_authority_list[]"]').length + 1;
-    
-    const div = document.createElement('div');
-    div.className = 'flex gap-2 items-end';
-    div.innerHTML = `
-        <div class="flex-1 relative">
-            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">${currentCount}.</span>
-            <input type="text" name="approving_authority_list[]" placeholder="Type to search authority..." class="app-auth-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
-            <div class="app-auth-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+        <!-- Approving Authority + Remove Button -->
+        <div class="relative flex gap-2 items-end">
+            <div class="flex-1">
+                <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">App. Authority</span>
+                <input type="text" name="approving_authority_list[]" placeholder="Type to search authority..." class="app-auth-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+                <div class="app-auth-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+            </div>
+            <button type="button" onclick="removeCombinedRow(this); updateCombinedNumbers();" class="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition text-sm font-medium">
+                Remove
+            </button>
         </div>
-        <button type="button" onclick="this.parentElement.remove(); updateAppAuthNumbers();" class="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition text-sm font-medium">
-            Remove
-        </button>
     `;
     container.appendChild(div);
+    setupItemAutocomplete(div.querySelector('.item-input'), itemsData);
+    setupRecAppAutocomplete(div.querySelector('.rec-app-input'), recAppData);
     setupAppAuthAutocomplete(div.querySelector('.app-auth-input'), appAuthData);
 }
 
-// Update item numbering
-function updateItemNumbers() {
-    const container = document.getElementById('itemsContainer');
-    const selects = container.querySelectorAll('[name="items[]"]');
-    selects.forEach((select, index) => {
-        const span = select.parentElement.querySelector('span');
-        span.textContent = (index + 1) + '.';
-    });
+// Remove combined row
+function removeCombinedRow(button) {
+    button.closest('.grid').remove();
+    updateCombinedNumbers();
 }
 
-// Update recommending approvals numbering
-function updateRecAppNumbers() {
-    const container = document.getElementById('recAppListContainer');
-    const selects = container.querySelectorAll('[name="recommending_approvals_list[]"]');
-    selects.forEach((select, index) => {
-        const span = select.parentElement.querySelector('span');
-        span.textContent = (index + 1) + '.';
-    });
-}
-
-// Update approving authority numbering
-function updateAppAuthNumbers() {
-    const container = document.getElementById('appAuthListContainer');
-    const selects = container.querySelectorAll('[name="approving_authority_list[]"]');
-    selects.forEach((select, index) => {
-        const span = select.parentElement.querySelector('span');
-        span.textContent = (index + 1) + '.';
+// Update combined row numbering
+function updateCombinedNumbers() {
+    const container = document.getElementById('combinedListContainer');
+    const rows = container.querySelectorAll('.grid');
+    rows.forEach((row, index) => {
+        const span = row.querySelector('span');
+        if (span) {
+            span.textContent = (index + 1) + '. Item';
+        }
     });
 }
 
@@ -1562,43 +1486,24 @@ function openEditModal(doc) {
     document.getElementById('editDocId').value = doc.id;
     document.getElementById('editEcInput').value = doc.ec;
     
-    // Clear and populate items
-    const itemsContainer = document.getElementById('editItemsContainer');
-    itemsContainer.innerHTML = '';
+    // Clear and populate combined container (Items, Rec Approvals, App Authority)
+    const combinedContainer = document.getElementById('editCombinedListContainer');
+    combinedContainer.innerHTML = '';
     
-    if (doc.item) {
-        const items = doc.item.split('\n').filter(i => i.trim());
-        items.forEach((item, index) => {
-            addEditItemToModal(item, index + 1);
-        });
-    } else {
-        addEditItemToModal('', 1);
-    }
+    // Parse data
+    const items = doc.item ? doc.item.split('\n').filter(i => i.trim()) : [''];
+    const recApps = doc.recommending_approvals ? doc.recommending_approvals.split('\n') : [];
+    const appAuths = doc.approving_authority ? doc.approving_authority.split('\n') : [];
     
-    // Clear and populate recommending approvals
-    const recAppContainer = document.getElementById('editRecAppListContainer');
-    recAppContainer.innerHTML = '';
+    // Get max length to ensure all rows are created
+    const maxLength = Math.max(items.length, recApps.length, appAuths.length, 1);
     
-    if (doc.recommending_approvals) {
-        const recApps = doc.recommending_approvals.split('\n');
-        recApps.forEach((app, index) => {
-            addEditRecAppToModal(app || '', index + 1);
-        });
-    } else {
-        addEditRecAppToModal('', 1);
-    }
-    
-    // Clear and populate approving authority
-    const appAuthContainer = document.getElementById('editAppAuthListContainer');
-    appAuthContainer.innerHTML = '';
-    
-    if (doc.approving_authority) {
-        const appAuths = doc.approving_authority.split('\n');
-        appAuths.forEach((auth, index) => {
-            addEditAppAuthToModal(auth || '', index + 1);
-        });
-    } else {
-        addEditAppAuthToModal('', 1);
+    // Create rows for all data
+    for (let i = 0; i < maxLength; i++) {
+        const itemVal = items[i] || '';
+        const recAppVal = recApps[i] || '';
+        const appAuthVal = appAuths[i] || '';
+        addEditCombinedRowToModal(itemVal, recAppVal, appAuthVal, i + 1);
     }
     
     // Clear and populate control points
@@ -1714,52 +1619,54 @@ function updateEditFileList() {
     }
 }
 
-function addEditItemToModal(value = '', number) {
-    const container = document.getElementById('editItemsContainer');
+function addEditCombinedRowToModal(itemVal = '', recAppVal = '', appAuthVal = '', number) {
+    const container = document.getElementById('editCombinedListContainer');
     const div = document.createElement('div');
-    div.className = 'flex gap-2 items-end';
+    div.className = 'grid grid-cols-3 gap-3 items-start';
     div.innerHTML = `
-        <div class="flex-1 relative">
-            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">${number}.</span>
-            <input type="text" name="edit_items[]" placeholder="Type to search item..." class="edit-item-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" value="${value}">
+        <!-- Item -->
+        <div class="relative">
+            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">${number}. Item</span>
+            <input type="text" name="edit_items[]" placeholder="Type to search item..." class="edit-item-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" value="${itemVal}">
             <div class="edit-item-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
         </div>
-        <button type="button" onclick="this.parentElement.remove(); updateEditItemNumbers();" class="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition text-sm font-medium">Remove</button>
+        <!-- Recommending Approval -->
+        <div class="relative">
+            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">Rec. Approval</span>
+            <input type="text" name="edit_recommending_approvals_list[]" placeholder="Type to search approval..." class="edit-rec-app-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" value="${recAppVal}">
+            <div class="edit-rec-app-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+        </div>
+        <!-- Approving Authority + Remove Button -->
+        <div class="relative flex gap-2 items-end">
+            <div class="flex-1">
+                <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">App. Authority</span>
+                <input type="text" name="edit_approving_authority_list[]" placeholder="Type to search authority..." class="edit-app-auth-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" value="${appAuthVal}">
+                <div class="edit-app-auth-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+            </div>
+            <button type="button" onclick="removeCombinedRow(this); updateEditCombinedNumbers();" class="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition text-sm font-medium">Remove</button>
+        </div>
     `;
     container.appendChild(div);
     setupItemAutocomplete(div.querySelector('.edit-item-input'), itemsData);
-}
-
-function addEditRecAppToModal(value = '', number) {
-    const container = document.getElementById('editRecAppListContainer');
-    const div = document.createElement('div');
-    div.className = 'flex gap-2 items-end';
-    div.innerHTML = `
-        <div class="flex-1 relative">
-            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">${number}.</span>
-            <input type="text" name="edit_recommending_approvals_list[]" placeholder="Type to search approval..." class="edit-rec-app-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" value="${value}">
-            <div class="edit-rec-app-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
-        </div>
-        <button type="button" onclick="this.parentElement.remove(); updateEditRecAppNumbers();" class="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition text-sm font-medium">Remove</button>
-    `;
-    container.appendChild(div);
     setupRecAppAutocomplete(div.querySelector('.edit-rec-app-input'), recAppData);
+    setupAppAuthAutocomplete(div.querySelector('.edit-app-auth-input'), appAuthData);
 }
 
-function addEditAppAuthToModal(value = '', number) {
-    const container = document.getElementById('editAppAuthListContainer');
-    const div = document.createElement('div');
-    div.className = 'flex gap-2 items-end';
-    div.innerHTML = `
-        <div class="flex-1 relative">
-            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">${number}.</span>
-            <input type="text" name="edit_approving_authority_list[]" placeholder="Type to search authority..." class="edit-app-auth-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" value="${value}">
-            <div class="edit-app-auth-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
-        </div>
-        <button type="button" onclick="this.parentElement.remove(); updateEditAppAuthNumbers();" class="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition text-sm font-medium">Remove</button>
-    `;
-    container.appendChild(div);
-    setupAppAuthAutocomplete(div.querySelector('.edit-app-auth-input'), appAuthData);
+function addEditCombinedRow() {
+    const container = document.getElementById('editCombinedListContainer');
+    const currentCount = container.querySelectorAll('input[name="edit_items[]"]').length + 1;
+    addEditCombinedRowToModal('', '', '', currentCount);
+}
+
+function updateEditCombinedNumbers() {
+    const container = document.getElementById('editCombinedListContainer');
+    const rows = container.querySelectorAll('.grid');
+    rows.forEach((row, index) => {
+        const span = row.querySelector('span');
+        if (span) {
+            span.textContent = (index + 1) + '. Item';
+        }
+    });
 }
 
 function addEditControlPointToModal(value = '', number) {
@@ -1774,6 +1681,21 @@ function addEditControlPointToModal(value = '', number) {
         <button type="button" onclick="this.parentElement.remove(); updateEditControlPointNumbers();" class="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition text-sm font-medium">Remove</button>
     `;
     container.appendChild(div);
+}
+
+function updateEditControlPointNumbers() {
+    const container = document.getElementById('editControlPointsContainer');
+    const inputs = container.querySelectorAll('input[name="edit_control_points[]"]');
+    inputs.forEach((input, index) => {
+        const span = input.parentElement.querySelector('span');
+        span.textContent = (index + 1) + '.';
+    });
+}
+
+function addEditControlPoint() {
+    const container = document.getElementById('editControlPointsContainer');
+    const currentCount = container.querySelectorAll('input[name="edit_control_points[]"]').length + 1;
+    addEditControlPointToModal('', currentCount);
 }
 
 function addEditDepartmentToModal(value = '', number) {
@@ -1808,30 +1730,6 @@ function addEditTeamToModal(value = '', number) {
     setupTeamAutocomplete(div.querySelector('.edit-team-input'), teamsData);
 }
 
-function addEditItem() {
-    const container = document.getElementById('editItemsContainer');
-    const currentCount = container.querySelectorAll('input[name="edit_items[]"]').length + 1;
-    addEditItemToModal('', currentCount);
-}
-
-function addEditRecApp() {
-    const container = document.getElementById('editRecAppListContainer');
-    const currentCount = container.querySelectorAll('input[name="edit_recommending_approvals_list[]"]').length + 1;
-    addEditRecAppToModal('', currentCount);
-}
-
-function addEditAppAuth() {
-    const container = document.getElementById('editAppAuthListContainer');
-    const currentCount = container.querySelectorAll('input[name="edit_approving_authority_list[]"]').length + 1;
-    addEditAppAuthToModal('', currentCount);
-}
-
-function addEditControlPoint() {
-    const container = document.getElementById('editControlPointsContainer');
-    const currentCount = container.querySelectorAll('input[name="edit_control_points[]"]').length + 1;
-    addEditControlPointToModal('', currentCount);
-}
-
 function addEditDepartment() {
     const container = document.getElementById('editDepartmentContainer');
     const currentCount = container.querySelectorAll('input[name="edit_departments[]"]').length + 1;
@@ -1842,42 +1740,6 @@ function addEditTeam() {
     const container = document.getElementById('editTeamContainer');
     const currentCount = container.querySelectorAll('input[name="edit_teams[]"]').length + 1;
     addEditTeamToModal('', currentCount);
-}
-
-function updateEditItemNumbers() {
-    const container = document.getElementById('editItemsContainer');
-    const inputs = container.querySelectorAll('input[name="edit_items[]"]');
-    inputs.forEach((input, index) => {
-        const span = input.parentElement.querySelector('span');
-        span.textContent = (index + 1) + '.';
-    });
-}
-
-function updateEditRecAppNumbers() {
-    const container = document.getElementById('editRecAppListContainer');
-    const inputs = container.querySelectorAll('input[name="edit_recommending_approvals_list[]"]');
-    inputs.forEach((input, index) => {
-        const span = input.parentElement.querySelector('span');
-        span.textContent = (index + 1) + '.';
-    });
-}
-
-function updateEditAppAuthNumbers() {
-    const container = document.getElementById('editAppAuthListContainer');
-    const inputs = container.querySelectorAll('input[name="edit_approving_authority_list[]"]');
-    inputs.forEach((input, index) => {
-        const span = input.parentElement.querySelector('span');
-        span.textContent = (index + 1) + '.';
-    });
-}
-
-function updateEditControlPointNumbers() {
-    const container = document.getElementById('editControlPointsContainer');
-    const inputs = container.querySelectorAll('input[name="edit_control_points[]"]');
-    inputs.forEach((input, index) => {
-        const span = input.parentElement.querySelector('span');
-        span.textContent = (index + 1) + '.';
-    });
 }
 
 function updateEditDepartmentNumbers() {

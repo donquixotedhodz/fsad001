@@ -69,8 +69,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             $newBalance = $lastBalance - $debit + $credit;
             
             // Insert new record
-            $stmt = $conn->prepare("INSERT INTO ppe (date, particulars, check_no, dv_or_no, debit, credit, balance, file_path, file_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$date, $particulars, $check_no, $dv_or_no, $debit, $credit, $newBalance, $filePath, $fileName]);
+            $stmt = $conn->prepare("INSERT INTO ppe (date, particulars, check_no, dv_or_no, debit, credit, balance) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$date, $particulars, $check_no, $dv_or_no, $debit, $credit, $newBalance]);
             
             // Update PPE Provident Fund remaining balance
             $updateFundStmt = $conn->prepare("UPDATE ppe_funds SET remaining_balance = ? WHERE fund_name = 'PPE Provident Fund'");
@@ -81,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             $errorMessage = "Error adding record: " . htmlspecialchars($e->getMessage());
         }
     } elseif (!isset($errorMessage)) {
-        $errorMessage = "Please fill in all required fields.";
+        $errorMessage = "Please fill in all required fields. Particulars: " . ($particulars ? "OK" : "EMPTY") . ", Check No: " . ($check_no > 0 || $check_no === 'ONLINE' ? "OK" : "INVALID (" . $check_no . ")");
     }
 }
 
@@ -219,19 +219,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             $newBalance = $prevBalance - $debit + $credit;
             
             // Update the record
-            if ($filePath && $fileName) {
-                // New file uploaded
-                $stmt = $conn->prepare("UPDATE ppe SET date = ?, particulars = ?, check_no = ?, dv_or_no = ?, debit = ?, credit = ?, balance = ?, file_path = ?, file_name = ? WHERE id = ?");
-                $stmt->execute([$date, $particulars, $check_no, $dv_or_no, $debit, $credit, $newBalance, $filePath, $fileName, $ppe_id]);
-            } elseif ($deleteExistingFile) {
-                // Delete existing file
-                $stmt = $conn->prepare("UPDATE ppe SET date = ?, particulars = ?, check_no = ?, dv_or_no = ?, debit = ?, credit = ?, balance = ?, file_path = NULL, file_name = NULL WHERE id = ?");
-                $stmt->execute([$date, $particulars, $check_no, $dv_or_no, $debit, $credit, $newBalance, $ppe_id]);
-            } else {
-                // Keep existing file
-                $stmt = $conn->prepare("UPDATE ppe SET date = ?, particulars = ?, check_no = ?, dv_or_no = ?, debit = ?, credit = ?, balance = ? WHERE id = ?");
-                $stmt->execute([$date, $particulars, $check_no, $dv_or_no, $debit, $credit, $newBalance, $ppe_id]);
-            }
+            $stmt = $conn->prepare("UPDATE ppe SET date = ?, particulars = ?, check_no = ?, dv_or_no = ?, debit = ?, credit = ?, balance = ? WHERE id = ?");
+            $stmt->execute([$date, $particulars, $check_no, $dv_or_no, $debit, $credit, $newBalance, $ppe_id]);
             
             // Recalculate balances for all records after this one
             $stmt = $conn->prepare("SELECT id, debit, credit FROM ppe WHERE id > ? ORDER BY id ASC");
@@ -362,13 +351,43 @@ ob_start();
                 <!-- Credit -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Credit</label>
-                    <input type="number" name="credit" step="0.01" min="0" value="0" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div class="relative">
+                        <input type="text" name="credit" class="creditCombo w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Select or type amount" autocomplete="off">
+                        <ul class="creditComboList hidden absolute z-10 w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg mt-1 max-h-48 overflow-y-auto shadow-lg">
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="0">0.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="10000">10,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="20000">20,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="30000">30,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="40000">40,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="50000">50,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="60000">60,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="70000">70,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="80000">80,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="90000">90,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="100000">100,000.00</li>
+                        </ul>
+                    </div>
                 </div>
 
                 <!-- Debit -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Debit</label>
-                    <input type="number" name="debit" step="0.01" min="0" value="0" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div class="relative">
+                        <input type="text" name="debit" class="debitCombo w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Select or type amount" autocomplete="off">
+                        <ul class="debitComboList hidden absolute z-10 w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg mt-1 max-h-48 overflow-y-auto shadow-lg">
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="0">0.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="10000">10,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="20000">20,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="30000">30,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="40000">40,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="50000">50,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="60000">60,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="70000">70,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="80000">80,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="90000">90,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="100000">100,000.00</li>
+                        </ul>
+                    </div>
                 </div>
 
                 <!-- File Upload (Optional) -->
@@ -454,13 +473,43 @@ ob_start();
                 <!-- Credit -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Credit</label>
-                    <input type="number" id="editCredit" name="credit" step="0.01" min="0" value="0" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div class="relative">
+                        <input type="text" id="editCredit" name="credit" class="editCreditCombo w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Select or type amount" autocomplete="off">
+                        <ul class="editCreditComboList hidden absolute z-10 w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg mt-1 max-h-48 overflow-y-auto shadow-lg">
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="0">0.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="10000">10,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="20000">20,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="30000">30,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="40000">40,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="50000">50,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="60000">60,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="70000">70,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="80000">80,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="90000">90,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="100000">100,000.00</li>
+                        </ul>
+                    </div>
                 </div>
 
                 <!-- Debit -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Debit</label>
-                    <input type="number" id="editDebit" name="debit" step="0.01" min="0" value="0" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div class="relative">
+                        <input type="text" id="editDebit" name="debit" class="editDebitCombo w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Select or type amount" autocomplete="off">
+                        <ul class="editDebitComboList hidden absolute z-10 w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg mt-1 max-h-48 overflow-y-auto shadow-lg">
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="0">0.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="10000">10,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="20000">20,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="30000">30,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="40000">40,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="50000">50,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="60000">60,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="70000">70,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="80000">80,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="90000">90,000.00</li>
+                            <li class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" data-value="100000">100,000.00</li>
+                        </ul>
+                    </div>
                 </div>
 
                 <!-- File Upload (Optional) -->
@@ -564,9 +613,9 @@ ob_start();
                     
                     // Fetch records with limit
                     if (isset($_GET['limit']) && $_GET['limit'] === 'all') {
-                        $stmt = $conn->prepare("SELECT * FROM ppe ORDER BY date ASC");
+                        $stmt = $conn->prepare("SELECT * FROM ppe ORDER BY id DESC");
                     } else {
-                        $stmt = $conn->prepare("SELECT * FROM ppe ORDER BY date ASC LIMIT ? OFFSET ?");
+                        $stmt = $conn->prepare("SELECT * FROM ppe ORDER BY id DESC LIMIT ? OFFSET ?");
                         $stmt->bindParam(1, $itemsPerPage, PDO::PARAM_INT);
                         $stmt->bindParam(2, $offset, PDO::PARAM_INT);
                     }
@@ -756,8 +805,8 @@ function editPPE(id) {
             document.getElementById('editParticulars').value = data.record.particulars;
             document.getElementById('editCheckType').value = data.record.check_no === 'ONLINE' ? 'online' : 'actual';
             document.getElementById('editCheckNoInput').value = data.record.check_no === 'ONLINE' ? '' : data.record.check_no;
-            document.getElementById('editDebit').value = data.record.debit;
-            document.getElementById('editCredit').value = data.record.credit;
+            document.getElementById('editDebit').value = parseInt(data.record.debit);
+            document.getElementById('editCredit').value = parseInt(data.record.credit);
             
             // Parse the existing DV number
             if (data.record.dv_or_no) {
@@ -864,21 +913,41 @@ function updateEditPPEFileList() {
 function prepareAddPPESubmit(event) {
     event.preventDefault();
     
+    // Ensure the DV/OR number is set in the hidden field
+    const checkType = document.getElementById('checkType').value;
+    const hiddenDV = document.getElementById('addDVNumber');
+    
+    if (checkType === 'online') {
+        const manualDV = document.getElementById('addDVManual').value;
+        if (!manualDV) {
+            alert('Please enter DV/OR number for online check');
+            return;
+        }
+        hiddenDV.value = manualDV;
+    } else {
+        const prefix = document.getElementById('addDVPrefix').value;
+        const suffix = document.getElementById('addDVSuffix').value;
+        if (!suffix) {
+            alert('Please enter DV/OR suffix');
+            return;
+        }
+        hiddenDV.value = prefix + suffix;
+    }
+    
+    // Validate particulars
+    const particulars = document.querySelector('[name="particulars"]').value.trim();
+    if (!particulars) {
+        alert('Please enter particulars (names)');
+        return;
+    }
+    
     // The form will be submitted with multipart/form-data
     // JavaScript form submission needs to be handled for file upload
     const form = document.getElementById('addPPEForm');
     const formData = new FormData(form);
     
-    // Submit the form via fetch
-    fetch('', {
-        method: 'POST',
-        body: formData
-    }).then(response => {
-        // Form will reload after submission via PHP redirect or page refresh
-        location.reload();
-    }).catch(error => {
-        console.error('Error:', error);
-    });
+    // Submit the form directly instead of via fetch to ensure proper handling
+    form.submit();
 }
 
 function deletePPE(record) {
@@ -970,7 +1039,61 @@ document.addEventListener('DOMContentLoaded', function() {
     toggleCheckNoInput();
     toggleCheckNoInputEdit();
     updateDVNumber();
+    
+    // Initialize combobox functionality
+    initCombobox('.creditCombo', '.creditComboList');
+    initCombobox('.debitCombo', '.debitComboList');
+    initCombobox('.editCreditCombo', '.editCreditComboList');
+    initCombobox('.editDebitCombo', '.editDebitComboList');
 });
+
+// Combobox functionality
+function initCombobox(inputSelector, listSelector) {
+    const inputs = document.querySelectorAll(inputSelector);
+    
+    inputs.forEach(input => {
+        const list = input.parentElement.querySelector(listSelector);
+        
+        // Show list on focus
+        input.addEventListener('focus', function() {
+            list.classList.remove('hidden');
+        });
+        
+        // Filter list on input
+        input.addEventListener('input', function() {
+            const filter = this.value.toLowerCase();
+            const items = list.querySelectorAll('li');
+            
+            items.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                if (text.includes(filter) || filter === '') {
+                    item.classList.remove('hidden');
+                } else {
+                    item.classList.add('hidden');
+                }
+            });
+        });
+        
+        // Handle item selection
+        const items = list.querySelectorAll('li');
+        items.forEach(item => {
+            item.addEventListener('click', function() {
+                const value = this.getAttribute('data-value');
+                const display = this.textContent;
+                input.value = value;
+                input.setAttribute('data-display', display);
+                list.classList.add('hidden');
+            });
+        });
+        
+        // Hide list on blur
+        input.addEventListener('blur', function() {
+            setTimeout(() => {
+                list.classList.add('hidden');
+            }, 200);
+        });
+    });
+}
 </script>
 </div>
 

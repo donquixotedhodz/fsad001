@@ -162,14 +162,14 @@ ob_start();
     <!-- Stats Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <!-- Stat Card 1 -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border p-6 transition-all duration-300" id="statCard1" style="border-color: var(--theme-primary);">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Documents</p>
                     <p class="text-3xl font-bold text-gray-900 dark:text-white mt-2"><?php echo $totalDocuments; ?></p>
                 </div>
-                <div class="p-3 rounded-lg" style="background-color: rgba(184, 134, 11, 0.15);">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: rgba(184, 134, 11, 1);">
+                <div class="p-3 rounded-lg" style="background-color: rgba(var(--theme-primary-rgb), 0.15);">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--theme-primary);">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
                 </div>
@@ -177,14 +177,14 @@ ob_start();
         </div>
 
         <!-- Stat Card 2 -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border p-6 transition-all duration-300" id="statCard2" style="border-color: var(--theme-secondary);">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Electric Cooperatives</p>
                     <p class="text-3xl font-bold text-gray-900 dark:text-white mt-2"><?php echo $totalECs; ?></p>
                 </div>
-                <div class="p-3 rounded-lg" style="background-color: rgba(255, 140, 0, 0.15);">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: rgba(255, 140, 0, 1);">
+                <div class="p-3 rounded-lg" style="background-color: rgba(var(--theme-secondary-rgb), 0.15);">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--theme-secondary);">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"></path>
                     </svg>
                 </div>
@@ -192,7 +192,7 @@ ob_start();
         </div>
 
         <!-- Stat Card 3 -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border p-6 transition-all duration-300" id="statCard3" style="border-color: var(--theme-accent);">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-500 dark:text-gray-400">PPE Provident Fund</p>
@@ -206,8 +206,8 @@ ob_start();
                         ?>
                     </p>
                 </div>
-                <div class="p-3 rounded-lg" style="background-color: rgba(210, 105, 30, 0.15);">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: rgba(210, 105, 30, 1);">
+                <div class="p-3 rounded-lg" style="background-color: rgba(var(--theme-accent-rgb), 0.15);">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--theme-accent);">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                 </div>
@@ -215,7 +215,7 @@ ob_start();
         </div>
 
         <!-- Stat Card 4 -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border p-6 transition-all duration-300" id="statCard4" style="border-color: var(--theme-danger);">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Last Updated</p>
@@ -229,8 +229,8 @@ ob_start();
                         ?>
                     </p>
                 </div>
-                <div class="p-3 rounded-lg" style="background-color: rgba(205, 92, 92, 0.15);">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: rgba(205, 92, 92, 1);">
+                <div class="p-3 rounded-lg" style="background-color: rgba(var(--theme-danger-rgb), 0.15);">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--theme-danger);">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                 </div>
@@ -345,51 +345,21 @@ ob_start();
 
     <!-- Chart.js Script -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="../SOMANAP/app/js/ChartColorHelper.js"></script>
     <script>
-        // EC Distribution Chart
-        const ecData = <?php echo json_encode($ecStats); ?>;
-        const ecLabels = ecData.map(item => item.ec);
-        const ecValues = ecData.map(item => item.count);
-
-        // Autumn colors for each EC
-        const autumnColors = [
-            'rgba(220, 20, 60, 0.8)',       // Crimson
-            'rgba(255, 69, 0, 0.8)',        // Red-Orange
-            'rgba(255, 140, 0, 0.8)',       // Dark Orange
-            'rgba(255, 165, 0, 0.8)',       // Orange
-            'rgba(218, 165, 32, 0.8)',      // Goldenrod
-            'rgba(184, 134, 11, 0.8)',      // Dark Goldenrod
-            'rgba(139, 69, 19, 0.8)',       // Saddle Brown
-            'rgba(210, 105, 30, 0.8)',      // Chocolate
-            'rgba(205, 92, 92, 0.8)',       // Indian Red
-            'rgba(178, 34, 34, 0.8)',       // Firebrick
-            'rgba(160, 82, 45, 0.8)',       // Sienna
-            'rgba(165, 42, 42, 0.8)'        // Brown
-        ];
-
-        const ecBackgroundColors = ecLabels.map((_, index) => autumnColors[index % autumnColors.length]);
-        const ecBorderColors = ecBackgroundColors.map(color => color.replace('0.8', '1'));
-
-        const ecCtx = document.getElementById('ecChart').getContext('2d');
-        new Chart(ecCtx, {
-            type: 'bar',
-            data: {
-                labels: ecLabels,
-                datasets: [{
-                    label: 'Number of Documents',
-                    data: ecValues,
-                    backgroundColor: ecBackgroundColors,
-                    borderColor: ecBorderColors,
-                    borderWidth: 1
-                }]
-            },
-            options: {
+        // Helper function to get chart config with colors
+        function getChartConfig(type, labels, data, label, hideXLabels = false) {
+            const isDark = document.documentElement.classList.contains('dark');
+            const chartColors = ChartColorHelper.getChartColorsByCount(labels.length);
+            const borderColors = ChartColorHelper.getBorderColors(null, labels.length);
+            
+            const config = {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
                         labels: {
-                            color: document.documentElement.classList.contains('dark') ? '#e5e7eb' : '#374151'
+                            color: isDark ? '#e5e7eb' : '#374151'
                         }
                     }
                 },
@@ -397,48 +367,62 @@ ob_start();
                     y: {
                         beginAtZero: true,
                         ticks: {
-                            color: document.documentElement.classList.contains('dark') ? '#e5e7eb' : '#374151'
+                            color: isDark ? '#e5e7eb' : '#374151'
                         },
                         grid: {
-                            color: document.documentElement.classList.contains('dark') ? 'rgba(55, 65, 81, 0.3)' : 'rgba(0, 0, 0, 0.1)'
+                            color: isDark ? 'rgba(55, 65, 81, 0.3)' : 'rgba(0, 0, 0, 0.1)'
                         }
                     },
                     x: {
                         ticks: {
-                            color: document.documentElement.classList.contains('dark') ? '#e5e7eb' : '#374151'
+                            display: hideXLabels ? false : true,
+                            color: isDark ? '#e5e7eb' : '#374151'
                         },
                         grid: {
-                            color: document.documentElement.classList.contains('dark') ? 'rgba(55, 65, 81, 0.3)' : 'rgba(0, 0, 0, 0.1)'
+                            color: isDark ? 'rgba(55, 65, 81, 0.3)' : 'rgba(0, 0, 0, 0.1)'
                         }
                     }
                 }
-            }
-        });
+            };
+
+            return {
+                type: type,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: label || 'Number of Documents',
+                        data: data,
+                        backgroundColor: chartColors,
+                        borderColor: borderColors,
+                        borderWidth: 1
+                    }]
+                },
+                options: config
+            };
+        }
+
+        // EC Distribution Chart
+        const ecData = <?php echo json_encode($ecStats); ?>;
+        const ecLabels = ecData.map(item => item.ec);
+        const ecValues = ecData.map(item => item.count);
+
+        const ecCtx = document.getElementById('ecChart').getContext('2d');
+        new Chart(ecCtx, getChartConfig('bar', ecLabels, ecValues, 'Number of Documents'));
 
         // Item Distribution Chart
         const itemData = <?php echo json_encode($itemStats); ?>;
         const itemLabels = itemData.map(item => item.item).slice(0, 8);
         const itemValues = itemData.map(item => item.count).slice(0, 8);
 
-        const colors = [
-            'rgba(220, 20, 60, 0.8)',       // Crimson
-            'rgba(255, 69, 0, 0.8)',        // Red-Orange
-            'rgba(255, 140, 0, 0.8)',       // Dark Orange
-            'rgba(255, 165, 0, 0.8)',       // Orange
-            'rgba(218, 165, 32, 0.8)',      // Goldenrod
-            'rgba(184, 134, 11, 0.8)',      // Dark Goldenrod
-            'rgba(139, 69, 19, 0.8)',       // Saddle Brown
-            'rgba(210, 105, 30, 0.8)'       // Chocolate
-        ];
-
         const itemCtx = document.getElementById('itemChart').getContext('2d');
+        const itemColors = ChartColorHelper.getChartColorsByCount(itemLabels.length);
         new Chart(itemCtx, {
             type: 'doughnut',
             data: {
                 labels: itemLabels,
                 datasets: [{
                     data: itemValues,
-                    backgroundColor: colors.slice(0, itemLabels.length),
+                    backgroundColor: itemColors,
                     borderColor: 'rgba(255, 255, 255, 0.1)',
                     borderWidth: 2
                 }]
@@ -459,105 +443,21 @@ ob_start();
         const deptLabels = deptData.map(item => item.department);
         const deptValues = deptData.map(item => item.count);
 
-        const deptBackgroundColors = deptLabels.map((_, index) => autumnColors[index % autumnColors.length]);
-        const deptBorderColors = deptBackgroundColors.map(color => color.replace('0.8', '1'));
-
         const deptCtx = document.getElementById('deptChart').getContext('2d');
-        new Chart(deptCtx, {
-            type: 'bar',
-            data: {
-                labels: deptLabels,
-                datasets: [{
-                    label: 'Number of Documents',
-                    data: deptValues,
-                    backgroundColor: deptBackgroundColors,
-                    borderColor: deptBorderColors,
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        labels: {
-                            color: document.documentElement.classList.contains('dark') ? '#e5e7eb' : '#374151'
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            color: document.documentElement.classList.contains('dark') ? '#e5e7eb' : '#374151'
-                        },
-                        grid: {
-                            color: document.documentElement.classList.contains('dark') ? 'rgba(55, 65, 81, 0.3)' : 'rgba(0, 0, 0, 0.1)'
-                        }
-                    },
-                    x: {
-                        ticks: {
-                            display: false
-                        },
-                        grid: {
-                            color: document.documentElement.classList.contains('dark') ? 'rgba(55, 65, 81, 0.3)' : 'rgba(0, 0, 0, 0.1)'
-                        }
-                    }
-                }
-            }
-        });
+        new Chart(deptCtx, getChartConfig('bar', deptLabels, deptValues, 'Number of Documents', true));
 
         // Team Distribution Chart
         const teamData = <?php echo json_encode($teamStats); ?>;
         const teamLabels = teamData.map(item => item.team);
         const teamValues = teamData.map(item => item.count);
 
-        const teamBackgroundColors = teamLabels.map((_, index) => autumnColors[index % autumnColors.length]);
-        const teamBorderColors = teamBackgroundColors.map(color => color.replace('0.8', '1'));
-
         const teamCtx = document.getElementById('teamChart').getContext('2d');
-        new Chart(teamCtx, {
-            type: 'bar',
-            data: {
-                labels: teamLabels,
-                datasets: [{
-                    label: 'Number of Documents',
-                    data: teamValues,
-                    backgroundColor: teamBackgroundColors,
-                    borderColor: teamBorderColors,
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        labels: {
-                            color: document.documentElement.classList.contains('dark') ? '#e5e7eb' : '#374151'
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            color: document.documentElement.classList.contains('dark') ? '#e5e7eb' : '#374151'
-                        },
-                        grid: {
-                            color: document.documentElement.classList.contains('dark') ? 'rgba(55, 65, 81, 0.3)' : 'rgba(0, 0, 0, 0.1)'
-                        }
-                    },
-                    x: {
-                        ticks: {
-                            color: document.documentElement.classList.contains('dark') ? '#e5e7eb' : '#374151'
-                        },
-                        grid: {
-                            color: document.documentElement.classList.contains('dark') ? 'rgba(55, 65, 81, 0.3)' : 'rgba(0, 0, 0, 0.1)'
-                        }
-                    }
-                }
-            }
+        new Chart(teamCtx, getChartConfig('bar', teamLabels, teamValues, 'Number of Documents'));
+
+        // Listen for theme changes
+        ChartColorHelper.onThemeChange(function(event) {
+            // Reload page to refresh all charts with new colors
+            setTimeout(() => location.reload(), 200);
         });
     </script>
 </div>

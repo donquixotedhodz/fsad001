@@ -503,6 +503,7 @@ $pageTitle = 'Settings';
 require_once __DIR__ . '/app/views/layouts/master.php';
 ?>
 
+<script src="../SOMANAP/app/js/ChartColorHelper.js"></script>
 <script>
 // Load color theme preference on page load
 document.addEventListener('DOMContentLoaded', function() {
@@ -532,6 +533,11 @@ if (colorThemeForm) {
         
         // Dispatch custom event so other tabs/windows and the current page can update
         window.dispatchEvent(new CustomEvent('colorThemeChanged', { detail: { theme: selectedColorTheme } }));
+        
+        // Dispatch ChartColorHelper theme change event for chart updates
+        if (typeof ChartColorHelper !== 'undefined') {
+            ChartColorHelper.dispatchThemeChange(selectedColorTheme);
+        }
         
         // Show success message
         const button = colorThemeForm.querySelector('button[type="submit"]');

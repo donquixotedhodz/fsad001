@@ -96,49 +96,49 @@ ob_start();
     <!-- Balance Cards Grid -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <!-- Remaining Balance Card -->
-        <div class="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-lg shadow-sm border border-purple-200 dark:border-purple-700 p-8">
+        <div class="rounded-lg shadow-sm border p-8 transition-all duration-300" id="balanceCard" style="background: linear-gradient(to bottom right, rgba(var(--theme-primary-rgb), 0.1), rgba(var(--theme-primary-rgb), 0.05)); border-color: var(--theme-primary); border-width: 1px;">
             <div class="flex items-center justify-between mb-4">
-                <p class="text-sm font-medium text-purple-600 dark:text-purple-400">Remaining Balance</p>
+                <p class="text-sm font-medium" style="color: var(--theme-primary);">Remaining Balance</p>
                 <div class="flex gap-2">
-                    <button onclick="refreshBalance()" title="Refresh balance" class="p-3 bg-purple-200 dark:bg-purple-800 rounded-lg hover:bg-purple-300 dark:hover:bg-purple-700 transition">
-                        <svg id="refreshIcon" class="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button onclick="refreshBalance()" title="Refresh balance" class="p-3 rounded-lg hover:opacity-80 transition" style="background-color: rgba(var(--theme-primary-rgb), 0.2);">
+                        <svg id="refreshIcon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--theme-primary);">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                         </svg>
                     </button>
                 </div>
             </div>
-            <p id="balanceDisplay" class="text-4xl font-bold text-purple-600 dark:text-purple-400 mb-4">₱<?php echo number_format($remainingBalance, 2); ?></p>
-            <button onclick="document.getElementById('editBalanceModal').classList.remove('hidden')" class="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition font-medium">
+            <p id="balanceDisplay" class="text-4xl font-bold mb-4" style="color: var(--theme-primary);">₱<?php echo number_format($remainingBalance, 2); ?></p>
+            <button onclick="document.getElementById('editBalanceModal').classList.remove('hidden')" class="w-full px-4 py-2 text-white text-sm rounded-lg transition font-medium hover:opacity-90" style="background-color: var(--theme-primary);">
                 Edit Balance
             </button>
         </div>
 
         <!-- Total Debit Card -->
-        <div class="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 rounded-lg shadow-sm border border-red-200 dark:border-red-700 p-8">
+        <div class="rounded-lg shadow-sm border p-8 transition-all duration-300" id="debitCard" style="background: linear-gradient(to bottom right, rgba(var(--theme-danger-rgb), 0.1), rgba(var(--theme-danger-rgb), 0.05)); border-color: var(--theme-danger); border-width: 1px;">
             <div class="flex items-center justify-between mb-4">
-                <p class="text-sm font-medium text-red-600 dark:text-red-400">Total Debit Accumulation</p>
-                <div class="p-3 bg-red-200 dark:bg-red-800 rounded-lg">
-                    <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <p class="text-sm font-medium" style="color: var(--theme-danger);">Total Debit Accumulation</p>
+                <div class="p-3 rounded-lg" style="background-color: rgba(var(--theme-danger-rgb), 0.2);">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--theme-danger);">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4m0 0L3 5m0 0v8m0-8l4 4"></path>
                     </svg>
                 </div>
             </div>
-            <p class="text-4xl font-bold text-red-600 dark:text-red-400">₱<?php echo number_format($totalDebit, 2); ?></p>
-            <p class="text-xs text-red-600 dark:text-red-400 mt-4">Total amount debited from the fund</p>
+            <p class="text-4xl font-bold" style="color: var(--theme-danger);">₱<?php echo number_format($totalDebit, 2); ?></p>
+            <p class="text-xs mt-4" style="color: var(--theme-danger);">Total amount debited from the fund</p>
         </div>
 
         <!-- Total Credit Card -->
-        <div class="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-lg shadow-sm border border-green-200 dark:border-green-700 p-8">
+        <div class="rounded-lg shadow-sm border p-8 transition-all duration-300" id="creditCard" style="background: linear-gradient(to bottom right, rgba(var(--theme-success-rgb), 0.1), rgba(var(--theme-success-rgb), 0.05)); border-color: var(--theme-success); border-width: 1px;">
             <div class="flex items-center justify-between mb-4">
-                <p class="text-sm font-medium text-green-600 dark:text-green-400">Total Credit Accumulation</p>
-                <div class="p-3 bg-green-200 dark:bg-green-800 rounded-lg">
-                    <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <p class="text-sm font-medium" style="color: var(--theme-success);">Total Credit Accumulation</p>
+                <div class="p-3 rounded-lg" style="background-color: rgba(var(--theme-success-rgb), 0.2);">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--theme-success);">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7H5v12a1 1 0 001 1h12a1 1 0 001-1V9.5M13 5h8m0 0v8m0-8l-8 8-4-4m0 0L3 19m0 0v-8m0 8l4-4"></path>
                     </svg>
                 </div>
             </div>
-            <p class="text-4xl font-bold text-green-600 dark:text-green-400">₱<?php echo number_format($totalCredit, 2); ?></p>
-            <p class="text-xs text-green-600 dark:text-green-400 mt-4">Total amount credited to the fund</p>
+            <p class="text-4xl font-bold" style="color: var(--theme-success);">₱<?php echo number_format($totalCredit, 2); ?></p>
+            <p class="text-xs mt-4" style="color: var(--theme-success);">Total amount credited to the fund</p>
         </div>
     </div>
 
@@ -239,6 +239,7 @@ ob_start();
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/apexcharts@latest/dist/apexcharts.min.js"></script>
+<script src="../SOMANAP/app/js/ChartColorHelper.js"></script>
 <script>
 function refreshBalance() {
     const refreshIcon = document.getElementById('refreshIcon');
@@ -259,10 +260,14 @@ function refreshBalance() {
         });
 }
 
-// PPE Line Chart
+// PPE Line Chart with dynamic colors based on theme
 const chartDates = <?php echo json_encode($chartDates); ?>;
 const chartDebits = <?php echo json_encode($chartDebits); ?>;
 const chartCredits = <?php echo json_encode($chartCredits); ?>;
+
+// Get colors from ChartColorHelper based on current theme
+const lineColors = ChartColorHelper.getLineChartColors();
+const markerColors = ChartColorHelper.getBorderColors(null, 2);
 
 const ppeLineChartOptions = {
     series: [
@@ -280,7 +285,7 @@ const ppeLineChartOptions = {
         position: "top",
         horizontalAlign: "right",
     },
-    colors: ["#DC2626", "#16A34A"],
+    colors: [ChartColorHelper.rgbaToHex(lineColors[2]), ChartColorHelper.rgbaToHex(lineColors[1])],
     chart: {
         fontFamily: "Outfit, sans-serif",
         height: 350,
@@ -302,7 +307,7 @@ const ppeLineChartOptions = {
     },
     markers: {
         size: 4,
-        colors: ["#DC2626", "#16A34A"],
+        colors: [ChartColorHelper.rgbaToHex(lineColors[2]), ChartColorHelper.rgbaToHex(lineColors[1])],
         strokeColors: "#fff",
         strokeWidth: 2,
         hover: {
@@ -369,12 +374,42 @@ const ppeLineChart = new ApexCharts(
     ppeLineChartOptions
 );
 ppeLineChart.render();
+
+// Listen for theme changes to update chart colors
+ChartColorHelper.onThemeChange(function(event) {
+    if (ppeLineChart) {
+        const newLineColors = ChartColorHelper.getLineChartColors();
+        ppeLineChart.updateOptions({
+            colors: [ChartColorHelper.rgbaToHex(newLineColors[2]), ChartColorHelper.rgbaToHex(newLineColors[1])],
+            markers: {
+                colors: [ChartColorHelper.rgbaToHex(newLineColors[2]), ChartColorHelper.rgbaToHex(newLineColors[1])]
+            }
+        });
+    }
+});
 </script>
 
 <style>
 @keyframes spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
+}
+
+#balanceCard, #debitCard, #creditCard {
+    background: white;
+    border: 1px solid;
+}
+
+.dark #balanceCard, .dark #debitCard, .dark #creditCard {
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
+#balanceCard .text-sm, #debitCard .text-sm, #creditCard .text-sm {
+    opacity: 0.9;
+}
+
+.dark #balanceCard, .dark #debitCard, .dark #creditCard {
+    opacity: 0.95;
 }
 </style>
 

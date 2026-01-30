@@ -91,8 +91,8 @@ if ($format === 'excel') {
         $formattedDate = date('m/d/Y', strtotime($record['date']));
         echo '<tr>';
         echo '<td>' . strtoupper($formattedDate) . '</td>';
-        echo '<td>' . strtoupper(htmlspecialchars($record['check_no'] ?? '')) . '</td>';
-        echo '<td>' . strtoupper(htmlspecialchars($record['dv_or_no'] ?? '')) . '</td>';
+        echo '<td style="text-align: center;">' . strtoupper(htmlspecialchars($record['check_no'] ?? '')) . '</td>';
+        echo '<td style="text-align: center;">' . strtoupper(htmlspecialchars($record['dv_or_no'] ?? '')) . '</td>';
         echo '<td>' . strtoupper(htmlspecialchars($record['particulars'])) . '</td>';
         echo '<td class="text-right">' . number_format($record['amount'], 2) . '</td>';
         echo '</tr>';

@@ -300,6 +300,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     exit;
 }
 
+// Handle AJAX search request
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'search_ppe') {
+    header('Content-Type: application/json');
+    $searchTerm = htmlspecialchars($_POST['search'] ?? '');
+    
+    try {
+        $stmt = $conn->prepare("
+            SELECT * FROM ppe 
+            WHERE date LIKE ? 
+            OR particulars LIKE ? 
+            OR check_no LIKE ? 
+            OR dv_or_no LIKE ?
+            ORDER BY date DESC
+        ");
+        
+        $searchPattern = '%' . $searchTerm . '%';
+        $stmt->execute([$searchPattern, $searchPattern, $searchPattern, $searchPattern]);
+        $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        echo json_encode(['success' => true, 'records' => $records]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => htmlspecialchars($e->getMessage())]);
+    }
+    exit;
+}
+
 // Start output buffering to capture content
 ob_start();
 ?>
@@ -612,6 +638,19 @@ ob_start();
             <option value="all" <?php echo (isset($_GET['limit']) && $_GET['limit'] == 'all') ? 'selected' : ''; ?>>Show All</option>
         </select>
         <span class="text-sm text-gray-600 dark:text-gray-400">entries</span>
+        
+        <!-- Search Box -->
+        <div class="flex-1 ml-4 relative">
+            <input 
+                type="text" 
+                id="ppeSearchInput"
+                placeholder="Search by date, particulars, check no, or DV/OR no..." 
+                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+            <svg class="absolute right-3 top-2.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+        </div>
     </div>
 
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-x-auto">
@@ -686,7 +725,7 @@ ob_start();
                             echo '</td>';
                             echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center">';
                             if ($canEdit) {
-                                echo '<button onclick="editPPE(' . $record['id'] . ')" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition mr-2" style="background-color: var(--theme-secondary);" title="Edit" style="font-size: 14px;"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>';
+                                echo '<button onclick="editPPE(' . $record['id'] . ')" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition mr-2" style="background-color: var(--theme-accent);" title="Edit" style="font-size: 14px;"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>';
                                 echo '<button onclick="deletePPE(' . htmlspecialchars(json_encode($record)) . ')" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition" style="background-color: var(--theme-danger);" title="Delete"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>';
                             } else {
                                 echo '<span class="text-gray-400 text-sm">View Only</span>';
@@ -1193,6 +1232,83 @@ function initCombobox(inputSelector, listSelector) {
         });
     });
 }
+
+// PPE Table Search Functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('ppeSearchInput');
+    const tableBody = document.querySelector('table tbody');
+    
+    if (searchInput) {
+        searchInput.addEventListener('keyup', function() {
+            const searchTerm = this.value.toLowerCase().trim();
+            
+            if (searchTerm === '') {
+                // Clear search - reload page to show original data
+                location.reload();
+                return;
+            }
+            
+            // Perform AJAX search
+            fetch('', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'action=search_ppe&search=' + encodeURIComponent(searchTerm)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.records.length > 0) {
+                    // Clear existing rows
+                    tableBody.innerHTML = '';
+                    
+                    // Add search results
+                    data.records.forEach(record => {
+                        const row = document.createElement('tr');
+                        row.className = 'border-b border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition';
+                        
+                        const balance = parseFloat(record.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        const debit = parseFloat(record.debit || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        const credit = parseFloat(record.credit || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        
+                        row.innerHTML = `
+                            <td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-sm text-gray-700 dark:text-gray-300">${new Date(record.date).toLocaleDateString()}</td>
+                            <td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-sm text-gray-700 dark:text-gray-300">${record.particulars || '-'}</td>
+                            <td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-sm text-gray-700 dark:text-gray-300">${record.check_no || '-'}</td>
+                            <td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-sm text-gray-700 dark:text-gray-300">${record.dv_or_no || '-'}</td>
+                            <td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-sm text-right text-gray-700 dark:text-gray-300">${debit}</td>
+                            <td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-sm text-right text-gray-700 dark:text-gray-300">${credit}</td>
+                            <td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-sm text-right text-gray-700 dark:text-gray-300">${balance}</td>
+                            <td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center">
+                                ${record.file_name ? `<a href="uploads/ppe/${record.file_name}" target="_blank" class="text-blue-500 hover:underline">📄</a>` : '-'}
+                            </td>
+                            <td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center">
+                                <div class="flex gap-2 justify-center">
+                                    ${<?php echo $canEdit ? 'true' : 'false'; ?> ? `
+                                        <button onclick="editPPE(${record.id})" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition mr-2" style="background-color: var(--theme-accent);" title="Edit">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                        </button>
+                                        <button onclick="deletePPE(${JSON.stringify(record).replace(/"/g, '&quot;')})" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition" style="background-color: var(--theme-danger);" title="Delete">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            </td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                } else {
+                    // No results
+                    tableBody.innerHTML = '<tr class="no-results-row"><td colspan="9" class="border border-gray-300 dark:border-gray-600 px-4 py-4 text-center text-gray-500 dark:text-gray-400">No PPE records match your search</td></tr>';
+                }
+            })
+            .catch(error => {
+                console.error('Search error:', error);
+                tableBody.innerHTML = '<tr><td colspan="9" class="border border-gray-300 dark:border-gray-600 px-4 py-4 text-center text-red-500">Error performing search</td></tr>';
+            });
+        });
+    }
+});
 </script>
 </div>
 

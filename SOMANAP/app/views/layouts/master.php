@@ -153,6 +153,22 @@
                 warningRgb: '107, 114, 128',
                 info: '#6b7280',         // gray-500
                 infoRgb: '107, 114, 128'
+            },
+            gradient: {
+                primary: '#3b82f6',      // blue-500 (view/default)
+                primaryRgb: '59, 130, 246',
+                secondary: '#ffffff',    // white (base for favorites - turns red on select)
+                secondaryRgb: '255, 255, 255',
+                accent: '#eab308',       // yellow-500 (edit)
+                accentRgb: '234, 179, 8',
+                danger: '#dc2626',       // red-600 (delete)
+                dangerRgb: '220, 38, 38',
+                success: '#10b981',      // emerald-500
+                successRgb: '16, 185, 129',
+                warning: '#eab308',      // yellow-500
+                warningRgb: '234, 179, 8',
+                info: '#3b82f6',         // blue-500
+                infoRgb: '59, 130, 246'
             }
         };
 

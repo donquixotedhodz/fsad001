@@ -236,8 +236,8 @@ ob_start();
                         </button>
                         <?php endif; ?>
                         <!-- Remove from Favorites Button (Star Icon) -->
-                        <button onclick="removeFavorite(<?php echo $doc['id']; ?>, this)" title="Remove from favorites" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition" style="background-color: var(--theme-danger);">
-                            <svg class="w-4 h-4" fill="currentColor" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <button onclick="removeFavorite(<?php echo $doc['id']; ?>, this)" title="Remove from favorites" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition" style="background-color: var(--theme-danger); border: 2px solid black;">
+                            <svg class="w-4 h-4" fill="currentColor" stroke="black" stroke-width="1.5" viewBox="0 0 24 24">
                                 <path d="M12 2L15.09 10.26H24L17.45 14.74L20.54 23L12 18.52L3.46 23L6.55 14.74L0 10.26H8.91L12 2Z"/>
                             </svg>
                         </button>

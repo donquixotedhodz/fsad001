@@ -342,14 +342,14 @@ ob_start();
                         $favBgColor = $isFavorited ? 'background-color: var(--theme-danger);' : 'background-color: var(--theme-secondary);';
                         $favFill = $isFavorited ? 'currentColor' : 'none';
                         ?>
-                        <button onclick="toggleFavorite(<?php echo $doc['id']; ?>, this)" title="<?php echo $favTitle; ?>" class="toggle-favorite-btn inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition favorite-btn-<?php echo $doc['id']; ?> <?php echo $favClass; ?>" style="<?php echo $favBgColor; ?>" data-document-id="<?php echo $doc['id']; ?>" data-is-favorite="<?php echo $isFavorited ? '1' : '0'; ?>">
-                            <svg class="w-4 h-4 favorite-star" fill="<?php echo $favFill; ?>" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <button onclick="toggleFavorite(<?php echo $doc['id']; ?>, this)" title="<?php echo $favTitle; ?>" class="toggle-favorite-btn inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition favorite-btn-<?php echo $doc['id']; ?> <?php echo $favClass; ?>" style="<?php echo $favBgColor; ?> border: 2px solid black;" data-document-id="<?php echo $doc['id']; ?>" data-is-favorite="<?php echo $isFavorited ? '1' : '0'; ?>">
+                            <svg class="w-4 h-4 favorite-star" fill="<?php echo $favFill; ?>" stroke="black" stroke-width="1.5" viewBox="0 0 24 24">
                                 <path d="M12 2L15.09 10.26H24L17.45 14.74L20.54 23L12 18.52L3.46 23L6.55 14.74L0 10.26H8.91L12 2Z"/>
                             </svg>
                         </button>
                         <?php endif; ?>
                         <?php if (isset($_SESSION['role']) && ($_SESSION['role'] === 'administrator' || $_SESSION['role'] === 'superadmin')): ?>
-                        <button onclick="openEditModal(<?php echo htmlspecialchars(json_encode($doc)); ?>)" title="Edit document" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition mr-2" style="background-color: var(--theme-secondary);">
+                        <button onclick="openEditModal(<?php echo htmlspecialchars(json_encode($doc)); ?>)" title="Edit document" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition mr-2" style="background-color: var(--theme-accent);">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                             </svg>

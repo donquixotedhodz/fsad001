@@ -346,6 +346,21 @@ ob_start();
                                     </div>
                                 </div>
                             </label>
+
+                            <!-- Gradient Theme -->
+                            <label class="flex items-start gap-4 cursor-pointer p-4 border-2 border-gray-200 dark:border-gray-600 rounded-lg hover:border-blue-400 dark:hover:border-blue-400 transition" onclick="selectColorTheme('gradient')">
+                                <input type="radio" name="colorTheme" value="gradient" class="w-4 h-4 text-blue-600 mt-1">
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-gray-900 dark:text-white">Gradient</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Blue view, white-to-red favorites, yellow edit, red delete</p>
+                                    <div class="flex gap-2 mt-3">
+                                        <div class="w-8 h-8 bg-blue-500 rounded"></div>
+                                        <div class="w-8 h-8 bg-white border-2 border-gray-300 rounded"></div>
+                                        <div class="w-8 h-8 bg-yellow-500 rounded"></div>
+                                        <div class="w-8 h-8 bg-red-600 rounded"></div>
+                                    </div>
+                                </div>
+                            </label>
                         </div>
                     </div>
 
@@ -614,6 +629,22 @@ const colorThemesSettings = {
         warningRgb: '107, 114, 128',
         info: '#6b7280',         // gray-500
         infoRgb: '107, 114, 128'
+    },
+    gradient: {
+        primary: '#3b82f6',      // blue-500 (view/default)
+        primaryRgb: '59, 130, 246',
+        secondary: '#ffffff',    // white (base for favorites - turns red on select)
+        secondaryRgb: '255, 255, 255',
+        accent: '#eab308',       // yellow-500 (edit)
+        accentRgb: '234, 179, 8',
+        danger: '#dc2626',       // red-600 (delete)
+        dangerRgb: '220, 38, 38',
+        success: '#10b981',      // emerald-500
+        successRgb: '16, 185, 129',
+        warning: '#eab308',      // yellow-500
+        warningRgb: '234, 179, 8',
+        info: '#3b82f6',         // blue-500
+        infoRgb: '59, 130, 246'
     }
 };
 

@@ -240,7 +240,6 @@ ob_start();
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Department/Office</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">EC</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Team</th>
-                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Date</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Actions</th>
                 </tr>
             </thead>
@@ -314,9 +313,6 @@ ob_start();
                             echo '-';
                         }
                         ?>
-                    </td>
-                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
-                        <?php echo date('M d, Y', strtotime($doc['created_at'])); ?>
                     </td>
                     <td class="px-6 py-4 text-sm space-x-3 flex items-center justify-center">
                         <?php if (!empty($doc['file_path'])): ?>

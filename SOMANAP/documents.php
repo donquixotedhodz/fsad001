@@ -627,36 +627,39 @@ ob_start();
                 <button type="button" onclick="addEditControlPoint()" class="mt-2 px-4 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded hover:bg-green-200 dark:hover:bg-green-900/50 transition text-sm font-medium">+ Add Control Point</button>
             </div>
 
-            <!-- Departments -->
-            <div>
-                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Departments</label>
-                <div id="editDepartmentContainer" class="space-y-2">
-                    <div class="flex gap-2 items-end">
-                        <div class="flex-1 relative">
-                            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1.</span>
-                            <input type="text" name="edit_departments[]" placeholder="Type to search department..." class="edit-department-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
-                            <div class="edit-department-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+            <!-- Two Column Layout: Departments and Teams -->
+            <div class="grid grid-cols-2 gap-6">
+                <!-- Departments Section -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Departments</label>
+                    <div id="editDepartmentContainer" class="space-y-2">
+                        <div class="flex gap-2 items-end">
+                            <div class="flex-1 relative">
+                                <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1.</span>
+                                <input type="text" name="edit_departments[]" placeholder="Type to search department..." class="edit-department-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+                                <div class="edit-department-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+                            </div>
+                            <button type="button" onclick="this.parentElement.remove(); updateEditDepartmentNumbers()" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">✕</button>
                         </div>
-                        <button type="button" onclick="this.parentElement.remove(); updateEditDepartmentNumbers()" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">✕</button>
                     </div>
+                    <button type="button" onclick="addEditDepartment()" class="mt-2 px-4 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded hover:bg-green-200 dark:hover:bg-green-900/50 transition text-sm font-medium">+ Add Department</button>
                 </div>
-                <button type="button" onclick="addEditDepartment()" class="mt-2 px-4 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded hover:bg-green-200 dark:hover:bg-green-900/50 transition text-sm font-medium">+ Add Department</button>
-            </div>
 
-            <!-- Teams -->
-            <div>
-                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Teams</label>
-                <div id="editTeamContainer" class="space-y-2">
-                    <div class="flex gap-2 items-end">
-                        <div class="flex-1 relative">
-                            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1.</span>
-                            <input type="text" name="edit_teams[]" placeholder="Type to search team..." class="edit-team-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
-                            <div class="edit-team-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+                <!-- Teams Section -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Teams</label>
+                    <div id="editTeamContainer" class="space-y-2">
+                        <div class="flex gap-2 items-end">
+                            <div class="flex-1 relative">
+                                <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1.</span>
+                                <input type="text" name="edit_teams[]" placeholder="Type to search team..." class="edit-team-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+                                <div class="edit-team-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+                            </div>
+                            <button type="button" onclick="this.parentElement.remove(); updateEditTeamNumbers()" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">✕</button>
                         </div>
-                        <button type="button" onclick="this.parentElement.remove(); updateEditTeamNumbers()" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">✕</button>
                     </div>
+                    <button type="button" onclick="addEditTeam()" class="mt-2 px-4 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded hover:bg-green-200 dark:hover:bg-green-900/50 transition text-sm font-medium">+ Add Team</button>
                 </div>
-                <button type="button" onclick="addEditTeam()" class="mt-2 px-4 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded hover:bg-green-200 dark:hover:bg-green-900/50 transition text-sm font-medium">+ Add Team</button>
             </div>
 
             <!-- File Upload -->

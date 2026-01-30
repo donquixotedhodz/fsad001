@@ -186,21 +186,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
                 $errorMessage = "Failed to upload file.";
             }
         }
-    } else {
-        // No new file uploaded - check if we should delete existing file
-        // If this is from an edit form without file selection, mark to delete existing file
-        $stmt = $conn->prepare("SELECT file_path FROM ppe WHERE id = ?");
-        $stmt->execute([$ppe_id]);
-        $oldRecord = $stmt->fetch();
-        
-        if ($oldRecord && !empty($oldRecord['file_path'])) {
-            $oldFile = __DIR__ . '/' . $oldRecord['file_path'];
-            if (file_exists($oldFile)) {
-                unlink($oldFile);
-            }
-            $deleteExistingFile = true;
-        }
     }
+    // If no new file, keep the existing file - don't delete it
     
     if (!isset($errorMessage) && $ppe_id > 0 && !empty($particulars) && ($check_no > 0 || $check_no === 'ONLINE')) {
         try {
@@ -1009,29 +996,37 @@ function deletePPE(record) {
 function prepareEditPPESubmit(event) {
     event.preventDefault();
     
-    const form = document.getElementById('editPPEForm');
-    const formData = new FormData(form);
+    // Ensure the DV/OR number is set in the hidden field
     const checkType = document.getElementById('editCheckType').value;
     const hiddenDV = document.getElementById('editDVNumber');
     
     if (checkType === 'online') {
         const manualDV = document.getElementById('editDVManual').value;
+        if (!manualDV) {
+            alert('Please enter DV/OR number for online check');
+            return;
+        }
         hiddenDV.value = manualDV;
+    } else {
+        const prefix = document.getElementById('editDVPrefix').value;
+        const suffix = document.getElementById('editDVSuffix').value;
+        if (!suffix) {
+            alert('Please enter DV/OR suffix');
+            return;
+        }
+        hiddenDV.value = prefix + suffix;
     }
     
-    // Update the FormData with the corrected DV value
-    formData.set('dv_or_no', hiddenDV.value);
+    // Validate particulars
+    const particulars = document.getElementById('editParticulars').value.trim();
+    if (!particulars) {
+        alert('Please enter particulars (names)');
+        return;
+    }
     
-    // Submit the form via fetch
-    fetch('', {
-        method: 'POST',
-        body: formData
-    }).then(response => {
-        // Form will reload after submission via PHP redirect or page refresh
-        location.reload();
-    }).catch(error => {
-        console.error('Error:', error);
-    });
+    // Submit the form directly with proper multipart/form-data
+    const form = document.getElementById('editPPEForm');
+    form.submit();
 }
 
 // Initialize on page load

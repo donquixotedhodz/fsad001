@@ -4,6 +4,16 @@ require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/app/controllers/MainController.php';
 
 MainController::requireAuth();
+
+// Check if user is superadmin or administrator - both can view, only superadmin can edit
+if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], ['superadmin', 'administrator'])) {
+    header("Location: dashboard.php");
+    exit();
+}
+
+// Only superadmin can perform add, edit, delete operations
+$canEdit = isset($_SESSION['role']) && $_SESSION['role'] === 'superadmin';
+
 $controller = new MainController($conn);
 $controller->setCurrentPage('ppe');
 
@@ -17,6 +27,13 @@ $STARTING_BALANCE = 0.00;
 
 // Handle form submission for adding PPE
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_ppe') {
+    // Only superadmin can add PPE
+    if (!$canEdit) {
+        $_SESSION['errorMessage'] = "You do not have permission to add PPE records.";
+        header('Location: ' . $_SERVER['REQUEST_URI']);
+        exit;
+    }
+    
     $date = $_POST['date'] ?? date('Y-m-d'); // User-provided date or current date
     $particulars = htmlspecialchars($_POST['particulars'] ?? '');
     $check_type = htmlspecialchars($_POST['check_type'] ?? 'actual');
@@ -90,6 +107,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
 
 // Handle delete action
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_ppe') {
+    // Only superadmin can delete PPE
+    if (!$canEdit) {
+        $_SESSION['errorMessage'] = "You do not have permission to delete PPE records.";
+        header('Location: ' . $_SERVER['REQUEST_URI']);
+        exit;
+    }
+    
     $ppe_id = intval($_POST['ppe_id'] ?? 0);
     
     if ($ppe_id > 0) {
@@ -139,6 +163,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
 
 // Handle edit action
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'edit_ppe') {
+    // Only superadmin can edit PPE
+    if (!$canEdit) {
+        $_SESSION['errorMessage'] = "You do not have permission to edit PPE records.";
+        header('Location: ' . $_SERVER['REQUEST_URI']);
+        exit;
+    }
     $ppe_id = intval($_POST['ppe_id'] ?? 0);
     $date = $_POST['date'] ?? date('Y-m-d');
     $particulars = htmlspecialchars($_POST['particulars'] ?? '');
@@ -277,9 +307,11 @@ ob_start();
 <div class="p-6">
     <div class="mb-6 flex justify-between items-center">
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white">PPE Provident Fund</h1>
+        <?php if ($canEdit): ?>
         <button onclick="document.getElementById('addPPEModal').showModal()" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">
             + Add PPE
         </button>
+        <?php endif; ?>
     </div>
 
     <!-- Success/Error Messages -->
@@ -294,10 +326,16 @@ ob_start();
         </div>
         <?php unset($_SESSION['successMessage']); ?>
     <?php endif; ?>
-    <?php if (isset($errorMessage)): ?>
-        <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-            <?php echo $errorMessage; ?>
+    <?php 
+    // Check for session error message first, then check local variable
+    $displayError = isset($_SESSION['errorMessage']) ? $_SESSION['errorMessage'] : (isset($errorMessage) ? $errorMessage : null);
+    if ($displayError): 
+    ?>
+        <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded flex justify-between items-center">
+            <span><?php echo $displayError; ?></span>
+            <button onclick="this.parentElement.style.display = 'none'" class="text-red-700 hover:text-red-900 font-bold ml-4">✕</button>
         </div>
+        <?php unset($_SESSION['errorMessage']); ?>
     <?php endif; ?>
 
     <!-- Add PPE Modal -->
@@ -647,8 +685,12 @@ ob_start();
                             }
                             echo '</td>';
                             echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center">';
-                            echo '<button onclick="editPPE(' . $record['id'] . ')" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition mr-2" style="background-color: var(--theme-secondary);" title="Edit" style="font-size: 14px;"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>';
-                            echo '<button onclick="deletePPE(' . htmlspecialchars(json_encode($record)) . ')" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition" style="background-color: var(--theme-danger);" title="Delete"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>';
+                            if ($canEdit) {
+                                echo '<button onclick="editPPE(' . $record['id'] . ')" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition mr-2" style="background-color: var(--theme-secondary);" title="Edit" style="font-size: 14px;"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>';
+                                echo '<button onclick="deletePPE(' . htmlspecialchars(json_encode($record)) . ')" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition" style="background-color: var(--theme-danger);" title="Delete"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>';
+                            } else {
+                                echo '<span class="text-gray-400 text-sm">View Only</span>';
+                            }
                             echo '</td>';
                             echo '</tr>';
                         }

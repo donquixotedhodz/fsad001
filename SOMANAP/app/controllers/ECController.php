@@ -96,5 +96,39 @@ class ECController {
             return ['success' => false, 'message' => 'Error: ' . htmlspecialchars($e->getMessage())];
         }
     }
+
+    /**
+     * Search ECs by name or code
+     */
+    public function searchECs($searchTerm, $limit = 10, $offset = 0) {
+        try {
+            $searchTerm = '%' . $searchTerm . '%';
+            if ($limit === 0) {
+                $stmt = $this->conn->prepare("SELECT * FROM electric_cooperatives WHERE name LIKE ? OR code LIKE ? OR description LIKE ? ORDER BY name ASC");
+                $stmt->execute([$searchTerm, $searchTerm, $searchTerm]);
+            } else {
+                $stmt = $this->conn->prepare("SELECT * FROM electric_cooperatives WHERE name LIKE ? OR code LIKE ? OR description LIKE ? ORDER BY name ASC LIMIT ? OFFSET ?");
+                $stmt->execute([$searchTerm, $searchTerm, $searchTerm, $limit, $offset]);
+            }
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Get search count
+     */
+    public function getSearchCount($searchTerm) {
+        try {
+            $searchTerm = '%' . $searchTerm . '%';
+            $stmt = $this->conn->prepare("SELECT COUNT(*) as total FROM electric_cooperatives WHERE name LIKE ? OR code LIKE ? OR description LIKE ?");
+            $stmt->execute([$searchTerm, $searchTerm, $searchTerm]);
+            $result = $stmt->fetch();
+            return $result['total'];
+        } catch (Exception $e) {
+            return 0;
+        }
+    }
 }
 ?>

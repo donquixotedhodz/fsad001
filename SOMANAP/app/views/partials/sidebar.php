@@ -91,6 +91,16 @@
                 <span class="font-medium">Manage EC</span>
             </a>
 
+            <!-- Manage Users - Only for Administrator and Superadmin -->
+            <?php if (isset($_SESSION['role']) && ($_SESSION['role'] === 'administrator' || $_SESSION['role'] === 'superadmin')): ?>
+            <a href="manage_users.php" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo $currentPage === 'manage_users' ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 8.646 4 4 0 010-8.646zm0 10c4.418 0 8-1.79 8-4v-2c0 2.21-3.582 4-8 4s-8-1.79-8-4v2c0 2.21 3.582 4 8 4zm-8 5v-2c0 2.21 3.582 4 8 4s8-1.79 8-4v2M4 12a8 8 0 0116 0"></path>
+                </svg>
+                <span class="font-medium">Manage Users</span>
+            </a>
+            <?php endif; ?>
+
             <!-- Divider -->
             <div class="my-4 border-t border-gray-200 dark:border-gray-700"></div>
 

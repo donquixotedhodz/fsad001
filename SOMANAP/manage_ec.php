@@ -83,10 +83,19 @@ $itemsPerPage = isset($_GET['limit']) && $_GET['limit'] !== 'all' ? intval($_GET
 $currentPageNum = isset($_GET['page']) ? intval($_GET['page']) : 1;
 $offset = ($currentPageNum - 1) * $itemsPerPage;
 
-$totalItems = $ecController->getTotalCount();
-$totalPages = $itemsPerPage === 0 ? 1 : ceil($totalItems / $itemsPerPage);
+// Get search term from GET parameter
+$searchTerm = isset($_GET['search']) ? htmlspecialchars($_GET['search']) : '';
 
-$ecs = $ecController->getAllECs($itemsPerPage === 0 ? 0 : $itemsPerPage, $offset);
+// Fetch records based on search
+if (!empty($searchTerm)) {
+    $totalItems = $ecController->getSearchCount($searchTerm);
+    $totalPages = $itemsPerPage === 0 ? 1 : ceil($totalItems / $itemsPerPage);
+    $ecs = $ecController->searchECs($searchTerm, $itemsPerPage === 0 ? 0 : $itemsPerPage, $offset);
+} else {
+    $totalItems = $ecController->getTotalCount();
+    $totalPages = $itemsPerPage === 0 ? 1 : ceil($totalItems / $itemsPerPage);
+    $ecs = $ecController->getAllECs($itemsPerPage === 0 ? 0 : $itemsPerPage, $offset);
+}
 
 // Start output buffering to capture content
 ob_start();
@@ -192,7 +201,7 @@ ob_start();
     </dialog>
 
     <!-- Show Entries and EC Table -->
-    <div class="mb-4 flex items-center gap-2">
+    <div class="mb-4 flex items-center gap-2 flex-wrap">
         <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Show</label>
         <select id="limitSelect" onchange="changeLimit()" class="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="5" <?php echo (!isset($_GET['limit']) || $_GET['limit'] == 5) ? 'selected' : ''; ?>>5</option>
@@ -201,6 +210,16 @@ ob_start();
             <option value="all" <?php echo (isset($_GET['limit']) && $_GET['limit'] == 'all') ? 'selected' : ''; ?>>Show All</option>
         </select>
         <span class="text-sm text-gray-600 dark:text-gray-400">entries</span>
+
+        <!-- Search Bar -->
+        <div class="ml-auto flex gap-2">
+            <input type="text" id="searchInput" placeholder="Search EC name, code..." value="<?php echo htmlspecialchars($searchTerm); ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" onkeyup="handleSearch(this.value)">
+            <?php if (!empty($searchTerm)): ?>
+            <a href="?page=1&limit=<?php echo isset($_GET['limit']) ? $_GET['limit'] : 10; ?>" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition dark:bg-gray-600 dark:text-white dark:hover:bg-gray-700">
+                Clear
+            </a>
+            <?php endif; ?>
+        </div>
     </div>
 
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-x-auto">
@@ -249,7 +268,7 @@ ob_start();
         </div>
         <div class="flex gap-2">
             <?php if ($currentPageNum > 1): ?>
-            <a href="?page=<?php echo $currentPageNum - 1; ?>&limit=<?php echo isset($_GET['limit']) ? $_GET['limit'] : 10; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+            <a href="?page=<?php echo $currentPageNum - 1; ?>&limit=<?php echo isset($_GET['limit']) ? $_GET['limit'] : 10; ?><?php echo !empty($searchTerm) ? '&search=' . urlencode($searchTerm) : ''; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
                 Previous
             </a>
             <?php endif; ?>
@@ -259,7 +278,7 @@ ob_start();
             $endPage = min($totalPages, $currentPageNum + 2);
             
             if ($startPage > 1) {
-                echo '<a href="?page=1&limit=' . (isset($_GET['limit']) ? $_GET['limit'] : 10) . '" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">1</a>';
+                echo '<a href="?page=1&limit=' . (isset($_GET['limit']) ? $_GET['limit'] : 10) . (! empty($searchTerm) ? '&search=' . urlencode($searchTerm) : '') . '" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">1</a>';
                 if ($startPage > 2) echo '<span class="px-2 py-2">...</span>';
             }
             
@@ -267,18 +286,18 @@ ob_start();
                 if ($i === $currentPageNum) {
                     echo '<span class="px-4 py-2 bg-blue-500 text-white rounded-lg">' . $i . '</span>';
                 } else {
-                    echo '<a href="?page=' . $i . '&limit=' . (isset($_GET['limit']) ? $_GET['limit'] : 10) . '" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">' . $i . '</a>';
+                    echo '<a href="?page=' . $i . '&limit=' . (isset($_GET['limit']) ? $_GET['limit'] : 10) . (! empty($searchTerm) ? '&search=' . urlencode($searchTerm) : '') . '" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">' . $i . '</a>';
                 }
             }
             
             if ($endPage < $totalPages) {
                 if ($endPage < $totalPages - 1) echo '<span class="px-2 py-2">...</span>';
-                echo '<a href="?page=' . $totalPages . '&limit=' . (isset($_GET['limit']) ? $_GET['limit'] : 10) . '" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">' . $totalPages . '</a>';
+                echo '<a href="?page=' . $totalPages . '&limit=' . (isset($_GET['limit']) ? $_GET['limit'] : 10) . (! empty($searchTerm) ? '&search=' . urlencode($searchTerm) : '') . '" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">' . $totalPages . '</a>';
             }
             ?>
 
             <?php if ($currentPageNum < $totalPages): ?>
-            <a href="?page=<?php echo $currentPageNum + 1; ?>&limit=<?php echo isset($_GET['limit']) ? $_GET['limit'] : 10; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+            <a href="?page=<?php echo $currentPageNum + 1; ?>&limit=<?php echo isset($_GET['limit']) ? $_GET['limit'] : 10; ?><?php echo !empty($searchTerm) ? '&search=' . urlencode($searchTerm) : ''; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
                 Next
             </a>
             <?php endif; ?>
@@ -290,7 +309,19 @@ ob_start();
 <script>
 function changeLimit() {
     const limit = document.getElementById('limitSelect').value;
-    window.location.href = '?page=1&limit=' + limit;
+    const searchTerm = document.getElementById('searchInput').value;
+    const search = searchTerm ? '&search=' + encodeURIComponent(searchTerm) : '';
+    window.location.href = '?page=1&limit=' + limit + search;
+}
+
+function handleSearch(value) {
+    // Debounce search
+    clearTimeout(window.searchTimeout);
+    window.searchTimeout = setTimeout(() => {
+        const limit = document.getElementById('limitSelect').value;
+        const search = value ? '&search=' + encodeURIComponent(value) : '';
+        window.location.href = '?page=1&limit=' + limit + search;
+    }, 500);
 }
 
 function editEC(id) {

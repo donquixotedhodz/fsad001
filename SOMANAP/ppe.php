@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     $date = $_POST['date'] ?? date('Y-m-d'); // User-provided date or current date
     $particulars = htmlspecialchars($_POST['particulars'] ?? '');
     $check_type = htmlspecialchars($_POST['check_type'] ?? 'actual');
-    $check_no = $check_type === 'online' ? 'ONLINE' : intval($_POST['check_no'] ?? 0);
+    $check_no = $check_type === 'remittance' ? '' : ($check_type === 'online' ? 'ONLINE' : intval($_POST['check_no'] ?? 0));
     $dv_or_no = htmlspecialchars($_POST['dv_or_no'] ?? '');
     $debit = floatval($_POST['debit'] ?? 0);
     $credit = floatval($_POST['credit'] ?? 0);
@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         }
     }
     
-    if (!isset($errorMessage) && !empty($particulars) && ($check_no > 0 || $check_no === 'ONLINE')) {
+    if (!isset($errorMessage) && !empty($particulars) && ($check_no > 0 || $check_no === 'ONLINE' || $check_no === '')) {
         try {
             // Get the last balance
             $stmt = $conn->prepare("SELECT balance FROM ppe ORDER BY id DESC LIMIT 1");
@@ -76,7 +76,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             $updateFundStmt = $conn->prepare("UPDATE ppe_funds SET remaining_balance = ? WHERE fund_name = 'PPE Provident Fund'");
             $updateFundStmt->execute([$newBalance]);
             
-            $successMessage = "PPE record added successfully!";
+            // Set session message and redirect to avoid form resubmission warning
+            $_SESSION['successMessage'] = "PPE record added successfully!";
+            header('Location: ' . $_SERVER['REQUEST_URI']);
+            exit;
         } catch (Exception $e) {
             $errorMessage = "Error adding record: " . htmlspecialchars($e->getMessage());
         }
@@ -123,7 +126,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
                 $updateFundStmt = $conn->prepare("UPDATE ppe_funds SET remaining_balance = ? WHERE fund_name = 'PPE Provident Fund'");
                 $updateFundStmt->execute([$currentBalance]);
                 
-                $successMessage = "PPE record deleted successfully!";
+                // Set session message and redirect to avoid form resubmission warning
+                $_SESSION['successMessage'] = "PPE record deleted successfully!";
+                header('Location: ' . $_SERVER['REQUEST_URI']);
+                exit;
             }
         } catch (Exception $e) {
             $errorMessage = "Error deleting record: " . htmlspecialchars($e->getMessage());
@@ -137,7 +143,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     $date = $_POST['date'] ?? date('Y-m-d');
     $particulars = htmlspecialchars($_POST['particulars'] ?? '');
     $check_type = htmlspecialchars($_POST['check_type'] ?? 'actual');
-    $check_no = $check_type === 'online' ? 'ONLINE' : intval($_POST['check_no'] ?? 0);
+    $check_no = $check_type === 'remittance' ? '' : ($check_type === 'online' ? 'ONLINE' : intval($_POST['check_no'] ?? 0));
     $dv_or_no = htmlspecialchars($_POST['dv_or_no'] ?? '');
     $debit = floatval($_POST['debit'] ?? 0);
     $credit = floatval($_POST['credit'] ?? 0);
@@ -189,7 +195,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     }
     // If no new file, keep the existing file - don't delete it
     
-    if (!isset($errorMessage) && $ppe_id > 0 && !empty($particulars) && ($check_no > 0 || $check_no === 'ONLINE')) {
+    if (!isset($errorMessage) && $ppe_id > 0 && !empty($particulars) && ($check_no > 0 || $check_no === 'ONLINE' || $check_no === '')) {
         try {
             // Get the current record
             $stmt = $conn->prepare("SELECT debit, credit FROM ppe WHERE id = ?");
@@ -225,7 +231,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             $updateFundStmt = $conn->prepare("UPDATE ppe_funds SET remaining_balance = ? WHERE fund_name = 'PPE Provident Fund'");
             $updateFundStmt->execute([$currentBalance]);
             
-            $successMessage = "PPE record updated successfully!";
+            // Set session message and redirect to avoid form resubmission warning
+            $_SESSION['successMessage'] = "PPE record updated successfully!";
+            header('Location: ' . $_SERVER['REQUEST_URI']);
+            exit;
         } catch (Exception $e) {
             $errorMessage = "Error updating record: " . htmlspecialchars($e->getMessage());
         }
@@ -274,10 +283,16 @@ ob_start();
     </div>
 
     <!-- Success/Error Messages -->
-    <?php if (isset($successMessage)): ?>
-        <div class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
-            <?php echo $successMessage; ?>
+    <?php 
+    // Check for session message first, then check local variable
+    $displaySuccess = isset($_SESSION['successMessage']) ? $_SESSION['successMessage'] : (isset($successMessage) ? $successMessage : null);
+    if ($displaySuccess): 
+    ?>
+        <div id="successMessage" class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded flex justify-between items-center">
+            <span><?php echo $displaySuccess; ?></span>
+            <button onclick="document.getElementById('successMessage').style.display = 'none'" class="text-green-700 hover:text-green-900 font-bold ml-4">✕</button>
         </div>
+        <?php unset($_SESSION['successMessage']); ?>
     <?php endif; ?>
     <?php if (isset($errorMessage)): ?>
         <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
@@ -301,10 +316,11 @@ ob_start();
 
                 <!-- Check No Type -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Check Type *</label>
-                    <select id="checkType" name="check_type" required onchange="toggleCheckNoInput()" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Check Type</label>
+                    <select id="checkType" name="check_type" onchange="toggleCheckNoInput()" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="actual">Actual Check No.</option>
                         <option value="online">Online</option>
+                        <option value="remittance">Remittance</option>
                     </select>
                 </div>
 
@@ -423,10 +439,11 @@ ob_start();
 
                 <!-- Check No Type -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Check Type *</label>
-                    <select id="editCheckType" name="check_type" required onchange="toggleCheckNoInputEdit()" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Check Type</label>
+                    <select id="editCheckType" name="check_type" onchange="toggleCheckNoInputEdit()" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="actual">Actual Check No.</option>
                         <option value="online">Online</option>
+                        <option value="remittance">Remittance</option>
                     </select>
                 </div>
 
@@ -703,9 +720,10 @@ function toggleCheckNoInput() {
     const dvFormatted = document.getElementById('addDVFormatted');
     const dvOnline = document.getElementById('addDVOnline');
     
-    if (checkType === 'online') {
+    if (checkType === 'online' || checkType === 'remittance') {
         checkNoDiv.style.display = 'none';
         checkNoInput.required = false;
+        checkNoInput.value = '';
         dvFormatted.style.display = 'none';
         dvOnline.style.display = 'block';
         document.getElementById('addDVManual').required = false;
@@ -725,9 +743,10 @@ function toggleCheckNoInputEdit() {
     const dvFormatted = document.getElementById('editDVFormatted');
     const dvOnline = document.getElementById('editDVOnline');
     
-    if (checkType === 'online') {
+    if (checkType === 'online' || checkType === 'remittance') {
         checkNoDiv.style.display = 'none';
         checkNoInput.required = false;
+        checkNoInput.value = '';
         dvFormatted.style.display = 'none';
         dvOnline.style.display = 'block';
         document.getElementById('editDVManual').required = false;
@@ -790,21 +809,38 @@ function editPPE(id) {
             document.getElementById('editPPEId').value = data.record.id;
             document.getElementById('editDate').value = data.record.date;
             document.getElementById('editParticulars').value = data.record.particulars;
-            document.getElementById('editCheckType').value = data.record.check_no === 'ONLINE' ? 'online' : 'actual';
-            document.getElementById('editCheckNoInput').value = data.record.check_no === 'ONLINE' ? '' : data.record.check_no;
+            
+            // Set check type based on check_no value
+            if (data.record.check_no === 'ONLINE') {
+                document.getElementById('editCheckType').value = 'online';
+            } else if (data.record.check_no === '') {
+                document.getElementById('editCheckType').value = 'remittance';
+            } else {
+                document.getElementById('editCheckType').value = 'actual';
+            }
+            
+            document.getElementById('editCheckNoInput').value = (data.record.check_no === 'ONLINE' || data.record.check_no === '') ? '' : data.record.check_no;
             document.getElementById('editDebit').value = parseInt(data.record.debit);
             document.getElementById('editCredit').value = parseInt(data.record.credit);
             
             // Parse the existing DV number
             if (data.record.dv_or_no) {
-                const dvParts = data.record.dv_or_no.split('-');
-                if (dvParts.length >= 3) {
-                    document.getElementById('editDVPrefix').value = `${dvParts[0]}-${dvParts[1]}-`;
-                    document.getElementById('editDVSuffix').value = dvParts[2];
-                    document.getElementById('editDVNumber').value = data.record.dv_or_no;
+                // Check if it's a formatted DV or simple text
+                if (data.record.dv_or_no.includes('-')) {
+                    const dvParts = data.record.dv_or_no.split('-');
+                    if (dvParts.length >= 3) {
+                        document.getElementById('editDVPrefix').value = `${dvParts[0]}-${dvParts[1]}-`;
+                        document.getElementById('editDVSuffix').value = dvParts[2];
+                    }
+                } else {
+                    // Simple text input for online/remittance
+                    document.getElementById('editDVManual').value = data.record.dv_or_no;
                 }
+                document.getElementById('editDVNumber').value = data.record.dv_or_no;
             } else {
-                updateEditDVNumber();
+                document.getElementById('editDVNumber').value = '';
+                document.getElementById('editDVManual').value = '';
+                document.getElementById('editDVSuffix').value = '';
             }
             
             toggleCheckNoInputEdit();
@@ -904,10 +940,10 @@ function prepareAddPPESubmit(event) {
     const checkType = document.getElementById('checkType').value;
     const hiddenDV = document.getElementById('addDVNumber');
     
-    if (checkType === 'online') {
+    if (checkType === 'online' || checkType === 'remittance') {
         const manualDV = document.getElementById('addDVManual').value;
         if (!manualDV) {
-            alert('Please enter DV/OR number for online check');
+            alert('Please enter DV/OR suffix');
             return;
         }
         hiddenDV.value = manualDV;
@@ -928,9 +964,20 @@ function prepareAddPPESubmit(event) {
         return;
     }
     
+    // Convert formatted currency values to plain numbers for submission
+    const form = document.getElementById('addPPEForm');
+    const debitInput = form.querySelector('[name="debit"]');
+    const creditInput = form.querySelector('[name="credit"]');
+    
+    if (debitInput.value) {
+        debitInput.value = debitInput.value.replace(/,/g, '');
+    }
+    if (creditInput.value) {
+        creditInput.value = creditInput.value.replace(/,/g, '');
+    }
+    
     // The form will be submitted with multipart/form-data
     // JavaScript form submission needs to be handled for file upload
-    const form = document.getElementById('addPPEForm');
     const formData = new FormData(form);
     
     // Submit the form directly instead of via fetch to ensure proper handling
@@ -1000,21 +1047,19 @@ function prepareEditPPESubmit(event) {
     const checkType = document.getElementById('editCheckType').value;
     const hiddenDV = document.getElementById('editDVNumber');
     
-    if (checkType === 'online') {
-        const manualDV = document.getElementById('editDVManual').value;
-        if (!manualDV) {
-            alert('Please enter DV/OR number for online check');
-            return;
-        }
+    if (checkType === 'online' || checkType === 'remittance') {
+        const manualDV = document.getElementById('editDVManual').value.trim();
         hiddenDV.value = manualDV;
-    } else {
+    } else if (checkType === 'actual') {
         const prefix = document.getElementById('editDVPrefix').value;
-        const suffix = document.getElementById('editDVSuffix').value;
-        if (!suffix) {
-            alert('Please enter DV/OR suffix');
-            return;
+        const suffix = document.getElementById('editDVSuffix').value.trim();
+        if (suffix) {
+            hiddenDV.value = prefix + suffix;
+        } else {
+            hiddenDV.value = '';
         }
-        hiddenDV.value = prefix + suffix;
+    } else {
+        hiddenDV.value = '';
     }
     
     // Validate particulars
@@ -1024,8 +1069,19 @@ function prepareEditPPESubmit(event) {
         return;
     }
     
-    // Submit the form directly with proper multipart/form-data
+    // Convert formatted currency values to plain numbers for submission
     const form = document.getElementById('editPPEForm');
+    const debitInput = form.querySelector('[name="debit"]');
+    const creditInput = form.querySelector('[name="credit"]');
+    
+    if (debitInput.value) {
+        debitInput.value = debitInput.value.replace(/,/g, '');
+    }
+    if (creditInput.value) {
+        creditInput.value = creditInput.value.replace(/,/g, '');
+    }
+    
+    // Submit the form directly with proper multipart/form-data
     form.submit();
 }
 
@@ -1043,6 +1099,12 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Combobox functionality
+function formatCurrency(value) {
+    const num = parseFloat(value);
+    if (isNaN(num)) return '';
+    return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 function initCombobox(inputSelector, listSelector) {
     const inputs = document.querySelectorAll(inputSelector);
     
@@ -1075,8 +1137,8 @@ function initCombobox(inputSelector, listSelector) {
             item.addEventListener('click', function() {
                 const value = this.getAttribute('data-value');
                 const display = this.textContent;
-                input.value = value;
-                input.setAttribute('data-display', display);
+                input.value = display;
+                input.setAttribute('data-value', value);
                 list.classList.add('hidden');
             });
         });

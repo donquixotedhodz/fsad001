@@ -344,7 +344,7 @@ ob_start();
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                         </button>
                         <button onclick="deleteUser(<?php echo $user['id']; ?>, '<?php echo htmlspecialchars(addslashes($user['full_name'])); ?>')" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition" style="background-color: var(--theme-danger);" title="Delete">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                         </button>
                     </td>
                     <?php endif; ?>
@@ -440,16 +440,46 @@ function editUser(id) {
 }
 
 function deleteUser(id, fullName) {
-    if (confirm('Are you sure you want to delete user "' + fullName + '"? This action cannot be undone.')) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.innerHTML = `
-            <input type="hidden" name="action" value="delete_user">
-            <input type="hidden" name="user_id" value="${id}">
-        `;
-        document.body.appendChild(form);
-        form.submit();
-    }
+    Swal.fire({
+        title: 'Delete User',
+        html: `Are you sure you want to delete <strong>${fullName}</strong>?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Yes, delete it!',
+        cancelButtonText: 'Cancel',
+        allowOutsideClick: false,
+        allowEscapeKey: true,
+        didOpen: (modal) => {
+            if (document.body.classList.contains('dark')) {
+                modal.classList.add('dark');
+            }
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.innerHTML = `
+                <input type="hidden" name="action" value="delete_user">
+                <input type="hidden" name="user_id" value="${id}">
+            `;
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
+}
+
+function confirmDeleteUser() {
+    // Create and submit the form
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.innerHTML = `
+        <input type="hidden" name="action" value="delete_user">
+        <input type="hidden" name="user_id" value="${window.deleteUserId}">
+    `;
+    document.body.appendChild(form);
+    form.submit();
 }
 </script>
 

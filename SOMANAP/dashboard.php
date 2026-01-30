@@ -57,7 +57,7 @@ $totalDocuments = count($allDocuments);
 
 // Count documents by EC
 $ecCount = [];
-$stmt = $conn->prepare("SELECT ec.code as ec, COUNT(*) as count FROM manap m LEFT JOIN electric_cooperatives ec ON m.ec = ec.name GROUP BY ec.code ORDER BY count DESC");
+$stmt = $conn->prepare("SELECT ec.code as ec, COUNT(*) as count FROM manap m INNER JOIN electric_cooperatives ec ON m.ec = ec.name GROUP BY ec.code ORDER BY count DESC");
 $stmt->execute();
 $ecStats = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

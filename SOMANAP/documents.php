@@ -605,7 +605,7 @@ ob_start();
                                 <input type="text" name="edit_approving_authority_list[]" placeholder="Type to search authority..." class="edit-app-auth-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
                                 <div class="edit-app-auth-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
                             </div>
-                            <button type="button" onclick="removeCombinedRow(this)" class="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition text-sm font-medium">Remove</button>
+                            <button type="button" onclick="removeCombinedRow(this)" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">✕</button>
                         </div>
                     </div>
                 </div>
@@ -621,7 +621,7 @@ ob_start();
                             <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1.</span>
                             <input type="text" name="edit_control_points[]" placeholder="Enter control point" class="edit-control-point-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
                         </div>
-                        <button type="button" onclick="this.parentElement.remove(); updateEditControlPointNumbers();" class="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition text-sm font-medium">Remove</button>
+                        <button type="button" onclick="this.parentElement.remove(); updateEditControlPointNumbers();" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">✕</button>
                     </div>
                 </div>
                 <button type="button" onclick="addEditControlPoint()" class="mt-2 px-4 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded hover:bg-green-200 dark:hover:bg-green-900/50 transition text-sm font-medium">+ Add Control Point</button>
@@ -980,9 +980,7 @@ function addCombinedRow() {
                 <input type="text" name="approving_authority_list[]" placeholder="Type to search authority..." class="app-auth-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
                 <div class="app-auth-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
             </div>
-            <button type="button" onclick="removeCombinedRow(this); updateCombinedNumbers();" class="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition text-sm font-medium">
-                Remove
-            </button>
+            <button type="button" onclick="removeCombinedRow(this); updateCombinedNumbers();" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">✕</button>
         </div>
     `;
     container.appendChild(div);
@@ -1083,9 +1081,7 @@ function addControlPoint() {
             <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">${currentCount}.</span>
             <input type="text" name="control_points[]" placeholder="Enter control point" class="control-point-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
         </div>
-        <button type="button" onclick="this.parentElement.remove(); updateControlPointNumbers();" class="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition text-sm font-medium">
-            Remove
-        </button>
+        <button type="button" onclick="this.parentElement.remove(); updateControlPointNumbers();" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">✕</button>
     `;
     container.appendChild(div);
 }
@@ -1643,7 +1639,7 @@ function addEditCombinedRowToModal(itemVal = '', recAppVal = '', appAuthVal = ''
                 <input type="text" name="edit_approving_authority_list[]" placeholder="Type to search authority..." class="edit-app-auth-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" value="${appAuthVal}">
                 <div class="edit-app-auth-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
             </div>
-            <button type="button" onclick="removeCombinedRow(this); updateEditCombinedNumbers();" class="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition text-sm font-medium">Remove</button>
+            <button type="button" onclick="removeCombinedRow(this); updateEditCombinedNumbers();" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">✕</button>
         </div>
     `;
     container.appendChild(div);
@@ -1678,7 +1674,7 @@ function addEditControlPointToModal(value = '', number) {
             <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">${number}.</span>
             <input type="text" name="edit_control_points[]" placeholder="Enter control point" class="edit-control-point-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" value="${value}">
         </div>
-        <button type="button" onclick="this.parentElement.remove(); updateEditControlPointNumbers();" class="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition text-sm font-medium">Remove</button>
+        <button type="button" onclick="this.parentElement.remove(); updateEditControlPointNumbers();" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">✕</button>
     `;
     container.appendChild(div);
 }

@@ -15,6 +15,10 @@ if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], ['administrator', 
 // Only superadmin can add/edit/delete users
 $canManage = isset($_SESSION['role']) && $_SESSION['role'] === 'superadmin';
 
+// Check if user is admin - if so, make this read-only
+$userRole = $_SESSION['role'] ?? 'staff';
+$isReadOnly = strtolower($userRole) === 'admin' || strtolower($userRole) === 'administrator';
+
 $controller = new MainController($conn);
 $usersController = new UsersController($conn);
 $controller->setCurrentPage('manage_users');
@@ -24,6 +28,11 @@ $username = $_SESSION['username'] ?? 'User';
 
 // Handle add user
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_user') {
+    if ($isReadOnly) {
+        $_SESSION['errorMessage'] = "Admin users cannot add records. This is read-only mode.";
+        header('Location: ' . $_SERVER['REQUEST_URI']);
+        exit;
+    }
     if (!$canManage) {
         $_SESSION['errorMessage'] = "You do not have permission to add users.";
         header('Location: ' . $_SERVER['REQUEST_URI']);
@@ -51,6 +60,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
 
 // Handle edit user
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'edit_user') {
+    if ($isReadOnly) {
+        $_SESSION['errorMessage'] = "Admin users cannot edit records. This is read-only mode.";
+        header('Location: ' . $_SERVER['REQUEST_URI']);
+        exit;
+    }
     if (!$canManage) {
         $_SESSION['errorMessage'] = "You do not have permission to edit users.";
         header('Location: ' . $_SERVER['REQUEST_URI']);
@@ -78,6 +92,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
 
 // Handle delete user
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_user') {
+    if ($isReadOnly) {
+        $_SESSION['errorMessage'] = "Admin users cannot delete records. This is read-only mode.";
+        header('Location: ' . $_SERVER['REQUEST_URI']);
+        exit;
+    }
     if (!$canManage) {
         $_SESSION['errorMessage'] = "You do not have permission to delete users.";
         header('Location: ' . $_SERVER['REQUEST_URI']);
@@ -140,8 +159,13 @@ ob_start();
 
 <div class="p-6">
     <div class="mb-6 flex justify-between items-center">
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Manage Users</h1>
-        <?php if ($canManage): ?>
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Manage Users</h1>
+            <?php if ($isReadOnly): ?>
+                <p class="text-sm text-amber-600 dark:text-amber-400 mt-2">📖 Read-only mode: Admins cannot edit or delete records</p>
+            <?php endif; ?>
+        </div>
+        <?php if ($canManage && !$isReadOnly): ?>
         <button onclick="document.getElementById('addUserModal').showModal()" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">
             + Add User
         </button>
@@ -289,7 +313,7 @@ ob_start();
                     <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-900 dark:text-white">Full Name</th>
                     <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-900 dark:text-white">Role</th>
                     <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-900 dark:text-white">Created</th>
-                    <?php if ($canManage): ?>
+                    <?php if ($canManage && !$isReadOnly): ?>
                     <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center font-semibold text-gray-900 dark:text-white">Actions</th>
                     <?php endif; ?>
                 </tr>
@@ -314,7 +338,7 @@ ob_start();
                         </span>
                     </td>
                     <td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-900 dark:text-gray-100"><?php echo date('M d, Y', strtotime($user['created_at'] ?? 'now')); ?></td>
-                    <?php if ($canManage): ?>
+                    <?php if ($canManage && !$isReadOnly): ?>
                     <td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center">
                         <button onclick="editUser(<?php echo $user['id']; ?>)" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition mr-2" style="background-color: var(--theme-secondary);" title="Edit">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
@@ -330,7 +354,7 @@ ob_start();
                 else:
                 ?>
                 <tr>
-                    <td colspan="<?php echo $canManage ? 5 : 4; ?>" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-gray-500">No users found</td>
+                    <td colspan="<?php echo ($canManage && !$isReadOnly) ? 5 : 4; ?>" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-gray-500">No users found</td>
                 </tr>
                 <?php endif; ?>
             </tbody>

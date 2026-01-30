@@ -13,53 +13,70 @@ $ecController = new ECController($conn);
 $currentPage = 'manage_ec';
 $username = $_SESSION['username'] ?? 'User';
 
+// Check if user is superadmin - only superadmin can manage EC
+$userRole = $_SESSION['role'] ?? 'staff';
+$canManage = strtolower($userRole) === 'superadmin';
+$isReadOnly = !$canManage;
+
 // Handle form submission for adding EC
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_ec') {
-    $name = htmlspecialchars($_POST['name'] ?? '');
-    $code = htmlspecialchars($_POST['code'] ?? '');
-    $description = htmlspecialchars($_POST['description'] ?? '');
-    
-    if (!empty($name) && !empty($code)) {
-        $result = $ecController->addEC($name, $code, $description);
-        if ($result['success']) {
-            $successMessage = $result['message'];
-        } else {
-            $errorMessage = $result['message'];
-        }
+    if (!$canManage) {
+        $errorMessage = "Only Superadmin users can add EC records.";
     } else {
-        $errorMessage = "Please fill in Name and Code fields.";
+        $name = htmlspecialchars($_POST['name'] ?? '');
+        $code = htmlspecialchars($_POST['code'] ?? '');
+        $description = htmlspecialchars($_POST['description'] ?? '');
+        
+        if (!empty($name) && !empty($code)) {
+            $result = $ecController->addEC($name, $code, $description);
+            if ($result['success']) {
+                $successMessage = $result['message'];
+            } else {
+                $errorMessage = $result['message'];
+            }
+        } else {
+            $errorMessage = "Please fill in Name and Code fields.";
+        }
     }
 }
 
 // Handle edit action
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'edit_ec') {
-    $ec_id = intval($_POST['ec_id'] ?? 0);
-    $name = htmlspecialchars($_POST['name'] ?? '');
-    $code = htmlspecialchars($_POST['code'] ?? '');
-    $description = htmlspecialchars($_POST['description'] ?? '');
-    
-    if ($ec_id > 0 && !empty($name) && !empty($code)) {
-        $result = $ecController->updateEC($ec_id, $name, $code, $description);
-        if ($result['success']) {
-            $successMessage = $result['message'];
-        } else {
-            $errorMessage = $result['message'];
-        }
+    if (!$canManage) {
+        $errorMessage = "Only Superadmin users can edit EC records.";
     } else {
-        $errorMessage = "Please fill in all required fields.";
+        $ec_id = intval($_POST['ec_id'] ?? 0);
+        $name = htmlspecialchars($_POST['name'] ?? '');
+        $code = htmlspecialchars($_POST['code'] ?? '');
+        $description = htmlspecialchars($_POST['description'] ?? '');
+        
+        if ($ec_id > 0 && !empty($name) && !empty($code)) {
+            $result = $ecController->updateEC($ec_id, $name, $code, $description);
+            if ($result['success']) {
+                $successMessage = $result['message'];
+            } else {
+                $errorMessage = $result['message'];
+            }
+        } else {
+            $errorMessage = "Please fill in all required fields.";
+        }
     }
 }
 
 // Handle delete action
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_ec') {
-    $ec_id = intval($_POST['ec_id'] ?? 0);
-    
-    if ($ec_id > 0) {
-        $result = $ecController->deleteEC($ec_id);
-        if ($result['success']) {
-            $successMessage = $result['message'];
-        } else {
-            $errorMessage = $result['message'];
+    if (!$canManage) {
+        $errorMessage = "Only Superadmin users can delete EC records.";
+    } else {
+        $ec_id = intval($_POST['ec_id'] ?? 0);
+        
+        if ($ec_id > 0) {
+            $result = $ecController->deleteEC($ec_id);
+            if ($result['success']) {
+                $successMessage = $result['message'];
+            } else {
+                $errorMessage = $result['message'];
+            }
         }
     }
 }
@@ -103,10 +120,17 @@ ob_start();
 
 <div class="p-6">
     <div class="mb-6 flex justify-between items-center">
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">EC Records</h1>
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">EC Records</h1>
+            <?php if ($isReadOnly): ?>
+                <p class="text-sm text-amber-600 dark:text-amber-400 mt-2">📖 Read-only mode: Only Superadmin can edit or delete records</p>
+            <?php endif; ?>
+        </div>
+        <?php if ($canManage): ?>
         <button onclick="document.getElementById('addECModal').showModal()" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">
             + Add EC
         </button>
+        <?php endif; ?>
     </div>
 
     <!-- Success/Error Messages -->
@@ -242,6 +266,7 @@ ob_start();
                     <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300"><?php echo htmlspecialchars($ec['description'] ?? '-'); ?></td>
                     <td class="px-6 py-4 text-center">
                         <div class="flex gap-2 justify-center">
+                            <?php if ($canManage): ?>
                             <button onclick="editEC(<?php echo $ec['id']; ?>)" class="p-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition" title="Edit">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
@@ -252,6 +277,7 @@ ob_start();
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                 </svg>
                             </button>
+                            <?php endif; ?>
                         </div>
                     </td>
                 </tr>

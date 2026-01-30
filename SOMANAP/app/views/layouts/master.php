@@ -214,18 +214,20 @@
     $currentPage = isset($_SESSION['currentPage']) ? $_SESSION['currentPage'] : 'dashboard';
     $userId = $_SESSION['user_id'] ?? null;
     
-    // Get user's profile image and full name
+    // Get user's profile image, full name, and role
     $userProfileImage = null;
     $userFullName = $username;
+    $userRole = $_SESSION['role'] ?? 'User';
     
     if ($userId) {
         try {
-            $stmt = $conn->prepare("SELECT profile_image, full_name FROM users WHERE id = ?");
+            $stmt = $conn->prepare("SELECT profile_image, full_name, role FROM users WHERE id = ?");
             $stmt->execute([$userId]);
             $userInfo = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($userInfo) {
                 $userProfileImage = $userInfo['profile_image'] ?? null;
                 $userFullName = $userInfo['full_name'] ?? $username;
+                $userRole = $userInfo['role'] ?? $_SESSION['role'] ?? 'User';
             }
         } catch (PDOException $e) {
             // If query fails, use defaults
@@ -273,7 +275,7 @@
                         <a href="settings.php" class="hidden sm:block hover:text-blue-600 dark:hover:text-blue-400 transition">
                             <div class="flex flex-col">
                                 <span class="text-sm font-semibold text-gray-900 dark:text-white"><?php echo htmlspecialchars($userFullName); ?></span>
-                                <span class="text-xs text-gray-500 dark:text-gray-400"><?php echo htmlspecialchars($username); ?></span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400"><?php echo htmlspecialchars(ucfirst($userRole)); ?></span>
                             </div>
                         </a>
                     </div>

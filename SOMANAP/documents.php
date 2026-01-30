@@ -3,12 +3,14 @@ session_start();
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/app/controllers/MainController.php';
 require_once __DIR__ . '/app/controllers/DocumentController.php';
+require_once __DIR__ . '/app/controllers/FavoritesController.php';
 require_once __DIR__ . '/app/helpers/AuditLogger.php';
 
 MainController::requireAuth();
 $controller = new MainController($conn);
 $controller->setCurrentPage('documents');
 $documentController = new DocumentController($conn);
+$favoritesController = new FavoritesController($conn);
 $auditLogger = new AuditLogger($conn);
 
 // Handle upload and delete requests - MUST EXIT to prevent HTML output
@@ -19,6 +21,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
     if (isset($_POST['action']) && $_POST['action'] === 'edit') {
         $documentController->editDocument();
+        exit;
+    }
+    if (isset($_POST['action']) && $_POST['action'] === 'toggle_favorite') {
+        $favoritesController->toggleFavorite();
         exit;
     }
 }
@@ -325,12 +331,19 @@ ob_start();
                             </svg>
                         </button>
                         <?php endif; ?>
-                        <!-- Download Link -->
-                        <a href="<?php echo htmlspecialchars('../' . $filePath); ?>" download title="Download file" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition" style="background-color: var(--theme-secondary);">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        <!-- Favorites Button (Star Icon) -->
+                        <?php 
+                        $isFavorited = $favoritesController->isFavorite($doc['id']);
+                        $favClass = $isFavorited ? 'is-favorite' : '';
+                        $favTitle = $isFavorited ? 'Remove from favorites' : 'Add to favorites';
+                        $favBgColor = $isFavorited ? 'background-color: var(--theme-danger);' : 'background-color: var(--theme-secondary);';
+                        $favFill = $isFavorited ? 'currentColor' : 'none';
+                        ?>
+                        <button onclick="toggleFavorite(<?php echo $doc['id']; ?>, this)" title="<?php echo $favTitle; ?>" class="toggle-favorite-btn inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition favorite-btn-<?php echo $doc['id']; ?> <?php echo $favClass; ?>" style="<?php echo $favBgColor; ?>" data-document-id="<?php echo $doc['id']; ?>" data-is-favorite="<?php echo $isFavorited ? '1' : '0'; ?>">
+                            <svg class="w-4 h-4 favorite-star" fill="<?php echo $favFill; ?>" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                <path d="M12 2L15.09 10.26H24L17.45 14.74L20.54 23L12 18.52L3.46 23L6.55 14.74L0 10.26H8.91L12 2Z"/>
                             </svg>
-                        </a>
+                        </button>
                         <?php endif; ?>
                         <?php if (isset($_SESSION['role']) && ($_SESSION['role'] === 'administrator' || $_SESSION['role'] === 'superadmin')): ?>
                         <button onclick="openEditModal(<?php echo htmlspecialchars(json_encode($doc)); ?>)" title="Edit document" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition mr-2" style="background-color: var(--theme-secondary);">
@@ -1496,9 +1509,18 @@ function openEditModal(doc) {
     combinedContainer.innerHTML = '';
     
     // Parse data - split by newlines and strip numbering
+    // For items: filter empty and strip numbering
     const items = doc.item ? doc.item.split('\n').filter(i => i.trim()).map(stripNumbering) : [''];
-    const recApps = doc.recommending_approvals ? doc.recommending_approvals.split('\n').map(stripNumbering) : [];
-    const appAuths = doc.approving_authority ? doc.approving_authority.split('\n').map(stripNumbering) : [];
+    
+    // For recommending_approvals: preserve empty values and strip numbering only from non-empty
+    const recApps = doc.recommending_approvals ? doc.recommending_approvals.split('\n').map(val => {
+        return val.trim() === '' ? '' : stripNumbering(val);
+    }) : [];
+    
+    // For approving_authority: preserve empty values and strip numbering only from non-empty
+    const appAuths = doc.approving_authority ? doc.approving_authority.split('\n').map(val => {
+        return val.trim() === '' ? '' : stripNumbering(val);
+    }) : [];
     
     // Get max length to ensure all rows are created
     const maxLength = Math.max(items.length, recApps.length, appAuths.length, 1);
@@ -1516,10 +1538,19 @@ function openEditModal(doc) {
     cpContainer.innerHTML = '';
     
     if (doc.control_point) {
-        const points = doc.control_point.split('\n').filter(p => p.trim()).map(stripNumbering);
-        points.forEach((point, index) => {
-            addEditControlPointToModal(point, index + 1);
-        });
+        // Split by newlines, strip numbering from each entry
+        const points = doc.control_point.split('\n').map(p => {
+            const trimmed = p.trim();
+            return trimmed === '' ? '' : stripNumbering(trimmed);
+        }).filter(p => p !== '' || p === '');  // Keep all entries
+        
+        if (points.length > 0) {
+            points.forEach((point, index) => {
+                addEditControlPointToModal(point, index + 1);
+            });
+        } else {
+            addEditControlPointToModal('', 1);
+        }
     } else {
         addEditControlPointToModal('', 1);
     }
@@ -1529,10 +1560,19 @@ function openEditModal(doc) {
     deptContainer.innerHTML = '';
     
     if (doc.department) {
-        const depts = doc.department.split('\n').filter(d => d.trim()).map(stripNumbering);
-        depts.forEach((dept, index) => {
-            addEditDepartmentToModal(dept, index + 1);
-        });
+        // Split by newlines, strip numbering from each entry
+        const depts = doc.department.split('\n').map(d => {
+            const trimmed = d.trim();
+            return trimmed === '' ? '' : stripNumbering(trimmed);
+        }).filter(d => d !== '' || d === '');  // Keep all entries
+        
+        if (depts.length > 0) {
+            depts.forEach((dept, index) => {
+                addEditDepartmentToModal(dept, index + 1);
+            });
+        } else {
+            addEditDepartmentToModal('', 1);
+        }
     } else {
         addEditDepartmentToModal('', 1);
     }
@@ -1542,10 +1582,19 @@ function openEditModal(doc) {
     teamContainer.innerHTML = '';
     
     if (doc.team) {
-        const teams = doc.team.split('\n').filter(t => t.trim()).map(stripNumbering);
-        teams.forEach((team, index) => {
-            addEditTeamToModal(team, index + 1);
-        });
+        // Split by newlines, strip numbering from each entry
+        const teams = doc.team.split('\n').map(t => {
+            const trimmed = t.trim();
+            return trimmed === '' ? '' : stripNumbering(trimmed);
+        }).filter(t => t !== '' || t === '');  // Keep all entries
+        
+        if (teams.length > 0) {
+            teams.forEach((team, index) => {
+                addEditTeamToModal(team, index + 1);
+            });
+        } else {
+            addEditTeamToModal('', 1);
+        }
     } else {
         addEditTeamToModal('', 1);
     }
@@ -2114,6 +2163,45 @@ document.addEventListener('keydown', function(e) {
         closePreviewModal();
     }
 });
+
+// Toggle favorite
+async function toggleFavorite(documentId, button) {
+    try {
+        const response = await fetch('', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: 'action=toggle_favorite&document_id=' + documentId
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            const star = button.querySelector('.favorite-star');
+            if (data.isFavorite) {
+                // Fill the star and turn red
+                star.setAttribute('fill', 'currentColor');
+                button.style.backgroundColor = 'var(--theme-danger)';
+                button.title = 'Remove from favorites';
+                button.setAttribute('data-is-favorite', '1');
+                button.classList.add('is-favorite');
+            } else {
+                // Outline the star and turn back to secondary color
+                star.setAttribute('fill', 'none');
+                button.style.backgroundColor = 'var(--theme-secondary)';
+                button.title = 'Add to favorites';
+                button.setAttribute('data-is-favorite', '0');
+                button.classList.remove('is-favorite');
+            }
+        } else {
+            alert('Error: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error toggling favorite:', error);
+        alert('Error toggling favorite');
+    }
+}
 
 // Test to verify functions are available
 console.log('PDF Preview functions loaded:', {

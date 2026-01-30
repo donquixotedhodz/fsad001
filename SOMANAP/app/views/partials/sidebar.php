@@ -25,8 +25,8 @@
             </a>
 
             <!-- MANAP Dropdown -->
-            <div x-data="{ manap_open: <?php echo ($currentPage === 'documents' || $currentPage === 'reports' || $currentPage === 'manap_reports') ? 'true' : 'false'; ?> }">
-                <button @click="manap_open = !manap_open" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo ($currentPage === 'documents' || $currentPage === 'reports' || $currentPage === 'manap_reports') ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
+            <div x-data="{ manap_open: <?php echo ($currentPage === 'documents' || $currentPage === 'favorites' || $currentPage === 'manap_reports') ? 'true' : 'false'; ?> }">
+                <button @click="manap_open = !manap_open" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo ($currentPage === 'documents' || $currentPage === 'favorites' || $currentPage === 'manap_reports') ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
@@ -41,6 +41,10 @@
                     <!-- Documents -->
                     <a href="documents.php" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo $currentPage === 'documents' ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
                         <span class="text-sm font-medium">Documents</span>
+                    </a>
+                    <!-- Favorites -->
+                    <a href="favorites.php" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo $currentPage === 'favorites' ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
+                        <span class="text-sm font-medium">Favorites</span>
                     </a>
                     <!-- Reports -->
                     <a href="manap_reports.php" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo $currentPage === 'manap_reports' ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">

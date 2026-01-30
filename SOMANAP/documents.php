@@ -1479,6 +1479,12 @@ function deleteDocument(doc) {
     });
 }
 
+// Helper function to strip numbering from entries (e.g., "1. Item Name" -> "Item Name")
+function stripNumbering(value) {
+    if (!value) return '';
+    return value.replace(/^\d+\.\s+/, '').trim();
+}
+
 // Open Edit Modal and populate with document data
 function openEditModal(doc) {
     const modal = document.getElementById('editModal');
@@ -1489,10 +1495,10 @@ function openEditModal(doc) {
     const combinedContainer = document.getElementById('editCombinedListContainer');
     combinedContainer.innerHTML = '';
     
-    // Parse data
-    const items = doc.item ? doc.item.split('\n').filter(i => i.trim()) : [''];
-    const recApps = doc.recommending_approvals ? doc.recommending_approvals.split('\n') : [];
-    const appAuths = doc.approving_authority ? doc.approving_authority.split('\n') : [];
+    // Parse data - split by newlines and strip numbering
+    const items = doc.item ? doc.item.split('\n').filter(i => i.trim()).map(stripNumbering) : [''];
+    const recApps = doc.recommending_approvals ? doc.recommending_approvals.split('\n').map(stripNumbering) : [];
+    const appAuths = doc.approving_authority ? doc.approving_authority.split('\n').map(stripNumbering) : [];
     
     // Get max length to ensure all rows are created
     const maxLength = Math.max(items.length, recApps.length, appAuths.length, 1);
@@ -1510,7 +1516,7 @@ function openEditModal(doc) {
     cpContainer.innerHTML = '';
     
     if (doc.control_point) {
-        const points = doc.control_point.split('\n').filter(p => p.trim());
+        const points = doc.control_point.split('\n').filter(p => p.trim()).map(stripNumbering);
         points.forEach((point, index) => {
             addEditControlPointToModal(point, index + 1);
         });
@@ -1523,7 +1529,7 @@ function openEditModal(doc) {
     deptContainer.innerHTML = '';
     
     if (doc.department) {
-        const depts = doc.department.split('\n').filter(d => d.trim());
+        const depts = doc.department.split('\n').filter(d => d.trim()).map(stripNumbering);
         depts.forEach((dept, index) => {
             addEditDepartmentToModal(dept, index + 1);
         });
@@ -1536,7 +1542,7 @@ function openEditModal(doc) {
     teamContainer.innerHTML = '';
     
     if (doc.team) {
-        const teams = doc.team.split('\n').filter(t => t.trim());
+        const teams = doc.team.split('\n').filter(t => t.trim()).map(stripNumbering);
         teams.forEach((team, index) => {
             addEditTeamToModal(team, index + 1);
         });
@@ -1796,7 +1802,7 @@ document.getElementById('editForm').addEventListener('submit', async (e) => {
     
     if (!isValid || items.length === 0) return;
     
-    // Get other field values
+    // Get other field values - collect all including empty ones for alignment
     const recAppInputs = document.querySelectorAll('input[name="edit_recommending_approvals_list[]"]');
     const recApps = [];
     recAppInputs.forEach((input) => {
@@ -1809,32 +1815,35 @@ document.getElementById('editForm').addEventListener('submit', async (e) => {
         appAuths.push(input.value.trim());
     });
     
+    // Collect control points with numbering preserved for storage
     const cpInputs = document.querySelectorAll('input[name="edit_control_points[]"]');
-    const controlPoints = Array.from(cpInputs)
-        .map((input, index) => {
-            const value = input.value.trim();
-            return value ? (index + 1) + '. ' + value : null;
-        })
-        .filter(cp => cp !== null)
-        .join('\n');
+    const controlPoints = [];
+    cpInputs.forEach((input, index) => {
+        const value = input.value.trim();
+        if (value) {
+            controlPoints.push((index + 1) + '. ' + value);
+        }
+    });
     
+    // Collect departments with numbering preserved for storage
     const deptInputs = document.querySelectorAll('input[name="edit_departments[]"]');
-    const departments = Array.from(deptInputs)
-        .map((input, index) => {
-            const value = input.value.trim();
-            return value ? (index + 1) + '. ' + value : null;
-        })
-        .filter(dept => dept !== null)
-        .join('\n');
+    const departments = [];
+    deptInputs.forEach((input, index) => {
+        const value = input.value.trim();
+        if (value) {
+            departments.push((index + 1) + '. ' + value);
+        }
+    });
     
+    // Collect teams with numbering preserved for storage
     const teamInputs = document.querySelectorAll('input[name="edit_teams[]"]');
-    const teams = Array.from(teamInputs)
-        .map((input, index) => {
-            const value = input.value.trim();
-            return value ? (index + 1) + '. ' + value : null;
-        })
-        .filter(team => team !== null)
-        .join('\n');
+    const teams = [];
+    teamInputs.forEach((input, index) => {
+        const value = input.value.trim();
+        if (value) {
+            teams.push((index + 1) + '. ' + value);
+        }
+    });
     
     submitBtn.disabled = true;
     cancelBtn.disabled = true;
@@ -1852,9 +1861,9 @@ document.getElementById('editForm').addEventListener('submit', async (e) => {
         formData.append('items', items.join('\n'));
         formData.append('recommending_approvals', recApps.join('\n'));
         formData.append('approving_authority', appAuths.join('\n'));
-        formData.append('control_point', controlPoints);
-        formData.append('department', departments);
-        formData.append('team', teams);
+        formData.append('control_point', controlPoints.join('\n'));
+        formData.append('department', departments.join('\n'));
+        formData.append('team', teams.join('\n'));
         
         // Add file if selected
         if (editFileInput.files.length > 0) {

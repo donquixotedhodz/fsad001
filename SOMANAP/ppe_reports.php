@@ -31,37 +31,98 @@ ob_start();
 
         <!-- Filters -->
         <div class="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg mb-4">
-            <form method="GET" class="grid grid-cols-1 md:grid-cols-5 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date From</label>
-                    <input type="date" name="date_from" value="<?php echo htmlspecialchars($_GET['date_from'] ?? ''); ?>" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-600 dark:text-white focus:outline-none">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date To</label>
-                    <input type="date" name="date_to" value="<?php echo htmlspecialchars($_GET['date_to'] ?? ''); ?>" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-600 dark:text-white focus:outline-none">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Check No.</label>
-                    <input type="text" name="check_no" value="<?php echo htmlspecialchars($_GET['check_no'] ?? ''); ?>" placeholder="Search..." class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-600 dark:text-white focus:outline-none">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">DV/OR No.</label>
-                    <input type="text" name="dv_or_no" value="<?php echo htmlspecialchars($_GET['dv_or_no'] ?? ''); ?>" placeholder="Search..." class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-600 dark:text-white focus:outline-none">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
-                    <input type="text" name="particulars" value="<?php echo htmlspecialchars($_GET['particulars'] ?? ''); ?>" placeholder="Search..." class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-600 dark:text-white focus:outline-none">
-                </div>
-                <div class="flex gap-2 col-span-1 md:col-span-5">
+            <form method="GET" class="space-y-4" id="filterForm">
+                <!-- Date Filter and Search on One Line -->
+                <div class="flex gap-4 items-end">
+                    <!-- Date Filter Dropdown -->
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Date Filter</label>
+                        <select name="date_filter" id="dateFilterSelect" onchange="handleDateFilterChange()" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-600 dark:text-white focus:outline-none bg-white">
+                            <option value="">Select Date Range</option>
+                            <option value="today" <?php echo ($_GET['date_filter'] ?? '') === 'today' ? 'selected' : ''; ?>>Today</option>
+                            <option value="weekly" <?php echo ($_GET['date_filter'] ?? '') === 'weekly' ? 'selected' : ''; ?>>This Week</option>
+                            <option value="monthly" <?php echo ($_GET['date_filter'] ?? '') === 'monthly' ? 'selected' : ''; ?>>This Month</option>
+                            <option value="annual" <?php echo ($_GET['date_filter'] ?? '') === 'annual' ? 'selected' : ''; ?>>This Year</option>
+                            <option value="custom" <?php echo ($_GET['date_filter'] ?? '') === 'custom' ? 'selected' : ''; ?>>Custom Range</option>
+                        </select>
+                    </div>
+
+                    <!-- Search Input -->
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Search</label>
+                        <input type="text" name="search" value="<?php echo htmlspecialchars($_GET['search'] ?? ''); ?>" placeholder="Check No., DV/OR No., Name..." class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-600 dark:text-white focus:outline-none">
+                    </div>
+
+                    <!-- Search Button -->
                     <button type="submit" class="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition font-medium">
-                        Filter
+                        Search
                     </button>
-                    <a href="?>" class="px-6 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500 transition font-medium">
-                        Clear Filters
+
+                    <!-- Clear Button -->
+                    <a href="?" class="px-6 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500 transition font-medium">
+                        Clear
                     </a>
+                </div>
+
+                <!-- Year Selection (Hidden by default) -->
+                <div id="yearSelectionDiv" style="<?php echo (($_GET['date_filter'] ?? '') === 'annual') ? 'display: block;' : 'display: none;'; ?>">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Year</label>
+                    <select name="selected_year" id="yearSelect" onchange="submitForm()" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-600 dark:text-white focus:outline-none bg-white">
+                        <?php
+                        $currentYear = date('Y');
+                        $selectedYear = $_GET['selected_year'] ?? $currentYear;
+                        
+                        for ($year = $currentYear; $year >= 2020; $year--) {
+                            echo '<option value="' . $year . '" ' . ($selectedYear == $year ? 'selected' : '') . '>' . $year . '</option>';
+                        }
+                        ?>
+                    </select>
+                </div>
+
+                <!-- Custom Date Range (Hidden by default) -->
+                <div id="customDateRange" style="<?php echo (($_GET['date_filter'] ?? '') === 'custom') ? 'display: grid;' : 'display: none;'; ?>" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date From</label>
+                        <input type="date" name="date_from" id="dateFrom" value="<?php echo htmlspecialchars($_GET['date_from'] ?? ''); ?>" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-600 dark:text-white focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date To</label>
+                        <input type="date" name="date_to" id="dateTo" value="<?php echo htmlspecialchars($_GET['date_to'] ?? ''); ?>" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-600 dark:text-white focus:outline-none" onchange="submitForm()">
+                    </div>
                 </div>
             </form>
         </div>
+
+        <script>
+            function handleDateFilterChange() {
+                const filterType = document.getElementById('dateFilterSelect').value;
+                const customDateRange = document.getElementById('customDateRange');
+                const yearSelectionDiv = document.getElementById('yearSelectionDiv');
+                const dateFromInput = document.getElementById('dateFrom');
+                const dateToInput = document.getElementById('dateTo');
+
+                if (filterType === 'custom') {
+                    customDateRange.style.display = 'grid';
+                    yearSelectionDiv.style.display = 'none';
+                    dateFromInput.value = '';
+                    dateToInput.value = '';
+                } else if (filterType === 'annual') {
+                    customDateRange.style.display = 'none';
+                    yearSelectionDiv.style.display = 'block';
+                } else if (filterType === '') {
+                    customDateRange.style.display = 'none';
+                    yearSelectionDiv.style.display = 'none';
+                } else {
+                    customDateRange.style.display = 'none';
+                    yearSelectionDiv.style.display = 'none';
+                    submitForm();
+                }
+            }
+
+            function submitForm() {
+                document.getElementById('filterForm').submit();
+            }
+        </script>
     </div>
 
     <!-- PPE Reports Table -->
@@ -84,25 +145,52 @@ ob_start();
                 $whereConditions = [];
                 $params = [];
                 
-                if (!empty($_GET['date_from'])) {
+                $dateFilter = $_GET['date_filter'] ?? '';
+                $today = date('Y-m-d');
+                $weekStart = date('Y-m-d', strtotime('monday this week'));
+                $monthStart = date('Y-m-01');
+                
+                // Handle date filter
+                if ($dateFilter === 'today') {
                     $whereConditions[] = "date >= ?";
-                    $params[] = $_GET['date_from'];
-                }
-                if (!empty($_GET['date_to'])) {
+                    $params[] = $today;
                     $whereConditions[] = "date <= ?";
-                    $params[] = $_GET['date_to'];
+                    $params[] = $today;
+                } elseif ($dateFilter === 'weekly') {
+                    $whereConditions[] = "date >= ?";
+                    $params[] = $weekStart;
+                    $whereConditions[] = "date <= ?";
+                    $params[] = $today;
+                } elseif ($dateFilter === 'monthly') {
+                    $whereConditions[] = "date >= ?";
+                    $params[] = $monthStart;
+                    $whereConditions[] = "date <= ?";
+                    $params[] = $today;
+                } elseif ($dateFilter === 'annual') {
+                    $selectedYear = $_GET['selected_year'] ?? date('Y');
+                    $yearStart = $selectedYear . '-01-01';
+                    $yearEnd = $selectedYear . '-12-31';
+                    $whereConditions[] = "date >= ?";
+                    $params[] = $yearStart;
+                    $whereConditions[] = "date <= ?";
+                    $params[] = $yearEnd;
+                } elseif ($dateFilter === 'custom' || (!empty($_GET['date_from']) && !empty($_GET['date_to']))) {
+                    if (!empty($_GET['date_from'])) {
+                        $whereConditions[] = "date >= ?";
+                        $params[] = $_GET['date_from'];
+                    }
+                    if (!empty($_GET['date_to'])) {
+                        $whereConditions[] = "date <= ?";
+                        $params[] = $_GET['date_to'];
+                    }
                 }
-                if (!empty($_GET['check_no'])) {
-                    $whereConditions[] = "check_no LIKE ?";
-                    $params[] = '%' . $_GET['check_no'] . '%';
-                }
-                if (!empty($_GET['dv_or_no'])) {
-                    $whereConditions[] = "dv_or_no LIKE ?";
-                    $params[] = '%' . $_GET['dv_or_no'] . '%';
-                }
-                if (!empty($_GET['particulars'])) {
-                    $whereConditions[] = "particulars LIKE ?";
-                    $params[] = '%' . $_GET['particulars'] . '%';
+                
+                if (!empty($_GET['search'])) {
+                    $searchTerm = '%' . $_GET['search'] . '%';
+                    $whereConditions[] = "(check_no LIKE ? OR dv_or_no LIKE ? OR particulars LIKE ?)";
+                    $params[] = $searchTerm;
+                    $params[] = $searchTerm;
+                    $params[] = $searchTerm;
                 }
                 
                 $whereClause = '';

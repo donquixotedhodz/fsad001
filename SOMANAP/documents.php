@@ -1680,20 +1680,20 @@ function addEditCombinedRowToModal(itemVal = '', recAppVal = '', appAuthVal = ''
         <!-- Item -->
         <div class="relative">
             <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">${number}. Item</span>
-            <input type="text" name="edit_items[]" placeholder="Type to search item..." class="edit-item-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" value="${itemVal}">
+            <input type="text" name="edit_items[]" placeholder="Type to search item..." class="edit-item-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" value="${(itemVal || '').replace(/"/g, '&quot;')}">
             <div class="edit-item-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
         </div>
         <!-- Recommending Approval -->
         <div class="relative">
             <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">Rec. Approval</span>
-            <input type="text" name="edit_recommending_approvals_list[]" placeholder="Type to search approval..." class="edit-rec-app-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" value="${recAppVal}">
+            <input type="text" name="edit_recommending_approvals_list[]" placeholder="Type to search approval..." class="edit-rec-app-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" value="${(recAppVal || '').replace(/"/g, '&quot;')}">
             <div class="edit-rec-app-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
         </div>
         <!-- Approving Authority + Remove Button -->
         <div class="relative flex gap-2 items-end">
             <div class="flex-1">
                 <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">App. Authority</span>
-                <input type="text" name="edit_approving_authority_list[]" placeholder="Type to search authority..." class="edit-app-auth-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" value="${appAuthVal}">
+                <input type="text" name="edit_approving_authority_list[]" placeholder="Type to search authority..." class="edit-app-auth-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" value="${(appAuthVal || '').replace(/"/g, '&quot;')}">
                 <div class="edit-app-auth-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
             </div>
             <button type="button" onclick="removeCombinedRow(this); updateEditCombinedNumbers();" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">✕</button>
@@ -1729,7 +1729,7 @@ function addEditControlPointToModal(value = '', number) {
     div.innerHTML = `
         <div class="flex-1 relative">
             <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">${number}.</span>
-            <input type="text" name="edit_control_points[]" placeholder="Enter control point" class="edit-control-point-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" value="${value}">
+            <input type="text" name="edit_control_points[]" placeholder="Enter control point" class="edit-control-point-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" value="${(value || '').replace(/"/g, '&quot;')}">
         </div>
         <button type="button" onclick="this.parentElement.remove(); updateEditControlPointNumbers();" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">✕</button>
     `;
@@ -1758,7 +1758,7 @@ function addEditDepartmentToModal(value = '', number) {
     div.innerHTML = `
         <div class="flex-1 relative">
             <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">${number}.</span>
-            <input type="text" name="edit_departments[]" placeholder="Type to search department..." class="edit-department-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" value="${value}">
+            <input type="text" name="edit_departments[]" placeholder="Type to search department..." class="edit-department-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" value="${(value || '').replace(/"/g, '&quot;')}">
             <div class="edit-department-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
         </div>
         <button type="button" onclick="this.parentElement.remove(); updateEditDepartmentNumbers()" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">✕</button>
@@ -1774,7 +1774,7 @@ function addEditTeamToModal(value = '', number) {
     div.innerHTML = `
         <div class="flex-1 relative">
             <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">${number}.</span>
-            <input type="text" name="edit_teams[]" placeholder="Type to search team..." class="edit-team-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" value="${value}">
+            <input type="text" name="edit_teams[]" placeholder="Type to search team..." class="edit-team-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" value="${(value || '').replace(/"/g, '&quot;')}">
             <div class="edit-team-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
         </div>
         <button type="button" onclick="this.parentElement.remove(); updateEditTeamNumbers()" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">✕</button>

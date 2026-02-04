@@ -84,6 +84,31 @@
             </div>
             <?php endif; ?>
 
+            <!-- AD Scorecard Dropdown -->
+            <div x-data="{ ads_open: <?php echo ($currentPage === 'ads' || $currentPage === 'ads_reports') ? 'true' : 'false'; ?> }">
+                <button @click="ads_open = !ads_open" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo ($currentPage === 'ads' || $currentPage === 'ads_reports') ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                    <span class="font-medium flex-1 text-left">AD Scorecard</span>
+                    <svg class="w-5 h-5 transition-transform" :class="{ 'rotate-180': ads_open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+                    </svg>
+                </button>
+
+                <!-- AD Scorecard Submenu -->
+                <div x-show="ads_open" class="pl-6 space-y-1 mt-2">
+                    <!-- Documents -->
+                    <a href="ad_scorecard.php" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo $currentPage === 'ads' ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
+                        <span class="text-sm font-medium">Documents</span>
+                    </a>
+                    <!-- Reports -->
+                    <a href="ad_scorecard_reports.php" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo $currentPage === 'ads_reports' ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
+                        <span class="text-sm font-medium">Reports</span>
+                    </a>
+                </div>
+            </div>
+
             <!-- Divider -->
             <div class="my-4 border-t border-gray-200 dark:border-gray-700"></div>
 

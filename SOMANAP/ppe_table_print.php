@@ -12,25 +12,56 @@ $format = $_GET['format'] ?? 'html';
 $whereConditions = [];
 $params = [];
 
-if (!empty($_GET['date_from'])) {
+$dateFilter = $_GET['date_filter'] ?? '';
+$today = date('Y-m-d');
+$weekStart = date('Y-m-d', strtotime('monday this week'));
+$monthStart = date('Y-m-01');
+
+// Handle date filter
+if ($dateFilter === 'today') {
     $whereConditions[] = "date >= ?";
-    $params[] = $_GET['date_from'];
-}
-if (!empty($_GET['date_to'])) {
+    $params[] = $today;
     $whereConditions[] = "date <= ?";
-    $params[] = $_GET['date_to'];
+    $params[] = $today;
+} elseif ($dateFilter === 'weekly') {
+    $whereConditions[] = "date >= ?";
+    $params[] = $weekStart;
+    $whereConditions[] = "date <= ?";
+    $params[] = $today;
+} elseif ($dateFilter === 'monthly') {
+    $selectedMonth = $_GET['selected_month'] ?? date('m');
+    $selectedYear = $_GET['selected_year'] ?? date('Y');
+    $monthStart = $selectedYear . '-' . $selectedMonth . '-01';
+    $monthEnd = date('Y-m-t', strtotime($monthStart));
+    $whereConditions[] = "date >= ?";
+    $params[] = $monthStart;
+    $whereConditions[] = "date <= ?";
+    $params[] = $monthEnd;
+} elseif ($dateFilter === 'annual') {
+    $selectedYear = $_GET['selected_year'] ?? date('Y');
+    $yearStart = $selectedYear . '-01-01';
+    $yearEnd = $selectedYear . '-12-31';
+    $whereConditions[] = "date >= ?";
+    $params[] = $yearStart;
+    $whereConditions[] = "date <= ?";
+    $params[] = $yearEnd;
+} elseif ($dateFilter === 'custom' || (!empty($_GET['date_from']) && !empty($_GET['date_to']))) {
+    if (!empty($_GET['date_from'])) {
+        $whereConditions[] = "date >= ?";
+        $params[] = $_GET['date_from'];
+    }
+    if (!empty($_GET['date_to'])) {
+        $whereConditions[] = "date <= ?";
+        $params[] = $_GET['date_to'];
+    }
 }
-if (!empty($_GET['check_no'])) {
-    $whereConditions[] = "check_no LIKE ?";
-    $params[] = '%' . $_GET['check_no'] . '%';
-}
-if (!empty($_GET['dv_or_no'])) {
-    $whereConditions[] = "dv_or_no LIKE ?";
-    $params[] = '%' . $_GET['dv_or_no'] . '%';
-}
-if (!empty($_GET['particulars'])) {
-    $whereConditions[] = "particulars LIKE ?";
-    $params[] = '%' . $_GET['particulars'] . '%';
+
+if (!empty($_GET['search'])) {
+    $searchTerm = '%' . $_GET['search'] . '%';
+    $whereConditions[] = "(check_no LIKE ? OR dv_or_no LIKE ? OR particulars LIKE ?)";
+    $params[] = $searchTerm;
+    $params[] = $searchTerm;
+    $params[] = $searchTerm;
 }
 
 $whereClause = '';
@@ -47,6 +78,30 @@ try {
 } catch (Exception $e) {
     $ppeRecords = [];
     $error = htmlspecialchars($e->getMessage());
+}
+
+// Get Balance Forward (last balance before filtered month) if filtering by month
+$balanceForward = 0;
+$balanceForwardDate = '';
+if ($dateFilter === 'monthly') {
+    $selectedMonth = $_GET['selected_month'] ?? date('m');
+    $selectedYear = $_GET['selected_year'] ?? date('Y');
+    $monthStart = $selectedYear . '-' . $selectedMonth . '-01';
+    
+    // Get the last transaction before the filtered month starts
+    try {
+        $forwardSql = "SELECT date, balance FROM ppe WHERE date < ? ORDER BY date DESC LIMIT 1";
+        $forwardStmt = $conn->prepare($forwardSql);
+        $forwardStmt->execute([$monthStart]);
+        $forwardRecord = $forwardStmt->fetch();
+        
+        if ($forwardRecord) {
+            $balanceForward = $forwardRecord['balance'];
+            $balanceForwardDate = date('m/d/Y', strtotime($forwardRecord['date']));
+        }
+    } catch (Exception $e) {
+        $balanceForward = 0;
+    }
 }
 
 // Handle Excel export
@@ -292,6 +347,19 @@ if ($format === 'pdf') {
                 if (count($ppeRecords) > 0) {
                     $totalDebit = 0;
                     $totalCredit = 0;
+                    
+                    // Add Balance Forwarded row first if filtered by month
+                    if ($dateFilter === 'monthly') {
+                        echo '<tr style="font-weight: bold;">';
+                        echo '<td>' . strtoupper(htmlspecialchars($balanceForwardDate)) . '</td>';
+                        echo '<td>&nbsp;</td>';
+                        echo '<td>&nbsp;</td>';
+                        echo '<td>' . strtoupper('BALANCE FORWARDED') . '</td>';
+                        echo '<td class="text-right">&nbsp;</td>';
+                        echo '<td class="text-right">&nbsp;</td>';
+                        echo '<td class="text-right">' . number_format($balanceForward, 2) . '</td>';
+                        echo '</tr>';
+                    }
                     
                     foreach ($ppeRecords as $record) {
                         $totalDebit += $record['debit'];

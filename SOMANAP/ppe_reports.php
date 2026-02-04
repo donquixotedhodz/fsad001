@@ -41,8 +41,8 @@ ob_start();
                             <option value="">Select Date Range</option>
                             <option value="today" <?php echo ($_GET['date_filter'] ?? '') === 'today' ? 'selected' : ''; ?>>Today</option>
                             <option value="weekly" <?php echo ($_GET['date_filter'] ?? '') === 'weekly' ? 'selected' : ''; ?>>This Week</option>
-                            <option value="monthly" <?php echo ($_GET['date_filter'] ?? '') === 'monthly' ? 'selected' : ''; ?>>This Month</option>
-                            <option value="annual" <?php echo ($_GET['date_filter'] ?? '') === 'annual' ? 'selected' : ''; ?>>This Year</option>
+                            <option value="monthly" <?php echo ($_GET['date_filter'] ?? '') === 'monthly' ? 'selected' : ''; ?>>Months</option>
+                            <option value="annual" <?php echo ($_GET['date_filter'] ?? '') === 'annual' ? 'selected' : ''; ?>>Year</option>
                             <option value="custom" <?php echo ($_GET['date_filter'] ?? '') === 'custom' ? 'selected' : ''; ?>>Custom Range</option>
                         </select>
                     </div>
@@ -79,6 +79,38 @@ ob_start();
                     </select>
                 </div>
 
+                <!-- Month Selection (Hidden by default) -->
+                <div id="monthSelectionDiv" style="<?php echo (($_GET['date_filter'] ?? '') === 'monthly') ? 'display: block;' : 'display: none;'; ?>">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Month</label>
+                    <select name="selected_month" id="monthSelect" onchange="submitForm()" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-600 dark:text-white focus:outline-none bg-white">
+                        <?php
+                        $currentMonth = date('m');
+                        $currentYear = date('Y');
+                        $selectedMonth = $_GET['selected_month'] ?? $currentMonth;
+                        $selectedYear = $_GET['selected_year'] ?? $currentYear;
+                        
+                        $months = [
+                            '01' => 'January',
+                            '02' => 'February',
+                            '03' => 'March',
+                            '04' => 'April',
+                            '05' => 'May',
+                            '06' => 'June',
+                            '07' => 'July',
+                            '08' => 'August',
+                            '09' => 'September',
+                            '10' => 'October',
+                            '11' => 'November',
+                            '12' => 'December'
+                        ];
+                        
+                        foreach ($months as $monthNum => $monthName) {
+                            echo '<option value="' . $monthNum . '" ' . ($selectedMonth == $monthNum ? 'selected' : '') . '>' . $monthName . '</option>';
+                        }
+                        ?>
+                    </select>
+                </div>
+
                 <!-- Custom Date Range (Hidden by default) -->
                 <div id="customDateRange" style="<?php echo (($_GET['date_filter'] ?? '') === 'custom') ? 'display: grid;' : 'display: none;'; ?>" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -98,23 +130,32 @@ ob_start();
                 const filterType = document.getElementById('dateFilterSelect').value;
                 const customDateRange = document.getElementById('customDateRange');
                 const yearSelectionDiv = document.getElementById('yearSelectionDiv');
+                const monthSelectionDiv = document.getElementById('monthSelectionDiv');
                 const dateFromInput = document.getElementById('dateFrom');
                 const dateToInput = document.getElementById('dateTo');
 
                 if (filterType === 'custom') {
                     customDateRange.style.display = 'grid';
                     yearSelectionDiv.style.display = 'none';
+                    monthSelectionDiv.style.display = 'none';
                     dateFromInput.value = '';
                     dateToInput.value = '';
                 } else if (filterType === 'annual') {
                     customDateRange.style.display = 'none';
                     yearSelectionDiv.style.display = 'block';
+                    monthSelectionDiv.style.display = 'none';
+                } else if (filterType === 'monthly') {
+                    customDateRange.style.display = 'none';
+                    yearSelectionDiv.style.display = 'none';
+                    monthSelectionDiv.style.display = 'block';
                 } else if (filterType === '') {
                     customDateRange.style.display = 'none';
                     yearSelectionDiv.style.display = 'none';
+                    monthSelectionDiv.style.display = 'none';
                 } else {
                     customDateRange.style.display = 'none';
                     yearSelectionDiv.style.display = 'none';
+                    monthSelectionDiv.style.display = 'none';
                     submitForm();
                 }
             }
@@ -162,10 +203,14 @@ ob_start();
                     $whereConditions[] = "date <= ?";
                     $params[] = $today;
                 } elseif ($dateFilter === 'monthly') {
+                    $selectedMonth = $_GET['selected_month'] ?? date('m');
+                    $selectedYear = $_GET['selected_year'] ?? date('Y');
+                    $monthStart = $selectedYear . '-' . $selectedMonth . '-01';
+                    $monthEnd = date('Y-m-t', strtotime($monthStart));
                     $whereConditions[] = "date >= ?";
                     $params[] = $monthStart;
                     $whereConditions[] = "date <= ?";
-                    $params[] = $today;
+                    $params[] = $monthEnd;
                 } elseif ($dateFilter === 'annual') {
                     $selectedYear = $_GET['selected_year'] ?? date('Y');
                     $yearStart = $selectedYear . '-01-01';
@@ -208,6 +253,7 @@ ob_start();
                     if (count($ppeRecords) > 0) {
                         $totalDebit = 0;
                         $totalCredit = 0;
+                        $filteredBalance = 0;
                         
                         foreach ($ppeRecords as $record) {
                             $totalDebit += $record['debit'];
@@ -225,12 +271,15 @@ ob_start();
                             echo '</tr>';
                         }
                         
+                        // Calculate balance based on filtered results
+                        $filteredBalance = $totalDebit - $totalCredit;
+                        
                         // Add total row
                         echo '<tr class="bg-gray-200 dark:bg-gray-700 font-bold">';
                         echo '<td colspan="4" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-900 dark:text-white text-right">Total:</td>';
                         echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-right text-gray-900 dark:text-white">' . number_format($totalDebit, 2) . '</td>';
                         echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-right text-gray-900 dark:text-white">' . number_format($totalCredit, 2) . '</td>';
-                        echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-right text-gray-900 dark:text-white">' . number_format(end($ppeRecords)['balance'], 2) . '</td>';
+                        echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-right text-gray-900 dark:text-white">' . number_format($filteredBalance, 2) . '</td>';
                         echo '</tr>';
                     } else {
                         echo '<tr><td colspan="7" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-gray-500">No records found</td></tr>';
@@ -252,11 +301,20 @@ ob_start();
             // Build query string from current filters
             $queryString = '';
             $filterParams = [];
+            
+            // Include date filter type
+            if (!empty($_GET['date_filter'])) $filterParams[] = 'date_filter=' . urlencode($_GET['date_filter']);
+            
+            // Include selected month and year
+            if (!empty($_GET['selected_month'])) $filterParams[] = 'selected_month=' . urlencode($_GET['selected_month']);
+            if (!empty($_GET['selected_year'])) $filterParams[] = 'selected_year=' . urlencode($_GET['selected_year']);
+            
+            // Include custom date range
             if (!empty($_GET['date_from'])) $filterParams[] = 'date_from=' . urlencode($_GET['date_from']);
             if (!empty($_GET['date_to'])) $filterParams[] = 'date_to=' . urlencode($_GET['date_to']);
-            if (!empty($_GET['check_no'])) $filterParams[] = 'check_no=' . urlencode($_GET['check_no']);
-            if (!empty($_GET['dv_or_no'])) $filterParams[] = 'dv_or_no=' . urlencode($_GET['dv_or_no']);
-            if (!empty($_GET['particulars'])) $filterParams[] = 'particulars=' . urlencode($_GET['particulars']);
+            
+            // Include search
+            if (!empty($_GET['search'])) $filterParams[] = 'search=' . urlencode($_GET['search']);
             
             if (!empty($filterParams)) {
                 $queryString = '?' . implode('&', $filterParams);
@@ -314,19 +372,21 @@ ob_start();
     <script>
         function exportToExcel() {
             // Get filter parameters from form
+            const dateFilter = document.querySelector('select[name="date_filter"]').value;
+            const selectedMonth = document.querySelector('input[name="selected_month"]')?.value || '';
+            const selectedYear = document.querySelector('input[name="selected_year"]')?.value || '';
             const dateFrom = document.querySelector('input[name="date_from"]').value;
             const dateTo = document.querySelector('input[name="date_to"]').value;
-            const checkNo = document.querySelector('input[name="check_no"]').value;
-            const dvOrNo = document.querySelector('input[name="dv_or_no"]').value;
-            const particulars = document.querySelector('input[name="particulars"]').value;
+            const search = document.querySelector('input[name="search"]').value;
             
             // Build query string
             let params = [];
+            if (dateFilter) params.push('date_filter=' + encodeURIComponent(dateFilter));
+            if (selectedMonth) params.push('selected_month=' + encodeURIComponent(selectedMonth));
+            if (selectedYear) params.push('selected_year=' + encodeURIComponent(selectedYear));
             if (dateFrom) params.push('date_from=' + encodeURIComponent(dateFrom));
             if (dateTo) params.push('date_to=' + encodeURIComponent(dateTo));
-            if (checkNo) params.push('check_no=' + encodeURIComponent(checkNo));
-            if (dvOrNo) params.push('dv_or_no=' + encodeURIComponent(dvOrNo));
-            if (particulars) params.push('particulars=' + encodeURIComponent(particulars));
+            if (search) params.push('search=' + encodeURIComponent(search));
             
             const queryString = params.length > 0 ? '?' + params.join('&') : '';
             

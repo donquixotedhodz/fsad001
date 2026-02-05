@@ -40,6 +40,11 @@ $username = $_SESSION['username'] ?? 'User';
 // Get all ADS records
 $allADS = $adsController->getAllADS();
 
+// Fetch existing audit reports for autocomplete
+$auditReportsStmt = $conn->prepare("SELECT DISTINCT audit_report FROM ads ORDER BY audit_report ASC");
+$auditReportsStmt->execute();
+$auditReports = $auditReportsStmt->fetchAll(PDO::FETCH_COLUMN, 0);
+
 // Handle search and filter
 $searchTerm = isset($_GET['search']) ? trim($_GET['search']) : '';
 $filterBy = isset($_GET['filterBy']) ? trim($_GET['filterBy']) : 'all';
@@ -97,8 +102,8 @@ ob_start();
     <!-- Page Header -->
     <div class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between">
         <div>
-            <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-2">Audit Decision Scorecard</h1>
-            <p class="text-gray-600 dark:text-gray-400">Manage and track audit decision scorecards (ADS)</p>
+            <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-2">Audit Report Scorecards</h1>
+            <p class="text-gray-600 dark:text-gray-400">Manage and track audit report scorecards (ADS)</p>
         </div>
         <button onclick="document.getElementById('addADSModal').classList.remove('hidden'); resetADSForm();" class="mt-4 md:mt-0 inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -185,13 +190,13 @@ ob_start();
                         <?php echo htmlspecialchars(substr($record['scope'] ?? '', 0, 50)) . (strlen($record['scope'] ?? '') > 50 ? '...' : ''); ?>
                     </td>
                     <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
-                        <?php echo $record['bac_date'] ? date('M d, Y', strtotime($record['bac_date'])) : '-'; ?>
+                        <?php echo $record['bac_date'] ? date('F d, Y', strtotime($record['bac_date'])) : '-'; ?>
                     </td>
                     <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
                         <?php echo htmlspecialchars($record['bac_reso'] ?? '-'); ?>
                     </td>
                     <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
-                        <?php echo $record['boa_date'] ? date('M d, Y', strtotime($record['boa_date'])) : '-'; ?>
+                        <?php echo $record['boa_date'] ? date('F d, Y', strtotime($record['boa_date'])) : '-'; ?>
                     </td>
                     <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
                         <?php echo htmlspecialchars($record['boa_reso'] ?? '-'); ?>
@@ -238,41 +243,47 @@ ob_start();
 
     <!-- Pagination -->
     <?php if ($totalPages > 1): ?>
-    <div class="mt-6 flex items-center justify-center gap-2">
-        <?php if ($currentPage > 1): ?>
-        <a href="?page=1<?php echo $paginationQuery; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-            First
-        </a>
-        <a href="?page=<?php echo $currentPage - 1; ?><?php echo $paginationQuery; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-            Previous
-        </a>
-        <?php endif; ?>
-
-        <?php 
-        $startPage = max(1, $currentPage - 2);
-        $endPage = min($totalPages, $currentPage + 2);
-        ?>
-
-        <?php for ($i = $startPage; $i <= $endPage; $i++): ?>
-            <?php if ($i === $currentPage): ?>
-            <span class="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium"><?php echo $i; ?></span>
-            <?php else: ?>
-            <a href="?page=<?php echo $i; ?><?php echo $paginationQuery; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition"><?php echo $i; ?></a>
+    <div class="mt-6 flex items-center justify-between">
+        <div class="text-sm text-gray-600 dark:text-gray-400">
+            Showing <?php echo ($offset + 1); ?> to <?php echo min($offset + $itemsPerPage, $totalItems); ?> of <?php echo $totalItems; ?> scorecards
+        </div>
+        <div class="flex gap-2">
+            <?php if ($currentPage > 1): ?>
+            <a href="?page=<?php echo $currentPage - 1; ?><?php echo $paginationQuery; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                Previous
+            </a>
             <?php endif; ?>
-        <?php endfor; ?>
 
-        <?php if ($endPage < $totalPages): ?>
+            <?php
+            $startPage = max(1, $currentPage - 2);
+            $endPage = min($totalPages, $currentPage + 2);
+            
+            if ($startPage > 1): ?>
+            <a href="?page=1<?php echo $paginationQuery; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">1</a>
+            <?php if ($startPage > 2): ?>
+            <span class="px-4 py-2 text-gray-600 dark:text-gray-400">...</span>
+            <?php endif; ?>
+            <?php endif; ?>
+
+            <?php for ($i = $startPage; $i <= $endPage; $i++): ?>
+            <a href="?page=<?php echo $i; ?><?php echo $paginationQuery; ?>" class="px-4 py-2 rounded-lg transition <?php echo ($i === $currentPage) ? 'bg-blue-600 text-white' : 'border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'; ?>">
+                <?php echo $i; ?>
+            </a>
+            <?php endfor; ?>
+
+            <?php if ($endPage < $totalPages): ?>
             <?php if ($endPage < $totalPages - 1): ?>
             <span class="px-4 py-2 text-gray-600 dark:text-gray-400">...</span>
             <?php endif; ?>
             <a href="?page=<?php echo $totalPages; ?><?php echo $paginationQuery; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition"><?php echo $totalPages; ?></a>
-        <?php endif; ?>
+            <?php endif; ?>
 
-        <?php if ($currentPage < $totalPages): ?>
-        <a href="?page=<?php echo $currentPage + 1; ?><?php echo $paginationQuery; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-            Next
-        </a>
-        <?php endif; ?>
+            <?php if ($currentPage < $totalPages): ?>
+            <a href="?page=<?php echo $currentPage + 1; ?><?php echo $paginationQuery; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                Next
+            </a>
+            <?php endif; ?>
+        </div>
     </div>
     <?php endif; ?>
 </div>
@@ -281,7 +292,7 @@ ob_start();
 <div id="addADSModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
     <div class="bg-white dark:bg-gray-800 rounded-lg w-full max-w-3xl p-8 max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between mb-6">
-            <h2 id="modalTitle" class="text-3xl font-bold text-gray-900 dark:text-white">Add Audit Decision Scorecard</h2>
+            <h2 id="modalTitle" class="text-3xl font-bold text-gray-900 dark:text-white">Add Audit Report</h2>
             <button onclick="closeADSModal()" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -299,7 +310,10 @@ ob_start();
             <!-- Audit Report -->
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Audit Report *</label>
-                <input type="text" id="auditReport" name="audit_report" required placeholder="Enter audit report name" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <div class="relative">
+                    <input type="text" id="auditReport" name="audit_report" required placeholder="Enter audit report name" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <div id="auditReportSuggestions" class="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+                </div>
             </div>
 
             <!-- Scope -->
@@ -309,14 +323,14 @@ ob_start();
             </div>
 
             <!-- Two Column Layout: Dates and Resolutions -->
-            <div class="grid grid-cols-2 gap-6">
+            <div class="space-y-6">
                 <!-- BAC Section -->
                 <div>
-                    <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-300 dark:border-gray-600">Board Audit Committee</h3>
-                    <div class="space-y-4">
+                    <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-3 pb-2 border-b border-gray-300 dark:border-gray-600">Board Audit Committee</h3>
+                    <div class="grid grid-cols-2 gap-6">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">BAC Date</label>
-                            <input type="date" id="bacDate" name="bac_date" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <input type="date" id="bacDate" name="bac_date" placeholder="Month DD, YYYY" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">BAC Resolution</label>
@@ -327,11 +341,11 @@ ob_start();
 
                 <!-- BOA Section -->
                 <div>
-                    <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-300 dark:border-gray-600">Board of Audit</h3>
-                    <div class="space-y-4">
+                    <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-3 pb-2 border-b border-gray-300 dark:border-gray-600">Board of Audit</h3>
+                    <div class="grid grid-cols-2 gap-6">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">BOA Date</label>
-                            <input type="date" id="boaDate" name="boa_date" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <input type="date" id="boaDate" name="boa_date" placeholder="Month DD, YYYY" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">BOA Resolution</label>
@@ -378,7 +392,12 @@ ob_start();
     </div>
 </div>
 
+
+
 <script>
+// Autocomplete data for audit reports
+const auditReportsData = <?php echo json_encode($auditReports); ?>;
+
 function changeLimit() {
     const limit = document.getElementById('limitSelect').value;
     const searchParams = new URLSearchParams(window.location.search);
@@ -391,14 +410,59 @@ function resetADSForm() {
     document.getElementById('adsForm').reset();
     document.getElementById('adsId').value = '';
     document.getElementById('submitBtn').textContent = 'Add Scorecard';
-    document.getElementById('modalTitle').textContent = 'Add Audit Decision Scorecard';
+    document.getElementById('modalTitle').textContent = 'Add Audit Report';
     document.getElementById('adsForm').elements['action'].value = 'add';
     document.getElementById('adsMessage').classList.add('hidden');
+    setupAuditReportAutocomplete();
 }
 
 function closeADSModal() {
     document.getElementById('addADSModal').classList.add('hidden');
     resetADSForm();
+}
+
+// Setup autocomplete for Audit Report
+function setupAuditReportAutocomplete() {
+    const input = document.getElementById('auditReport');
+    const suggestionsDiv = document.getElementById('auditReportSuggestions');
+    
+    if (!input) return;
+    
+    input.addEventListener('input', function() {
+        const query = this.value.toLowerCase().trim();
+        
+        if (query.length === 0) {
+            suggestionsDiv.classList.add('hidden');
+            return;
+        }
+        
+        // Filter suggestions based on input
+        const filtered = auditReportsData.filter(item => 
+            item.toLowerCase().includes(query)
+        );
+        
+        if (filtered.length === 0) {
+            suggestionsDiv.classList.add('hidden');
+        } else {
+            suggestionsDiv.innerHTML = filtered.map(item => 
+                `<div onclick="selectAuditReportSuggestion(this, '${item.replace(/'/g, "\\'")}', false)" class="px-4 py-2 hover:bg-blue-100 dark:hover:bg-blue-900 cursor-pointer text-gray-900 dark:text-white">${item}</div>`
+            ).join('');
+            suggestionsDiv.classList.remove('hidden');
+        }
+    });
+    
+    // Hide suggestions when clicking outside
+    document.addEventListener('click', function(e) {
+        if (e.target !== input && !suggestionsDiv.contains(e.target)) {
+            suggestionsDiv.classList.add('hidden');
+        }
+    });
+}
+
+function selectAuditReportSuggestion(element, value, isNew) {
+    const input = document.getElementById('auditReport');
+    input.value = value;
+    document.getElementById('auditReportSuggestions').classList.add('hidden');
 }
 
 function editADS(id) {
@@ -417,9 +481,10 @@ function editADS(id) {
                 document.getElementById('remarks').value = record.remarks || '';
                 
                 document.getElementById('submitBtn').textContent = 'Update Scorecard';
-                document.getElementById('modalTitle').textContent = 'Edit Audit Decision Scorecard';
+                document.getElementById('modalTitle').textContent = 'Edit Audit Report';
                 document.getElementById('adsForm').elements['action'].value = 'edit';
                 
+                setupAuditReportAutocomplete();
                 document.getElementById('addADSModal').classList.remove('hidden');
             } else {
                 showADSMessage('Error loading record: ' + (data.message || 'Unknown error'), 'error');
@@ -450,7 +515,7 @@ function viewADS(id) {
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <p class="text-sm font-medium text-gray-600 dark:text-gray-400">BAC Date</p>
-                                <p class="text-gray-900 dark:text-white">${record.bac_date ? new Date(record.bac_date).toLocaleDateString() : '-'}</p>
+                                <p class="text-gray-900 dark:text-white">${record.bac_date ? new Date(record.bac_date).toLocaleDateString('en-US', {year: 'numeric', month: 'long', day: 'numeric'}) : '-'}</p>
                             </div>
                             <div>
                                 <p class="text-sm font-medium text-gray-600 dark:text-gray-400">BAC Resolution</p>
@@ -458,7 +523,7 @@ function viewADS(id) {
                             </div>
                             <div>
                                 <p class="text-sm font-medium text-gray-600 dark:text-gray-400">BOA Date</p>
-                                <p class="text-gray-900 dark:text-white">${record.boa_date ? new Date(record.boa_date).toLocaleDateString() : '-'}</p>
+                                <p class="text-gray-900 dark:text-white">${record.boa_date ? new Date(record.boa_date).toLocaleDateString('en-US', {year: 'numeric', month: 'long', day: 'numeric'}) : '-'}</p>
                             </div>
                             <div>
                                 <p class="text-sm font-medium text-gray-600 dark:text-gray-400">BOA Resolution</p>
@@ -484,30 +549,73 @@ function viewADS(id) {
 }
 
 function deleteADS(id, name) {
-    if (confirm('Are you sure you want to delete "' + name + '"?')) {
-        fetch('?', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ id: id })
-        })
+    // Fetch full record data to show in confirmation modal
+    fetch('?action=get&id=' + id)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                showADSMessage('✓ ' + data.message, 'success');
-                setTimeout(() => {
-                    location.reload();
-                }, 1500);
-            } else {
-                showADSMessage('✗ Error: ' + (data.message || 'Unknown error'), 'error');
+                const record = data.data;
+                const auditReport = record.audit_report || 'N/A';
+                const scope = record.scope ? record.scope.substring(0, 50) : 'N/A';
+                const remarks = record.remarks ? record.remarks.substring(0, 50) : 'N/A';
+                
+                Swal.fire({
+                    title: 'Delete Scorecard',
+                    html: `
+                        <div class="text-left">
+                            <p class="mb-4 text-gray-700 dark:text-gray-300"><strong>Are you sure you want to delete this scorecard?</strong></p>
+                            <div class="bg-gray-100 dark:bg-gray-700 rounded-lg p-4 text-sm space-y-2">
+                                <div><span class="font-semibold text-gray-800 dark:text-gray-200">Audit Report:</span> <span class="text-gray-600 dark:text-gray-400">${auditReport}</span></div>
+                                <div><span class="font-semibold text-gray-800 dark:text-gray-200">Scope:</span> <span class="text-gray-600 dark:text-gray-400">${scope}</span></div>
+                                <div><span class="font-semibold text-gray-800 dark:text-gray-200">Remarks:</span> <span class="text-gray-600 dark:text-gray-400">${remarks}</span></div>
+                            </div>
+                        </div>
+                    `,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#6b7280',
+                    confirmButtonText: 'Yes, delete it!',
+                    cancelButtonText: 'Cancel',
+                    allowOutsideClick: false,
+                    allowEscapeKey: true,
+                    didOpen: (modal) => {
+                        if (document.body.classList.contains('dark')) {
+                            modal.classList.add('dark');
+                        }
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        fetch('?', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ id: id })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                showADSMessage('✓ ' + data.message, 'success');
+                                setTimeout(() => {
+                                    location.reload();
+                                }, 1500);
+                            } else {
+                                showADSMessage('✗ Error: ' + (data.message || 'Unknown error'), 'error');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            showADSMessage('✗ Error deleting record', 'error');
+                        });
+                    }
+                });
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            showADSMessage('✗ Error deleting record', 'error');
+            showADSMessage('✗ Error loading record', 'error');
         });
-    }
 }
 
 function printADS(id) {
@@ -541,6 +649,7 @@ document.getElementById('adsForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
     const formData = new FormData(this);
+    const auditReportValue = document.getElementById('auditReport').value.trim();
     
     fetch('?', {
         method: 'POST',
@@ -549,6 +658,12 @@ document.getElementById('adsForm').addEventListener('submit', function(e) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            // Add new audit report to suggestions if it's not already there
+            if (auditReportValue && !auditReportsData.includes(auditReportValue)) {
+                auditReportsData.push(auditReportValue);
+                auditReportsData.sort();
+            }
+            
             showADSMessage('✓ ' + data.message, 'success');
             setTimeout(() => {
                 location.reload();
@@ -566,6 +681,6 @@ document.getElementById('adsForm').addEventListener('submit', function(e) {
 
 <?php
 $content = ob_get_clean();
-$pageTitle = 'Audit Decision Scorecard';
+$pageTitle = 'Audit Report Scorecards';
 require_once __DIR__ . '/app/views/layouts/master.php';
 ?>

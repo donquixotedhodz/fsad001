@@ -2,6 +2,7 @@
 session_start();
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/app/controllers/MainController.php';
+require_once __DIR__ . '/app/helpers/AuditLogger.php';
 
 MainController::requireAuth();
 
@@ -16,6 +17,9 @@ $canEdit = isset($_SESSION['role']) && $_SESSION['role'] === 'superadmin';
 
 $controller = new MainController($conn);
 $controller->setCurrentPage('ppe');
+
+// Initialize audit logger
+$auditLogger = new AuditLogger($conn);
 
 // Set current page for sidebar active state
 $currentPage = 'ppe';
@@ -88,10 +92,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             // Insert new record
             $stmt = $conn->prepare("INSERT INTO ppe (date, particulars, check_no, dv_or_no, debit, credit, balance) VALUES (?, ?, ?, ?, ?, ?, ?)");
             $stmt->execute([$date, $particulars, $check_no, $dv_or_no, $debit, $credit, $newBalance]);
+            $newPPEId = $conn->lastInsertId();
             
             // Update PPE Provident Fund remaining balance
             $updateFundStmt = $conn->prepare("UPDATE ppe_funds SET remaining_balance = ? WHERE fund_name = 'PPE Provident Fund'");
             $updateFundStmt->execute([$newBalance]);
+            
+            // Log the action
+            $auditLogger->log(
+                'add_ppe',
+                'PPE record added: ' . $particulars . ' (Debit: ' . $debit . ', Credit: ' . $credit . ')',
+                'ppe',
+                $newPPEId
+            );
             
             // Set session message and redirect to avoid form resubmission warning
             $_SESSION['successMessage'] = "PPE record added successfully!";
@@ -118,8 +131,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     
     if ($ppe_id > 0) {
         try {
-            // Get the record to be deleted
-            $stmt = $conn->prepare("SELECT balance FROM ppe WHERE id = ?");
+            // Get the record to be deleted (for logging)
+            $stmt = $conn->prepare("SELECT balance, particulars FROM ppe WHERE id = ?");
             $stmt->execute([$ppe_id]);
             $recordToDelete = $stmt->fetch();
             
@@ -149,6 +162,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
                 // Update PPE Provident Fund remaining balance
                 $updateFundStmt = $conn->prepare("UPDATE ppe_funds SET remaining_balance = ? WHERE fund_name = 'PPE Provident Fund'");
                 $updateFundStmt->execute([$currentBalance]);
+                
+                // Log the action
+                $auditLogger->log(
+                    'delete_ppe',
+                    'PPE record deleted: ' . $recordToDelete['particulars'],
+                    'ppe',
+                    $ppe_id
+                );
                 
                 // Set session message and redirect to avoid form resubmission warning
                 $_SESSION['successMessage'] = "PPE record deleted successfully!";
@@ -260,6 +281,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             // Update PPE Provident Fund remaining balance
             $updateFundStmt = $conn->prepare("UPDATE ppe_funds SET remaining_balance = ? WHERE fund_name = 'PPE Provident Fund'");
             $updateFundStmt->execute([$currentBalance]);
+            
+            // Log the action
+            $auditLogger->log(
+                'edit_ppe',
+                'PPE record updated: ' . $particulars . ' (Debit: ' . $debit . ', Credit: ' . $credit . ')',
+                'ppe',
+                $ppe_id
+            );
             
             // Set session message and redirect to avoid form resubmission warning
             $_SESSION['successMessage'] = "PPE record updated successfully!";

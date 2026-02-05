@@ -66,7 +66,7 @@ $dateGenerated = date('F d, Y');
         .header {
             text-align: left;
             margin-bottom: 20px;
-            border-bottom: 2px solid #000;
+            /* border-bottom: 2px solid #000; */
             padding-bottom: 15px;
         }
         
@@ -195,9 +195,9 @@ $dateGenerated = date('F d, Y');
                     <th style="width: 15%;">Item</th>
                     <th style="width: 15%;">Recommending Approval</th>
                     <th style="width: 15%;">Approving Authority</th>
-                    <th style="width: 15%;">Department</th>
+                    <th style="width: 20%;">Department</th>
                     <th style="width: 15%;">Electric Cooperative (EC)</th>
-                    <th style="width: 15%;">Team</th>
+                    <th style="width: 5%;">Team</th>
                 </tr>
             </thead>
             <tbody>

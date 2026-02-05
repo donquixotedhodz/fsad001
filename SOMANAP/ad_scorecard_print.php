@@ -2,15 +2,58 @@
 session_start();
 require_once __DIR__ . '/../config.php';
 
-// Fetch ADS data from database
+// Get filter values from URL
+$filterAuditReport = isset($_GET['audit_report']) ? trim($_GET['audit_report']) : '';
+$filterScope = isset($_GET['scope']) ? trim($_GET['scope']) : '';
+$filterYear = isset($_GET['year']) ? trim($_GET['year']) : '';
+
+// Fetch ADS data from database with filters applied
 try {
-    $stmt = $conn->prepare("SELECT audit_report, scope, bac_date, bac_reso, boa_date, boa_reso, remarks FROM ads ORDER BY audit_report ASC");
+    $query = "SELECT audit_report, scope, bac_date, bac_reso, boa_date, boa_reso, remarks FROM ads WHERE 1=1";
+    
+    if (!empty($filterAuditReport)) {
+        $query .= " AND audit_report = :audit_report";
+    }
+    if (!empty($filterScope)) {
+        $query .= " AND scope = :scope";
+    }
+    if (!empty($filterYear)) {
+        $query .= " AND YEAR(bac_date) = :year";
+    }
+    
+    $query .= " ORDER BY bac_date ASC";
+    
+    $stmt = $conn->prepare($query);
+    
+    if (!empty($filterAuditReport)) {
+        $stmt->bindParam(':audit_report', $filterAuditReport);
+    }
+    if (!empty($filterScope)) {
+        $stmt->bindParam(':scope', $filterScope);
+    }
+    if (!empty($filterYear)) {
+        $stmt->bindParam(':year', $filterYear, PDO::PARAM_INT);
+    }
+    
     $stmt->execute();
     $adsRecords = $stmt->fetchAll();
 } catch (Exception $e) {
     $adsRecords = [];
     $error = htmlspecialchars($e->getMessage());
 }
+
+// Extract years from BAC dates
+$years = [];
+foreach ($adsRecords as $record) {
+    if (!empty($record['bac_date'])) {
+        $year = date('Y', strtotime($record['bac_date']));
+        if (!in_array($year, $years)) {
+            $years[] = $year;
+        }
+    }
+}
+sort($years);
+$yearRange = !empty($years) ? (count($years) === 1 ? $years[0] : $years[0] . ' - ' . $years[count($years) - 1]) : date('Y');
 
 $dateGenerated = date('F d, Y');
 ?>
@@ -20,7 +63,7 @@ $dateGenerated = date('F d, Y');
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audit Decision Scorecard Report</title>
+    <title>Audit Report Scorecard Report</title>
     <style>
         * {
             margin: 0;
@@ -66,7 +109,7 @@ $dateGenerated = date('F d, Y');
         .header {
             text-align: left;
             margin-bottom: 20px;
-            border-bottom: 2px solid #000;
+            /* border-bottom: 2px solid #000; */
             padding-bottom: 15px;
         }
         
@@ -183,40 +226,42 @@ $dateGenerated = date('F d, Y');
     <div class="page">
         <!-- Header -->
         <div class="header">
-            <h1>InternalAudit and Quality Standards Management Office (IAQSMO)</h1>
+            <h2>Internal Audit and Quality Standards Management Office (IAQSMO)</h2>
             <h2>Financial and Special Audit Division</h2>
-            <div class="header-date">Report Date: <?php echo strtoupper($dateGenerated); ?></div>
+            <h2 class="header-date">Accomplishment for Departmental Scorecard <?php echo $yearRange; ?></h2>
         </div>
-
         <!-- Table -->
         <table>
             <thead>
                 <tr>
-                    <th style="width: 12%;">Title of Audit Report</th>
+                    <th style="width: 4%;">No.</th>
+                    <th style="width: 30%;">Title of Audit Report</th>
                     <th style="width: 15%;">Scope</th>
                     <th style="width: 10%;">BAC Date</th>
-                    <th style="width: 12%;">BAC Resolution</th>
+                    <th style="width: 5%;">BAC Resolution</th>
                     <th style="width: 10%;">BOA Date</th>
-                    <th style="width: 12%;">BOA Resolution</th>
-                    <th style="width: 19%;">Remarks</th>
+                    <th style="width: 10%;">BOA Resolution</th>
+                    <th style="width: 14%;">Remarks</th>
                 </tr>
             </thead>
             <tbody>
                 <?php
                 if (count($adsRecords) > 0) {
+                    $counter = 1;
                     foreach ($adsRecords as $record) {
                         echo '<tr>';
+                        echo '<td class="text-center">' . $counter++ . '</td>';
                         echo '<td>' . htmlspecialchars($record['audit_report'] ?? '') . '</td>';
                         echo '<td>' . htmlspecialchars($record['scope'] ?? '-') . '</td>';
-                        echo '<td class="text-center">' . ($record['bac_date'] ? date('M d, Y', strtotime($record['bac_date'])) : '-') . '</td>';
-                        echo '<td>' . htmlspecialchars($record['bac_reso'] ?? '-') . '</td>';
-                        echo '<td class="text-center">' . ($record['boa_date'] ? date('M d, Y', strtotime($record['boa_date'])) : '-') . '</td>';
-                        echo '<td>' . htmlspecialchars($record['boa_reso'] ?? '-') . '</td>';
+                        echo '<td class="text-center">' . ($record['bac_date'] ? date('F d, Y', strtotime($record['bac_date'])) : '-') . '</td>';
+                        echo '<td class="text-center">' . htmlspecialchars($record['bac_reso'] ?? '-') . '</td>';
+                        echo '<td class="text-center">' . ($record['boa_date'] ? date('F d, Y', strtotime($record['boa_date'])) : '-') . '</td>';
+                        echo '<td class="text-center">' . htmlspecialchars($record['boa_reso'] ?? '-') . '</td>';
                         echo '<td>' . htmlspecialchars($record['remarks'] ?? '-') . '</td>';
                         echo '</tr>';
                     }
                 } else {
-                    echo '<tr><td colspan="7" class="text-center">NO RECORDS FOUND</td></tr>';
+                    echo '<tr><td colspan="8" class="text-center">NO RECORDS FOUND</td></tr>';
                 }
                 ?>
             </tbody>

@@ -88,14 +88,6 @@ class ADScoreCardController extends MainController {
                 exit;
             }
 
-            // Check if audit_report already exists
-            $checkStmt = $this->conn->prepare("SELECT id FROM ads WHERE audit_report = ?");
-            $checkStmt->execute([$audit_report]);
-            if ($checkStmt->rowCount() > 0) {
-                echo json_encode(['success' => false, 'message' => 'This Audit Report already exists']);
-                exit;
-            }
-
             // Insert new ADS record
             $stmt = $this->conn->prepare("
                 INSERT INTO ads (audit_report, scope, bac_date, bac_reso, boa_date, boa_reso, remarks)
@@ -168,14 +160,6 @@ class ADScoreCardController extends MainController {
 
             if (empty($audit_report)) {
                 echo json_encode(['success' => false, 'message' => 'Audit Report is required']);
-                exit;
-            }
-
-            // Check if audit_report already exists (excluding current record)
-            $checkStmt = $this->conn->prepare("SELECT id FROM ads WHERE audit_report = ? AND id != ?");
-            $checkStmt->execute([$audit_report, $id]);
-            if ($checkStmt->rowCount() > 0) {
-                echo json_encode(['success' => false, 'message' => 'This Audit Report already exists']);
                 exit;
             }
 

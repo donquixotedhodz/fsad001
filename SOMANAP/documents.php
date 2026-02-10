@@ -1444,11 +1444,8 @@ function deleteDocument(doc) {
         cancelButtonText: 'Cancel',
         allowOutsideClick: false,
         allowEscapeKey: true,
-        didOpen: (modal) => {
-            // Apply dark mode if active
-            if (document.body.classList.contains('dark')) {
-                modal.classList.add('dark');
-            }
+        customClass: {
+            popup: 'swal2-light-mode'
         }
     }).then((result) => {
         if (result.isConfirmed) {
@@ -1466,10 +1463,8 @@ function deleteDocument(doc) {
                         icon: 'success',
                         timer: 2000,
                         timerProgressBar: true,
-                        didOpen: (modal) => {
-                            if (document.body.classList.contains('dark')) {
-                                modal.classList.add('dark');
-                            }
+                        customClass: {
+                            popup: 'swal2-light-mode'
                         }
                     }).then(() => {
                         location.reload();
@@ -1479,10 +1474,8 @@ function deleteDocument(doc) {
                         title: 'Error!',
                         text: 'Failed to delete document: ' + data.message,
                         icon: 'error',
-                        didOpen: (modal) => {
-                            if (document.body.classList.contains('dark')) {
-                                modal.classList.add('dark');
-                            }
+                        customClass: {
+                            popup: 'swal2-light-mode'
                         }
                     });
                 }

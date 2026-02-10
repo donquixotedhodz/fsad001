@@ -67,6 +67,37 @@
         .btn-success:hover {
             opacity: 0.9;
         }
+
+        /* SweetAlert2 Light Mode Override */
+        .swal2-light-mode {
+            --swal2-backdrop: rgba(0, 0, 0, 0.4) !important;
+            --swal2-white: #ffffff !important;
+            --swal2-black: #000000 !important;
+            --swal2-grey: #6c757d !important;
+            --swal2-border-radius: 0.375rem !important;
+            --swal2-box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+        }
+
+        .swal2-light-mode .swal2-popup {
+            background: #ffffff !important;
+            color: #000000 !important;
+        }
+
+        .swal2-light-mode .swal2-title {
+            color: #000000 !important;
+        }
+
+        .swal2-light-mode .swal2-html-container {
+            color: #000000 !important;
+        }
+
+        .swal2-light-mode .swal2-confirm {
+            background-color: #dc2626 !important;
+        }
+
+        .swal2-light-mode .swal2-cancel {
+            background-color: #6b7280 !important;
+        }
     </style>
     <script>
         // Set PDF worker

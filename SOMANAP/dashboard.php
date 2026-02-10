@@ -72,6 +72,11 @@ $ecStmt = $conn->prepare("SELECT COUNT(*) as total FROM electric_cooperatives");
 $ecStmt->execute();
 $totalECs = $ecStmt->fetch(PDO::FETCH_ASSOC)['total'];
 
+// Count total AD Scorecard documents
+$adsStmt = $conn->prepare("SELECT COUNT(*) as total FROM ads");
+$adsStmt->execute();
+$totalADS = $adsStmt->fetch(PDO::FETCH_ASSOC)['total'];
+
 // Count documents by Item
 $itemCount = [];
 $stmt = $conn->prepare("SELECT item, COUNT(*) as count FROM manap GROUP BY item ORDER BY count DESC");
@@ -218,20 +223,12 @@ ob_start();
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border p-6 transition-all duration-300" id="statCard4" style="border-color: var(--theme-danger);">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Last Updated</p>
-                    <p class="text-lg font-bold text-gray-900 dark:text-white mt-2">
-                        <?php 
-                        if (!empty($allDocuments)) {
-                            echo date('M d, Y', strtotime($allDocuments[0]['created_at']));
-                        } else {
-                            echo 'N/A';
-                        }
-                        ?>
-                    </p>
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">AD Scorecard Documents</p>
+                    <p class="text-3xl font-bold text-gray-900 dark:text-white mt-2"><?php echo $totalADS; ?></p>
                 </div>
                 <div class="p-3 rounded-lg" style="background-color: rgba(var(--theme-danger-rgb), 0.15);">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--theme-danger);">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
                 </div>
             </div>

@@ -98,6 +98,57 @@
         .swal2-light-mode .swal2-cancel {
             background-color: #6b7280 !important;
         }
+
+        /* Custom Tooltip Styles */
+        .custom-tooltip {
+            position: relative;
+            display: inline-block;
+        }
+
+        .custom-tooltip .tooltip-text {
+            visibility: hidden;
+            width: 120px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px 8px;
+            position: absolute;
+            z-index: 1000;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -60px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .custom-tooltip .tooltip-text::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #333 transparent transparent transparent;
+        }
+
+        .custom-tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Dark mode tooltip */
+        .dark .custom-tooltip .tooltip-text {
+            background-color: #1f2937;
+            color: #f9fafb;
+        }
+
+        .dark .custom-tooltip .tooltip-text::after {
+            border-color: #1f2937 transparent transparent transparent;
+        }
     </style>
     <script>
         // Set PDF worker

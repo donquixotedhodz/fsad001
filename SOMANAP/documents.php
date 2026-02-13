@@ -260,10 +260,24 @@ ob_start();
                         if (!empty($doc['control_point'])) {
                             $points = array_filter(array_map('trim', explode("\n", $doc['control_point'])));
                             if (!empty($points)) {
-                                echo '<div class="space-y-1">';
-                                foreach ($points as $point) {
-                                    echo '<div class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">' . htmlspecialchars($point) . '</div>';
+                                $totalPoints = count($points);
+                                echo '<div class="control-points-container" data-doc-id="' . $doc['id'] . '">';
+                                
+                                // Show first control point
+                                echo '<div class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">' . htmlspecialchars($points[0]) . '</div>';
+                                
+                                // Show additional points (initially hidden)
+                                if ($totalPoints > 1) {
+                                    echo '<div class="additional-points hidden space-y-1 mt-1">';
+                                    for ($i = 1; $i < $totalPoints; $i++) {
+                                        echo '<div class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">' . htmlspecialchars($points[$i]) . '</div>';
+                                    }
+                                    echo '</div>';
+                                    
+                                    // See more/less toggle
+                                    echo '<button onclick="toggleControlPoints(' . $doc['id'] . ', this)" class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 mt-1 focus:outline-none">See more (' . ($totalPoints - 1) . ' more)</button>';
                                 }
+                                
                                 echo '</div>';
                             } else {
                                 echo '-';
@@ -338,11 +352,14 @@ ob_start();
                         $favBgColor = $isFavorited ? 'background-color: var(--theme-danger);' : 'background-color: var(--theme-secondary);';
                         $favFill = $isFavorited ? 'currentColor' : 'none';
                         ?>
-                        <button onclick="toggleFavorite(<?php echo $doc['id']; ?>, this)" title="<?php echo $favTitle; ?>" class="toggle-favorite-btn inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition favorite-btn-<?php echo $doc['id']; ?> <?php echo $favClass; ?>" style="<?php echo $favBgColor; ?> border: 2px solid black;" data-document-id="<?php echo $doc['id']; ?>" data-is-favorite="<?php echo $isFavorited ? '1' : '0'; ?>">
-                            <svg class="w-4 h-4 favorite-star" fill="<?php echo $favFill; ?>" stroke="black" stroke-width="1.5" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
-                            </svg>
-                        </button>
+                        <div class="custom-tooltip">
+                            <button onclick="toggleFavorite(<?php echo $doc['id']; ?>, this)" class="toggle-favorite-btn inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition favorite-btn-<?php echo $doc['id']; ?> <?php echo $favClass; ?>" style="<?php echo $favBgColor; ?> border: 2px solid black;" data-document-id="<?php echo $doc['id']; ?>" data-is-favorite="<?php echo $isFavorited ? '1' : '0'; ?>" data-tooltip="<?php echo $favTitle; ?>">
+                                <svg class="w-4 h-4 favorite-star" fill="<?php echo $favFill; ?>" stroke="black" stroke-width="1.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
+                                </svg>
+                            </button>
+                            <span class="tooltip-text"><?php echo $favTitle; ?></span>
+                        </div>
                         <?php endif; ?>
                         <?php if (isset($_SESSION['role']) && ($_SESSION['role'] === 'administrator' || $_SESSION['role'] === 'superadmin')): ?>
                         <button onclick="openEditModal(<?php echo htmlspecialchars(json_encode($doc)); ?>)" title="Edit document" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition mr-2" style="background-color: var(--theme-accent);">
@@ -2171,10 +2188,13 @@ async function toggleFavorite(documentId, button) {
 
         if (data.success) {
             const star = button.querySelector('.favorite-star');
+            const tooltipSpan = button.parentElement.querySelector('.tooltip-text');
             if (data.isFavorite) {
                 // Fill the star and turn red
                 star.setAttribute('fill', 'currentColor');
                 button.style.backgroundColor = 'var(--theme-danger)';
+                button.setAttribute('data-tooltip', 'Remove from favorites');
+                if (tooltipSpan) tooltipSpan.textContent = 'Remove from favorites';
                 button.title = 'Remove from favorites';
                 button.setAttribute('data-is-favorite', '1');
                 button.classList.add('is-favorite');
@@ -2182,6 +2202,8 @@ async function toggleFavorite(documentId, button) {
                 // Outline the star and turn back to secondary color
                 star.setAttribute('fill', 'none');
                 button.style.backgroundColor = 'var(--theme-secondary)';
+                button.setAttribute('data-tooltip', 'Add to favorites');
+                if (tooltipSpan) tooltipSpan.textContent = 'Add to favorites';
                 button.title = 'Add to favorites';
                 button.setAttribute('data-is-favorite', '0');
                 button.classList.remove('is-favorite');
@@ -2192,6 +2214,26 @@ async function toggleFavorite(documentId, button) {
     } catch (error) {
         console.error('Error toggling favorite:', error);
         alert('Error toggling favorite');
+    }
+}
+
+// Toggle control points visibility
+function toggleControlPoints(documentId, button) {
+    const container = button.closest('.control-points-container');
+    const additionalPoints = container.querySelector('.additional-points');
+    
+    if (additionalPoints.classList.contains('hidden')) {
+        // Show additional points
+        additionalPoints.classList.remove('hidden');
+        button.textContent = 'See less';
+        button.classList.remove('text-blue-600', 'dark:text-blue-400', 'hover:text-blue-800', 'dark:hover:text-blue-300');
+        button.classList.add('text-gray-600', 'dark:text-gray-400', 'hover:text-gray-800', 'dark:hover:text-gray-300');
+    } else {
+        // Hide additional points
+        additionalPoints.classList.add('hidden');
+        button.textContent = 'See more (' + (container.querySelectorAll('.additional-points > div').length) + ' more)';
+        button.classList.remove('text-gray-600', 'dark:text-gray-400', 'hover:text-gray-800', 'dark:hover:text-gray-300');
+        button.classList.add('text-blue-600', 'dark:text-blue-400', 'hover:text-blue-800', 'dark:hover:text-blue-300');
     }
 }
 

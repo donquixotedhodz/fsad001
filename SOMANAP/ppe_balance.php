@@ -2,48 +2,14 @@
 session_start();
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/app/controllers/MainController.php';
-require_once __DIR__ . '/app/helpers/AuditLogger.php';
 
 MainController::requireAuth();
 $controller = new MainController($conn);
 $controller->setCurrentPage('ppe_balance');
 
-// Initialize audit logger
-$auditLogger = new AuditLogger($conn);
-
 // Set current page for sidebar active state
 $currentPage = 'ppe_balance';
 $username = $_SESSION['username'] ?? 'User';
-
-// Handle PPE Fund Balance Update
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_ppe_balance') {
-    $newBalance = isset($_POST['ppe_balance']) ? floatval($_POST['ppe_balance']) : 0;
-    
-    // Fetch old balance for audit log
-    $oldBalanceStmt = $conn->prepare("SELECT remaining_balance FROM ppe_funds WHERE fund_name = 'PPE Provident Fund' LIMIT 1");
-    $oldBalanceStmt->execute();
-    $oldBalanceResult = $oldBalanceStmt->fetch(PDO::FETCH_ASSOC);
-    $oldBalance = $oldBalanceResult ? $oldBalanceResult['remaining_balance'] : 0;
-    
-    $updateStmt = $conn->prepare("UPDATE ppe_funds SET remaining_balance = ? WHERE fund_name = 'PPE Provident Fund'");
-    $updateStmt->execute([$newBalance]);
-    
-    // Create comprehensive description
-    $difference = $newBalance - $oldBalance;
-    $differenceType = $difference > 0 ? 'Increased' : ($difference < 0 ? 'Decreased' : 'No change');
-    $absDifference = abs($difference);
-    
-    $description = "PPE Provident Fund balance updated via Remaining Balance page | ";
-    $description .= "Previous Balance: ₱" . number_format($oldBalance, 2) . " | ";
-    $description .= "New Balance: ₱" . number_format($newBalance, 2) . " | ";
-    $description .= "{$differenceType} by: ₱" . number_format($absDifference, 2);
-    
-    // Log the balance update with full details
-    $auditLogger->logUpdate('ppe_funds', 1, $description, 
-        ['fund_name' => 'PPE Provident Fund', 'remaining_balance' => $oldBalance], 
-        ['fund_name' => 'PPE Provident Fund', 'remaining_balance' => $newBalance]
-    );
-}
 
 // Fetch PPE Remaining Balance - Calculate from actual PPE table data
 $stmt = $conn->prepare("SELECT balance FROM ppe ORDER BY id DESC LIMIT 1");
@@ -108,9 +74,7 @@ ob_start();
                 </div>
             </div>
             <p id="balanceDisplay" class="text-4xl font-bold mb-4" style="color: var(--theme-primary);">₱<?php echo number_format($remainingBalance, 2); ?></p>
-            <button onclick="document.getElementById('editBalanceModal').classList.remove('hidden')" class="w-full px-4 py-2 text-white text-sm rounded-lg transition font-medium hover:opacity-90" style="background-color: var(--theme-primary);">
-                Edit Balance
-            </button>
+            <p class="text-sm" style="color: var(--theme-primary);">Total Balance Remaining</p>
         </div>
 
         <!-- Total Debit Card -->
@@ -193,46 +157,6 @@ ob_start();
                 </tbody>
             </table>
         </div>
-    </div>
-</div>
-
-<!-- Edit Balance Modal -->
-<div id="editBalanceModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-    <div class="bg-white dark:bg-gray-800 rounded-lg w-full max-w-md p-8">
-        <div class="flex items-center justify-between mb-6">
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Edit Remaining Balance</h2>
-            <button onclick="document.getElementById('editBalanceModal').classList.add('hidden')" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-            </button>
-        </div>
-
-        <form method="POST" class="space-y-4">
-            <input type="hidden" name="action" value="update_ppe_balance">
-            
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Current Balance</label>
-                <p class="text-3xl font-bold text-purple-600 dark:text-purple-400 mb-4">₱<?php echo number_format($remainingBalance, 2); ?></p>
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">New Balance</label>
-                <div class="flex items-center gap-2">
-                    <span class="text-xl font-medium text-gray-700 dark:text-gray-300">₱</span>
-                    <input type="number" name="ppe_balance" value="<?php echo $remainingBalance; ?>" step="0.01" min="0" required class="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="Enter amount">
-                </div>
-            </div>
-
-            <div class="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <button type="button" onclick="document.getElementById('editBalanceModal').classList.add('hidden')" class="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition font-medium">
-                    Cancel
-                </button>
-                <button type="submit" class="flex-1 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition font-medium">
-                    Update Balance
-                </button>
-            </div>
-        </form>
     </div>
 </div>
 

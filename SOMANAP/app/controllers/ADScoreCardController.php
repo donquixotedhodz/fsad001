@@ -11,6 +11,7 @@ class ADScoreCardController extends MainController {
                 SELECT 
                     id,
                     audit_report,
+                    adsyear,
                     scope,
                     bac_date,
                     bac_reso,
@@ -39,6 +40,7 @@ class ADScoreCardController extends MainController {
                 SELECT 
                     id,
                     audit_report,
+                    adsyear,
                     scope,
                     bac_date,
                     bac_reso,
@@ -76,6 +78,7 @@ class ADScoreCardController extends MainController {
 
             // Validate required fields
             $audit_report = trim($_POST['audit_report'] ?? '');
+            $adsyear = trim($_POST['adsyear'] ?? '');
             $scope = trim($_POST['scope'] ?? '');
             $bac_date = trim($_POST['bac_date'] ?? '');
             $bac_reso = trim($_POST['bac_reso'] ?? '');
@@ -90,12 +93,13 @@ class ADScoreCardController extends MainController {
 
             // Insert new ADS record
             $stmt = $this->conn->prepare("
-                INSERT INTO ads (audit_report, scope, bac_date, bac_reso, boa_date, boa_reso, remarks)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO ads (audit_report, adsyear, scope, bac_date, bac_reso, boa_date, boa_reso, remarks)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ");
 
             $stmt->execute([
                 $audit_report,
+                !empty($adsyear) ? $adsyear : null,
                 $scope,
                 !empty($bac_date) ? $bac_date : null,
                 $bac_reso,
@@ -146,6 +150,7 @@ class ADScoreCardController extends MainController {
 
             $id = (int)($_POST['id'] ?? 0);
             $audit_report = trim($_POST['audit_report'] ?? '');
+            $adsyear = trim($_POST['adsyear'] ?? '');
             $scope = trim($_POST['scope'] ?? '');
             $bac_date = trim($_POST['bac_date'] ?? '');
             $bac_reso = trim($_POST['bac_reso'] ?? '');
@@ -168,6 +173,7 @@ class ADScoreCardController extends MainController {
                 UPDATE ads 
                 SET 
                     audit_report = ?,
+                    adsyear = ?,
                     scope = ?,
                     bac_date = ?,
                     bac_reso = ?,
@@ -179,6 +185,7 @@ class ADScoreCardController extends MainController {
 
             $stmt->execute([
                 $audit_report,
+                !empty($adsyear) ? $adsyear : null,
                 $scope,
                 !empty($bac_date) ? $bac_date : null,
                 $bac_reso,

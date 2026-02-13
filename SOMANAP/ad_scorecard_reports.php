@@ -84,7 +84,7 @@ ob_start();
                     <option value="">All Years</option>
                     <?php
                     try {
-                        $yearStmt = $conn->prepare("SELECT DISTINCT YEAR(bac_date) as year FROM ads WHERE bac_date IS NOT NULL ORDER BY year DESC");
+                        $yearStmt = $conn->prepare("SELECT DISTINCT adsyear as year FROM ads WHERE adsyear IS NOT NULL ORDER BY year DESC");
                         $yearStmt->execute();
                         $yearList = $yearStmt->fetchAll();
                         
@@ -126,6 +126,7 @@ ob_start();
             <thead>
                 <tr class="bg-gray-100 dark:bg-gray-700">
                     <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-900 dark:text-white">Title of Audit Report</th>
+                    <!-- <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-900 dark:text-white">ADS Year</th> -->
                     <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-900 dark:text-white">Scope</th>
                     <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-900 dark:text-white">BAC Date</th>
                     <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-900 dark:text-white">BAC Resolution</th>
@@ -147,7 +148,7 @@ ob_start();
                         $countQuery .= " AND scope = :scope";
                     }
                     if (!empty($filterYear)) {
-                        $countQuery .= " AND YEAR(bac_date) = :year";
+                        $countQuery .= " AND adsyear = :year";
                     }
                     
                     $countStmt = $conn->prepare($countQuery);
@@ -169,7 +170,7 @@ ob_start();
                     $offset = ($currentPageNum - 1) * $itemsPerPage;
                     
                     // Now get the paginated data
-                    $query = "SELECT audit_report, scope, bac_date, bac_reso, boa_date, boa_reso, remarks FROM ads WHERE 1=1";
+                    $query = "SELECT audit_report, adsyear, scope, bac_date, bac_reso, boa_date, boa_reso, remarks FROM ads WHERE 1=1";
                     
                     if (!empty($filterAuditReport)) {
                         $query .= " AND audit_report = :audit_report";
@@ -178,7 +179,7 @@ ob_start();
                         $query .= " AND scope = :scope";
                     }
                     if (!empty($filterYear)) {
-                        $query .= " AND YEAR(bac_date) = :year";
+                        $query .= " AND adsyear = :year";
                     }
                     
                     $query .= " ORDER BY audit_report ASC LIMIT :limit OFFSET :offset";
@@ -205,6 +206,7 @@ ob_start();
                         foreach ($adsRecords as $record) {
                             echo '<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">';
                             echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['audit_report']) . '</td>';
+                            // echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['adsyear'] ?? '-') . '</td>';
                             echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['scope'] ?? '-') . '</td>';
                             echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">';
                             echo $record['bac_date'] ? date('F d, Y', strtotime($record['bac_date'])) : '-';

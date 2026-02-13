@@ -34,8 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $_SESSION['username'] = $user['username'];
                 $_SESSION['full_name'] = $user['full_name'];
                 $_SESSION['role'] = $user['role'];
-                header("Location: SOMANAP/dashboard.php");
-                exit();
+                $login_success = true;
             }
 
             // If not found in users table, check staff table
@@ -48,8 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $_SESSION['username'] = $staff['username'];
                 $_SESSION['full_name'] = $staff['name'];
                 $_SESSION['role'] = 'staff';
-                header("Location: SOMANAP/dashboard.php");
-                exit();
+                $login_success = true;
             }
 
             // No match found in either table
@@ -67,8 +65,84 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Sign In | FSAD</title>
+    <link rel="icon" type="image/x-icon" href="SOMANAP/images/nealogo.ico">
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        /* Electric Loading Animation */
+        .electric-bolt {
+            animation: electric-heartbeat 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes electric-heartbeat {
+            0%, 100% { 
+                transform: scale(1); 
+                filter: drop-shadow(0 0 5px #fbbf24) drop-shadow(0 0 10px #fbbf24);
+            }
+            50% { 
+                transform: scale(1.2); 
+                filter: drop-shadow(0 0 15px #f59e0b) drop-shadow(0 0 25px #f59e0b) drop-shadow(0 0 35px #f59e0b);
+            }
+        }
+        
+        .sparks .spark {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #fbbf24;
+            border-radius: 50%;
+            animation: spark-fly 3s infinite linear;
+        }
+        
+        .sparks .spark-1 {
+            top: 20px;
+            left: 20px;
+            animation-delay: 0s;
+        }
+        
+        .sparks .spark-2 {
+            top: 20px;
+            right: 20px;
+            animation-delay: 0.7s;
+        }
+        
+        .sparks .spark-3 {
+            bottom: 20px;
+            left: 20px;
+            animation-delay: 1.4s;
+        }
+        
+        .sparks .spark-4 {
+            bottom: 20px;
+            right: 20px;
+            animation-delay: 2.1s;
+        }
+        
+        @keyframes spark-fly {
+            0% {
+                transform: scale(0) rotate(0deg);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1) rotate(180deg);
+                opacity: 0.8;
+            }
+            100% {
+                transform: scale(0) rotate(360deg);
+                opacity: 0;
+            }
+        }
+        
+        .electric-progress {
+            width: 0%;
+            animation: electric-fill 3s ease-out forwards;
+        }
+        
+        @keyframes electric-fill {
+            0% { width: 0%; }
+            100% { width: 100%; }
+        }
+    </style>
 </head>
 <body
     x-data="{ darkMode: false }"
@@ -106,14 +180,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                     <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
                                         Username<span class="text-red-500">*</span>
                                     </label>
-                                    <input
-                                        type="text"
-                                        id="username"
-                                        name="username"
-                                        placeholder="Enter your username"
-                                        required
-                                        class="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-sm placeholder:text-gray-400 focus:border-blue-300 focus:outline-none focus:ring-3 focus:ring-blue-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-blue-800"
-                                    />
+                                    <div class="relative">
+                                        <input
+                                            type="text"
+                                            id="username"
+                                            name="username"
+                                            placeholder="Enter your username"
+                                            required
+                                            class="h-11 w-full rounded-lg border border-gray-300 bg-transparent pl-11 pr-4 py-2.5 text-sm text-gray-800 shadow-sm placeholder:text-gray-400 focus:border-blue-300 focus:outline-none focus:ring-3 focus:ring-blue-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-blue-800"
+                                        />
+                                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                                            </svg>
+                                        </span>
+                                    </div>
                                 </div>
 
                                 <!-- Password -->
@@ -128,8 +209,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                             name="password"
                                             placeholder="Enter your password"
                                             required
-                                            class="h-11 w-full rounded-lg border border-gray-300 bg-transparent py-2.5 pl-4 pr-11 text-sm text-gray-800 shadow-sm placeholder:text-gray-400 focus:border-blue-300 focus:outline-none focus:ring-3 focus:ring-blue-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-blue-800"
+                                            class="h-11 w-full rounded-lg border border-gray-300 bg-transparent py-2.5 pl-11 pr-11 text-sm text-gray-800 shadow-sm placeholder:text-gray-400 focus:border-blue-300 focus:outline-none focus:ring-3 focus:ring-blue-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-blue-800"
                                         />
+                                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                                            </svg>
+                                        </span>
                                         <span
                                             @click="showPassword = !showPassword"
                                             class="absolute z-30 text-gray-500 -translate-y-1/2 cursor-pointer right-4 top-1/2 dark:text-gray-400"
@@ -172,6 +258,38 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             </div>
                         </form>
 
+                        <!-- Loading Screen -->
+                        <div id="loading-screen" class="hidden fixed inset-0 bg-white dark:bg-gray-900 flex items-center justify-center z-50">
+                            <div class="text-center">
+                                <!-- Electric Loading Animation -->
+                                <div class="relative mb-8 flex justify-center">
+                                    <!-- Central Electric Bolt -->
+                                    <div class="electric-bolt">
+                                        <svg class="w-16 h-16 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                                        </svg>
+                                    </div>
+                                    
+                                    <!-- Spark Particles -->
+                                    <div class="sparks">
+                                        <div class="spark spark-1"></div>
+                                        <div class="spark spark-2"></div>
+                                        <div class="spark spark-3"></div>
+                                        <div class="spark spark-4"></div>
+                                    </div>
+                                </div>
+                                
+                                <h3 class="text-xl font-semibold text-gray-800 dark:text-white mb-2">Powering Up</h3>
+                                
+                                <!-- Progress Bar -->
+                                <div class="mt-6 w-64 mx-auto">
+                                    <div class="bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                        <div class="electric-progress bg-gradient-to-r from-yellow-400 to-blue-500 h-2 rounded-full transition-all duration-3000 ease-out"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>
@@ -203,5 +321,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </div>
         </div>
     </footer>
+
+    <script>
+    function initTheme() {
+        const savedTheme = localStorage.getItem('darkMode');
+        darkMode = savedTheme ? JSON.parse(savedTheme) : false;
+    }
+    
+    // Check for login success and show loading screen
+    <?php if (isset($login_success) && $login_success): ?>
+    document.addEventListener('DOMContentLoaded', function() {
+        const loadingScreen = document.getElementById('loading-screen');
+        loadingScreen.classList.remove('hidden');
+        
+        // Redirect after animation completes
+        setTimeout(function() {
+            window.location.href = 'SOMANAP/dashboard.php';
+        }, 3000);
+    });
+    <?php endif; ?>
+    </script>
 </body>
 </html>

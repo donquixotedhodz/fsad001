@@ -58,6 +58,7 @@ if (!empty($searchTerm) || $filterBy !== 'all') {
             $searchLower = strtolower($searchTerm);
             $searchableFields = [
                 $record['audit_report'] ?? '',
+                $record['adsyear'] ?? '',
                 $record['scope'] ?? '',
                 $record['bac_reso'] ?? '',
                 $record['boa_reso'] ?? '',
@@ -126,7 +127,7 @@ ob_start();
                     id="searchInput"
                     name="search"
                     value="<?php echo htmlspecialchars($searchTerm); ?>"
-                    placeholder="Search by audit report, scope, or resolution..." 
+                    placeholder="Search by audit report, year, scope, or resolution..." 
                     class="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                 <svg class="absolute right-3 top-2.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -171,6 +172,7 @@ ob_start();
             <thead class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
                 <tr>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Title of Audit Report</th>
+                    <!-- <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">ADS Year</th> -->
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Scope</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">BAC Date</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">BAC Resolution</th>
@@ -186,6 +188,9 @@ ob_start();
                     <td class="px-6 py-4 text-sm text-gray-900 dark:text-white font-medium">
                         <?php echo htmlspecialchars($record['audit_report']); ?>
                     </td>
+                    <!-- <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
+                        <?php echo htmlspecialchars($record['adsyear'] ?? '-'); ?>
+                    </td> -->
                     <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
                         <?php echo htmlspecialchars(substr($record['scope'] ?? '', 0, 50)) . (strlen($record['scope'] ?? '') > 50 ? '...' : ''); ?>
                     </td>
@@ -300,9 +305,6 @@ ob_start();
             </button>
         </div>
 
-        <!-- Message Alert -->
-        <div id="adsMessage" class="hidden px-4 py-3 rounded-lg mb-6"></div>
-
         <form id="adsForm" class="space-y-6">
             <input type="hidden" name="action" value="add">
             <input type="hidden" id="adsId" name="id" value="">
@@ -314,6 +316,12 @@ ob_start();
                     <input type="text" id="auditReport" name="audit_report" required placeholder="Enter audit report name" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                     <div id="auditReportSuggestions" class="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
                 </div>
+            </div>
+
+            <!-- ADS Year -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">ADS Year</label>
+                <input type="number" id="adsyear" name="adsyear" min="1900" max="2100" placeholder="Enter year (e.g., 2024)" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
             </div>
 
             <!-- Scope -->
@@ -412,7 +420,6 @@ function resetADSForm() {
     document.getElementById('submitBtn').textContent = 'Add Scorecard';
     document.getElementById('modalTitle').textContent = 'Add Audit Report';
     document.getElementById('adsForm').elements['action'].value = 'add';
-    document.getElementById('adsMessage').classList.add('hidden');
     setupAuditReportAutocomplete();
 }
 
@@ -473,6 +480,7 @@ function editADS(id) {
                 const record = data.data;
                 document.getElementById('adsId').value = record.id;
                 document.getElementById('auditReport').value = record.audit_report;
+                document.getElementById('adsyear').value = record.adsyear || '';
                 document.getElementById('scope').value = record.scope || '';
                 document.getElementById('bacDate').value = record.bac_date || '';
                 document.getElementById('bacReso').value = record.bac_reso || '';
@@ -487,12 +495,20 @@ function editADS(id) {
                 setupAuditReportAutocomplete();
                 document.getElementById('addADSModal').classList.remove('hidden');
             } else {
-                showADSMessage('Error loading record: ' + (data.message || 'Unknown error'), 'error');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error!',
+                    text: 'Error loading record: ' + (data.message || 'Unknown error')
+                });
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            showADSMessage('Error loading record', 'error');
+            Swal.fire({
+                icon: 'error',
+                title: 'Error!',
+                text: 'Error loading record'
+            });
         });
 }
 
@@ -507,6 +523,10 @@ function viewADS(id) {
                         <div>
                             <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Audit Report</p>
                             <p class="text-lg font-semibold text-gray-900 dark:text-white">${escapeHtml(record.audit_report)}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">ADS Year</p>
+                            <p class="text-gray-900 dark:text-white">${escapeHtml(record.adsyear || '-')}</p>
                         </div>
                         <div>
                             <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Scope</p>
@@ -539,12 +559,20 @@ function viewADS(id) {
                 document.getElementById('detailsContent').innerHTML = html;
                 document.getElementById('viewDetailsModal').classList.remove('hidden');
             } else {
-                showADSMessage('Error loading record: ' + (data.message || 'Unknown error'), 'error');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error!',
+                    text: 'Error loading record: ' + (data.message || 'Unknown error')
+                });
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            showADSMessage('Error loading record', 'error');
+            Swal.fire({
+                icon: 'error',
+                title: 'Error!',
+                text: 'Error loading record'
+            });
         });
 }
 
@@ -596,17 +624,30 @@ function deleteADS(id, name) {
                         .then(response => response.json())
                         .then(data => {
                             if (data.success) {
-                                showADSMessage('✓ ' + data.message, 'success');
-                                setTimeout(() => {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Deleted!',
+                                    text: data.message,
+                                    timer: 1500,
+                                    showConfirmButton: false
+                                }).then(() => {
                                     location.reload();
-                                }, 1500);
+                                });
                             } else {
-                                showADSMessage('✗ Error: ' + (data.message || 'Unknown error'), 'error');
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error!',
+                                    text: data.message || 'Unknown error occurred'
+                                });
                             }
                         })
                         .catch(error => {
                             console.error('Error:', error);
-                            showADSMessage('✗ Error deleting record', 'error');
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error!',
+                                text: 'Error deleting record'
+                            });
                         });
                     }
                 });
@@ -614,13 +655,22 @@ function deleteADS(id, name) {
         })
         .catch(error => {
             console.error('Error:', error);
-            showADSMessage('✗ Error loading record', 'error');
+            Swal.fire({
+                icon: 'error',
+                title: 'Error!',
+                text: 'Error loading record'
+            });
         });
 }
 
 function printADS(id) {
     // You can implement a print function here
-    alert('Print functionality for ID: ' + id);
+    Swal.fire({
+        icon: 'info',
+        title: 'Print Functionality',
+        text: 'Print functionality for ID: ' + id + ' - Coming soon!',
+        confirmButtonText: 'OK'
+    });
     // In a real implementation, you could open a print preview or generate a PDF
 }
 
@@ -628,20 +678,6 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
-}
-
-function showADSMessage(message, type) {
-    const messageDiv = document.getElementById('adsMessage');
-    messageDiv.textContent = message;
-    
-    if (type === 'success') {
-        messageDiv.classList.remove('hidden', 'bg-red-50', 'text-red-800', 'dark:bg-red-900/20', 'dark:text-red-400');
-        messageDiv.classList.add('bg-green-50', 'text-green-800', 'dark:bg-green-900/20', 'dark:text-green-400');
-    } else {
-        messageDiv.classList.remove('hidden', 'bg-green-50', 'text-green-800', 'dark:bg-green-900/20', 'dark:text-green-400');
-        messageDiv.classList.add('bg-red-50', 'text-red-800', 'dark:bg-red-900/20', 'dark:text-red-400');
-    }
-    messageDiv.classList.remove('hidden');
 }
 
 // Handle form submission
@@ -664,17 +700,30 @@ document.getElementById('adsForm').addEventListener('submit', function(e) {
                 auditReportsData.sort();
             }
             
-            showADSMessage('✓ ' + data.message, 'success');
-            setTimeout(() => {
+            Swal.fire({
+                icon: 'success',
+                title: 'Success!',
+                text: data.message,
+                timer: 1500,
+                showConfirmButton: false
+            }).then(() => {
                 location.reload();
-            }, 1500);
+            });
         } else {
-            showADSMessage('✗ Error: ' + (data.message || 'Unknown error'), 'error');
+            Swal.fire({
+                icon: 'error',
+                title: 'Error!',
+                text: data.message || 'Unknown error occurred'
+            });
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showADSMessage('✗ Error saving record', 'error');
+        Swal.fire({
+            icon: 'error',
+            title: 'Error!',
+            text: 'Error saving record'
+        });
     });
 });
 </script>

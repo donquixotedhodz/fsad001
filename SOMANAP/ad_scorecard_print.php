@@ -9,7 +9,7 @@ $filterYear = isset($_GET['year']) ? trim($_GET['year']) : '';
 
 // Fetch ADS data from database with filters applied
 try {
-    $query = "SELECT audit_report, scope, bac_date, bac_reso, boa_date, boa_reso, remarks FROM ads WHERE 1=1";
+    $query = "SELECT audit_report, adsyear, scope, bac_date, bac_reso, boa_date, boa_reso, remarks FROM ads WHERE 1=1";
     
     if (!empty($filterAuditReport)) {
         $query .= " AND audit_report = :audit_report";
@@ -18,10 +18,10 @@ try {
         $query .= " AND scope = :scope";
     }
     if (!empty($filterYear)) {
-        $query .= " AND YEAR(bac_date) = :year";
+        $query .= " AND adsyear = :year";
     }
     
-    $query .= " ORDER BY bac_date ASC";
+    $query .= " ORDER BY adsyear ASC, audit_report ASC";
     
     $stmt = $conn->prepare($query);
     
@@ -42,11 +42,11 @@ try {
     $error = htmlspecialchars($e->getMessage());
 }
 
-// Extract years from BAC dates
+// Extract years from adsyear
 $years = [];
 foreach ($adsRecords as $record) {
-    if (!empty($record['bac_date'])) {
-        $year = date('Y', strtotime($record['bac_date']));
+    if (!empty($record['adsyear'])) {
+        $year = $record['adsyear'];
         if (!in_array($year, $years)) {
             $years[] = $year;
         }
@@ -235,13 +235,14 @@ $dateGenerated = date('F d, Y');
             <thead>
                 <tr>
                     <th style="width: 4%;">No.</th>
-                    <th style="width: 30%;">Title of Audit Report</th>
+                    <th style="width: 25%;">Title of Audit Report</th>
+                    <!-- <th style="width: 8%;">ADS Year</th> -->
                     <th style="width: 15%;">Scope</th>
                     <th style="width: 10%;">BAC Date</th>
                     <th style="width: 5%;">BAC Resolution</th>
                     <th style="width: 10%;">BOA Date</th>
                     <th style="width: 10%;">BOA Resolution</th>
-                    <th style="width: 14%;">Remarks</th>
+                    <th style="width: 13%;">Remarks</th>
                 </tr>
             </thead>
             <tbody>
@@ -252,6 +253,7 @@ $dateGenerated = date('F d, Y');
                         echo '<tr>';
                         echo '<td class="text-center">' . $counter++ . '</td>';
                         echo '<td>' . htmlspecialchars($record['audit_report'] ?? '') . '</td>';
+                        // echo '<td class="text-center">' . htmlspecialchars($record['adsyear'] ?? '-') . '</td>';
                         echo '<td>' . htmlspecialchars($record['scope'] ?? '-') . '</td>';
                         echo '<td class="text-center">' . ($record['bac_date'] ? date('F d, Y', strtotime($record['bac_date'])) : '-') . '</td>';
                         echo '<td class="text-center">' . htmlspecialchars($record['bac_reso'] ?? '-') . '</td>';
@@ -261,7 +263,7 @@ $dateGenerated = date('F d, Y');
                         echo '</tr>';
                     }
                 } else {
-                    echo '<tr><td colspan="8" class="text-center">NO RECORDS FOUND</td></tr>';
+                    echo '<tr><td colspan="9" class="text-center">NO RECORDS FOUND</td></tr>';
                 }
                 ?>
             </tbody>

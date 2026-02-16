@@ -252,7 +252,58 @@ if (!empty($whereConditions)) {
 
 // Fetch PPE data from database
 try {
-    $sql = "SELECT date, check_no, dv_or_no, particulars, debit, credit, balance FROM ppe $whereClause ORDER BY date ASC";
+    // First, get the starting balance (balance before the filter period)
+    $startingBalance = 0.00;
+
+    if (!empty($whereConditions)) {
+        // Get the last record before the filter period starts
+        $beforeFilterSql = "SELECT balance FROM ppe WHERE ";
+
+        // Build the "before" condition based on the filter type
+        if ($dateFilter === 'today') {
+            $beforeFilterSql .= "date < ?";
+            $beforeParams = [$today];
+        }
+        elseif ($dateFilter === 'weekly') {
+            $beforeFilterSql .= "date < ?";
+            $beforeParams = [$weekStart];
+        }
+        elseif ($dateFilter === 'monthly') {
+            $selectedMonth = $_GET['selected_month'] ?? date('m');
+            $selectedYear = $_GET['selected_year'] ?? date('Y');
+            $monthStart = $selectedYear . '-' . $selectedMonth . '-01';
+            $beforeFilterSql .= "date < ?";
+            $beforeParams = [$monthStart];
+        }
+        elseif ($dateFilter === 'annual') {
+            $selectedYear = $_GET['selected_year'] ?? date('Y');
+            $yearStart = $selectedYear . '-01-01';
+            $beforeFilterSql .= "date < ?";
+            $beforeParams = [$yearStart];
+        }
+        elseif ($dateFilter === 'custom' || (!empty($_GET['date_from']) && !empty($_GET['date_to']))) {
+            if (!empty($_GET['date_from'])) {
+                $beforeFilterSql .= "date < ?";
+                $beforeParams = [$_GET['date_from']];
+            }
+            else {
+                $beforeParams = [];
+            }
+        }
+        else {
+            $beforeParams = [];
+        }
+
+        if (!empty($beforeParams)) {
+            $beforeFilterSql .= " ORDER BY date DESC, id DESC LIMIT 1";
+            $beforeStmt = $conn->prepare($beforeFilterSql);
+            $beforeStmt->execute($beforeParams);
+            $beforeRecord = $beforeStmt->fetch();
+            $startingBalance = $beforeRecord ? floatval($beforeRecord['balance']) : 0.00;
+        }
+    }
+
+    $sql = "SELECT date, check_no, dv_or_no, particulars, debit, credit FROM ppe $whereClause ORDER BY date ASC, id ASC";
     $stmt = $conn->prepare($sql);
     $stmt->execute($params);
     $ppeRecords = $stmt->fetchAll();
@@ -260,11 +311,14 @@ try {
     if (count($ppeRecords) > 0) {
         $totalDebit = 0;
         $totalCredit = 0;
-        $filteredBalance = 0;
+        $currentBalance = $startingBalance;
 
         foreach ($ppeRecords as $record) {
             $totalDebit += $record['debit'];
             $totalCredit += $record['credit'];
+
+            // Recalculate balance based on the starting balance and transactions
+            $currentBalance = $currentBalance + $record['credit'] - $record['debit'];
 
             $formattedDate = date('m/d/Y', strtotime($record['date']));
             echo '<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">';
@@ -274,12 +328,12 @@ try {
             echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['particulars']) . '</td>';
             echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-right text-gray-700 dark:text-gray-300">' . number_format($record['debit'], 2) . '</td>';
             echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-right text-gray-700 dark:text-gray-300">' . number_format($record['credit'], 2) . '</td>';
-            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-right font-semibold text-gray-900 dark:text-white">' . number_format($record['balance'], 2) . '</td>';
+            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-right font-semibold text-gray-900 dark:text-white">' . number_format($currentBalance, 2) . '</td>';
             echo '</tr>';
         }
 
-        // Calculate balance based on filtered results
-        $filteredBalance = !empty($ppeRecords) ? end($ppeRecords)['balance'] : 0;
+        // The final balance is the current balance after all filtered transactions
+        $filteredBalance = $currentBalance;
 
         // Add total row
         echo '<tr class="bg-gray-200 dark:bg-gray-700 font-bold">';

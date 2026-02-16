@@ -67,6 +67,9 @@ class DepartmentsController
     public function addDepartment($name, $acronym = null)
     {
         try {
+            require_once __DIR__ . '/../helpers/AuditLogger.php';
+            $auditLogger = new AuditLogger($this->conn);
+
             // Check if department already exists
             $stmt = $this->conn->prepare("SELECT id FROM neadept_table WHERE name = ?");
             $stmt->execute([$name]);
@@ -77,7 +80,17 @@ class DepartmentsController
             $stmt = $this->conn->prepare("INSERT INTO neadept_table (name, acronym) VALUES (?, ?)");
             $stmt->execute([$name, $acronym]);
 
-            return $this->conn->lastInsertId();
+            $newId = $this->conn->lastInsertId();
+
+            // Log the action
+            $auditLogger->logCreate(
+                'neadept_table',
+                $newId,
+                "New department added: $name" . ($acronym ? " ($acronym)" : ""),
+            ['name' => $name, 'acronym' => $acronym]
+            );
+
+            return $newId;
         }
         catch (Exception $e) {
             throw new Exception($e->getMessage());
@@ -90,6 +103,15 @@ class DepartmentsController
     public function updateDepartment($id, $name, $acronym = null)
     {
         try {
+            require_once __DIR__ . '/../helpers/AuditLogger.php';
+            $auditLogger = new AuditLogger($this->conn);
+
+            // Fetch old data
+            $oldData = $this->getDepartmentById($id);
+            if (!$oldData) {
+                throw new Exception("Department not found");
+            }
+
             // Check if name exists for other departments
             $stmt = $this->conn->prepare("SELECT id FROM neadept_table WHERE name = ? AND id != ?");
             $stmt->execute([$name, $id]);
@@ -99,6 +121,18 @@ class DepartmentsController
 
             $stmt = $this->conn->prepare("UPDATE neadept_table SET name = ?, acronym = ? WHERE id = ?");
             $stmt->execute([$name, $acronym, $id]);
+
+            // Fetch new data
+            $newData = $this->getDepartmentById($id);
+
+            // Log the action
+            $auditLogger->logUpdate(
+                'neadept_table',
+                $id,
+                "Department updated: $name",
+                $oldData,
+                $newData
+            );
 
             return true;
         }
@@ -113,8 +147,25 @@ class DepartmentsController
     public function deleteDepartment($id)
     {
         try {
+            require_once __DIR__ . '/../helpers/AuditLogger.php';
+            $auditLogger = new AuditLogger($this->conn);
+
+            // Fetch data
+            $oldData = $this->getDepartmentById($id);
+            if (!$oldData) {
+                throw new Exception("Department not found");
+            }
+
             $stmt = $this->conn->prepare("DELETE FROM neadept_table WHERE id = ?");
             $stmt->execute([$id]);
+
+            // Log the action
+            $auditLogger->logDelete(
+                'neadept_table',
+                $id,
+                "Department deleted: {$oldData['name']}",
+                $oldData
+            );
 
             return true;
         }

@@ -167,8 +167,8 @@ catch (Exception $e) {
 ob_start();
 ?>
 
-<div class="p-6">
-    <div class="mb-6 flex justify-between items-center">
+<div class="w-full">
+    <div class="mb-8 flex justify-between items-center">
         <div>
             <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Manage Users</h1>
             <?php if ($isReadOnly): ?>

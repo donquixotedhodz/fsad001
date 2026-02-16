@@ -17,8 +17,8 @@ $filterItem = isset($_GET['item']) ? trim($_GET['item']) : '';
 ob_start();
 ?>
 
-<div class="p-6">
-    <div class="mb-6 flex justify-between items-center">
+<div class="w-full">
+    <div class="mb-8 flex justify-between items-center">
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white">MANAP Documents Report</h1>
         <a href="manap_print.php" target="_blank" class="inline-flex items-center px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -36,19 +36,20 @@ ob_start();
                 <select name="ec" onchange="document.getElementById('filterForm').submit()" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">All Electric Cooperatives</option>
                     <?php
-                    try {
-                        $ecStmt = $conn->prepare("SELECT DISTINCT ec FROM manap ORDER BY ec ASC");
-                        $ecStmt->execute();
-                        $ecList = $ecStmt->fetchAll();
-                        
-                        foreach ($ecList as $ec) {
-                            $selected = ($filterEC === $ec['ec']) ? 'selected' : '';
-                            echo '<option value="' . htmlspecialchars($ec['ec']) . '" ' . $selected . '>' . htmlspecialchars($ec['ec']) . '</option>';
-                        }
-                    } catch (Exception $e) {
-                        // Handle error silently
-                    }
-                    ?>
+try {
+    $ecStmt = $conn->prepare("SELECT DISTINCT ec FROM manap ORDER BY ec ASC");
+    $ecStmt->execute();
+    $ecList = $ecStmt->fetchAll();
+
+    foreach ($ecList as $ec) {
+        $selected = ($filterEC === $ec['ec']) ? 'selected' : '';
+        echo '<option value="' . htmlspecialchars($ec['ec']) . '" ' . $selected . '>' . htmlspecialchars($ec['ec']) . '</option>';
+    }
+}
+catch (Exception $e) {
+// Handle error silently
+}
+?>
                 </select>
             </div>
 
@@ -57,19 +58,20 @@ ob_start();
                 <select name="item" onchange="document.getElementById('filterForm').submit()" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">All Items</option>
                     <?php
-                    try {
-                        $itemStmt = $conn->prepare("SELECT DISTINCT item FROM manap ORDER BY item ASC");
-                        $itemStmt->execute();
-                        $itemList = $itemStmt->fetchAll();
-                        
-                        foreach ($itemList as $item) {
-                            $selected = ($filterItem === $item['item']) ? 'selected' : '';
-                            echo '<option value="' . htmlspecialchars($item['item']) . '" ' . $selected . '>' . htmlspecialchars($item['item']) . '</option>';
-                        }
-                    } catch (Exception $e) {
-                        // Handle error silently
-                    }
-                    ?>
+try {
+    $itemStmt = $conn->prepare("SELECT DISTINCT item FROM manap ORDER BY item ASC");
+    $itemStmt->execute();
+    $itemList = $itemStmt->fetchAll();
+
+    foreach ($itemList as $item) {
+        $selected = ($filterItem === $item['item']) ? 'selected' : '';
+        echo '<option value="' . htmlspecialchars($item['item']) . '" ' . $selected . '>' . htmlspecialchars($item['item']) . '</option>';
+    }
+}
+catch (Exception $e) {
+// Handle error silently
+}
+?>
                 </select>
             </div>
 
@@ -78,7 +80,8 @@ ob_start();
             <button type="button" onclick="window.location.href='?'" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition font-medium">
                 Clear Filters
             </button>
-            <?php endif; ?>
+            <?php
+endif; ?>
         </form>
     </div>
 
@@ -97,68 +100,72 @@ ob_start();
             </thead>
             <tbody>
                 <?php
-                try {
-                    $query = "SELECT item, recommending_approvals, approving_authority, department, ec, team FROM manap WHERE 1=1";
-                    
-                    if (!empty($filterEC)) {
-                        $query .= " AND ec = :ec";
-                    }
-                    if (!empty($filterItem)) {
-                        $query .= " AND item = :item";
-                    }
-                    
-                    $query .= " ORDER BY item ASC";
-                    
-                    $stmt = $conn->prepare($query);
-                    
-                    if (!empty($filterEC)) {
-                        $stmt->bindParam(':ec', $filterEC);
-                    }
-                    if (!empty($filterItem)) {
-                        $stmt->bindParam(':item', $filterItem);
-                    }
-                    
-                    $stmt->execute();
-                    $manapRecords = $stmt->fetchAll();
-                    
-                    if (count($manapRecords) > 0) {
-                        foreach ($manapRecords as $record) {
-                            echo '<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">';
-                            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['item']) . '</td>';
-                            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['recommending_approvals'] ?? '') . '</td>';
-                            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['approving_authority'] ?? '') . '</td>';
-                            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">';
-                            if (!empty($record['department'])) {
-                                $depts = array_filter(array_map('trim', explode("\n", $record['department'])));
-                                foreach ($depts as $dept) {
-                                    $deptName = preg_replace('/^\d+\.\s+/', '', $dept);
-                                    echo htmlspecialchars($deptName) . '<br>';
-                                }
-                            } else {
-                                echo '-';
-                            }
-                            echo '</td>';
-                            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['ec']) . '</td>';
-                            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">';
-                            if (!empty($record['team'])) {
-                                $teams = array_filter(array_map('trim', explode("\n", $record['team'])));
-                                foreach ($teams as $team) {
-                                    $teamName = preg_replace('/^\d+\.\s+/', '', $team);
-                                    echo htmlspecialchars($teamName) . '<br>';
-                                }
-                            } else {
-                                echo '-';
-                            }
-                            echo '</td>';
-                            echo '</tr>';
-                        }
-                    } else {
-                        echo '<tr><td colspan="6" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-gray-500">No MANAP documents found</td></tr>';
-                    }
-                } catch (Exception $e) {
-                    echo '<tr><td colspan="6" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-red-500">Error loading data: ' . htmlspecialchars($e->getMessage()) . '</td></tr>';
+try {
+    $query = "SELECT item, recommending_approvals, approving_authority, department, ec, team FROM manap WHERE 1=1";
+
+    if (!empty($filterEC)) {
+        $query .= " AND ec = :ec";
+    }
+    if (!empty($filterItem)) {
+        $query .= " AND item = :item";
+    }
+
+    $query .= " ORDER BY item ASC";
+
+    $stmt = $conn->prepare($query);
+
+    if (!empty($filterEC)) {
+        $stmt->bindParam(':ec', $filterEC);
+    }
+    if (!empty($filterItem)) {
+        $stmt->bindParam(':item', $filterItem);
+    }
+
+    $stmt->execute();
+    $manapRecords = $stmt->fetchAll();
+
+    if (count($manapRecords) > 0) {
+        foreach ($manapRecords as $record) {
+            echo '<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">';
+            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['item']) . '</td>';
+            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['recommending_approvals'] ?? '') . '</td>';
+            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['approving_authority'] ?? '') . '</td>';
+            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">';
+            if (!empty($record['department'])) {
+                $depts = array_filter(array_map('trim', explode("\n", $record['department'])));
+                foreach ($depts as $dept) {
+                    $deptName = preg_replace('/^\d+\.\s+/', '', $dept);
+                    echo htmlspecialchars($deptName) . '<br>';
                 }
-                ?>
+            }
+            else {
+                echo '-';
+            }
+            echo '</td>';
+            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['ec']) . '</td>';
+            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">';
+            if (!empty($record['team'])) {
+                $teams = array_filter(array_map('trim', explode("\n", $record['team'])));
+                foreach ($teams as $team) {
+                    $teamName = preg_replace('/^\d+\.\s+/', '', $team);
+                    echo htmlspecialchars($teamName) . '<br>';
+                }
+            }
+            else {
+                echo '-';
+            }
+            echo '</td>';
+            echo '</tr>';
+        }
+    }
+    else {
+        echo '<tr><td colspan="6" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-gray-500">No MANAP documents found</td></tr>';
+    }
+}
+catch (Exception $e) {
+    echo '<tr><td colspan="6" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-red-500">Error loading data: ' . htmlspecialchars($e->getMessage()) . '</td></tr>';
+}
+?>
             </tbody>
         </table>
     </div>

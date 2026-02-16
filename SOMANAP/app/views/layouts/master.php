@@ -383,7 +383,7 @@ require_once __DIR__ . '/../partials/sidebar.php';
     <div class="lg:ml-64 min-h-screen bg-gray-50 dark:bg-gray-900">
         <!-- Top Header -->
         <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-20">
-            <div class="flex items-center justify-between h-20 px-6">
+            <div class="flex items-center justify-between h-20 px-4">
                 <!-- Mobile Menu Button -->
                 <button onclick="toggleSidebar()" class="lg:hidden text-gray-500 hover:text-gray-900 dark:hover:text-white transition">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -489,7 +489,7 @@ endif; ?>
         </header>
 
         <!-- Page Content -->
-        <main class="p-6 lg:p-8 pb-20">
+        <main class="p-4 lg:p-4 pb-20">
             <?php echo $content; ?>
         </main>
     </div>

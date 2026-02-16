@@ -139,10 +139,10 @@ class AomController extends MainController
 
             // Log the action
             $auditLogger->log(
-                'add_aom',
-                'AOM record added: ' . $title,
+                'CREATE',
                 'aom_table',
-                $newId
+                $newId,
+                'AOM record added: ' . $title
             );
 
             echo json_encode([
@@ -263,10 +263,10 @@ class AomController extends MainController
 
             // Log the action
             $auditLogger->log(
-                'edit_aom',
-                'AOM record updated: ' . $title,
+                'UPDATE',
                 'aom_table',
-                $id
+                $id,
+                'AOM record updated: ' . $title
             );
 
             echo json_encode([
@@ -319,10 +319,10 @@ class AomController extends MainController
 
             // Log the action
             $auditLogger->log(
-                'delete_aom',
-                'AOM record deleted: ' . $record['title'],
+                'DELETE',
                 'aom_table',
-                $id
+                $id,
+                'AOM record deleted: ' . $record['title']
             );
 
             echo json_encode([

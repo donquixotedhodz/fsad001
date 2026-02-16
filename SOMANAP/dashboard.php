@@ -169,7 +169,7 @@ $aomRecentRecords = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ob_start();
 ?>
 
-<div class="max-w-7xl mx-auto">
+<div class="w-full">
     <!-- Page Header -->
     <div class="mb-8">
         <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-2">Dashboard</h1>

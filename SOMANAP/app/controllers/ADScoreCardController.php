@@ -1,11 +1,13 @@
 <?php
 
-class ADScoreCardController extends MainController {
-    
+class ADScoreCardController extends MainController
+{
+
     /**
      * Get all audit decision scorecards
      */
-    public function getAllADS() {
+    public function getAllADS()
+    {
         try {
             $stmt = $this->conn->prepare("
                 SELECT 
@@ -25,7 +27,8 @@ class ADScoreCardController extends MainController {
             ");
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch(Exception $e) {
+        }
+        catch (Exception $e) {
             error_log("Error fetching ADS: " . $e->getMessage());
             return [];
         }
@@ -34,7 +37,8 @@ class ADScoreCardController extends MainController {
     /**
      * Get single ADS record by ID
      */
-    public function getADSById($id) {
+    public function getADSById($id)
+    {
         try {
             $stmt = $this->conn->prepare("
                 SELECT 
@@ -54,7 +58,8 @@ class ADScoreCardController extends MainController {
             ");
             $stmt->execute([$id]);
             return $stmt->fetch(PDO::FETCH_ASSOC);
-        } catch(Exception $e) {
+        }
+        catch (Exception $e) {
             error_log("Error fetching ADS by ID: " . $e->getMessage());
             return null;
         }
@@ -63,7 +68,8 @@ class ADScoreCardController extends MainController {
     /**
      * Add new audit decision scorecard record
      */
-    public function addADS() {
+    public function addADS()
+    {
         ob_clean();
         header('Content-Type: application/json');
 
@@ -112,10 +118,10 @@ class ADScoreCardController extends MainController {
 
             // Log the action
             $auditLogger->log(
-                'add_ads',
-                'Audit Decision Scorecard added: ' . $audit_report,
+                'CREATE',
                 'ads',
-                $newId
+                $newId,
+                'Audit Decision Scorecard added: ' . $audit_report
             );
 
             echo json_encode([
@@ -125,7 +131,8 @@ class ADScoreCardController extends MainController {
             ]);
             exit;
 
-        } catch(Exception $e) {
+        }
+        catch (Exception $e) {
             error_log("Error adding ADS: " . $e->getMessage());
             echo json_encode(['success' => false, 'message' => 'Error adding record: ' . $e->getMessage()]);
             exit;
@@ -135,7 +142,8 @@ class ADScoreCardController extends MainController {
     /**
      * Update ADS record
      */
-    public function updateADS() {
+    public function updateADS()
+    {
         ob_clean();
         header('Content-Type: application/json');
 
@@ -197,10 +205,10 @@ class ADScoreCardController extends MainController {
 
             // Log the action
             $auditLogger->log(
-                'edit_ads',
-                'Audit Decision Scorecard updated: ' . $audit_report,
+                'UPDATE',
                 'ads',
-                $id
+                $id,
+                'Audit Decision Scorecard updated: ' . $audit_report
             );
 
             echo json_encode([
@@ -209,7 +217,8 @@ class ADScoreCardController extends MainController {
             ]);
             exit;
 
-        } catch(Exception $e) {
+        }
+        catch (Exception $e) {
             error_log("Error updating ADS: " . $e->getMessage());
             echo json_encode(['success' => false, 'message' => 'Error updating record: ' . $e->getMessage()]);
             exit;
@@ -219,7 +228,8 @@ class ADScoreCardController extends MainController {
     /**
      * Delete ADS record
      */
-    public function deleteADS() {
+    public function deleteADS()
+    {
         ob_clean();
         header('Content-Type: application/json');
 
@@ -251,10 +261,10 @@ class ADScoreCardController extends MainController {
 
             // Log the action
             $auditLogger->log(
-                'delete_ads',
-                'Audit Decision Scorecard deleted: ' . $record['audit_report'],
+                'DELETE',
                 'ads',
-                $id
+                $id,
+                'Audit Decision Scorecard deleted: ' . $record['audit_report']
             );
 
             echo json_encode([
@@ -263,7 +273,8 @@ class ADScoreCardController extends MainController {
             ]);
             exit;
 
-        } catch(Exception $e) {
+        }
+        catch (Exception $e) {
             error_log("Error deleting ADS: " . $e->getMessage());
             echo json_encode(['success' => false, 'message' => 'Error deleting record: ' . $e->getMessage()]);
             exit;
@@ -273,7 +284,8 @@ class ADScoreCardController extends MainController {
     /**
      * Get ADS record as JSON for editing
      */
-    public function getADSJSON() {
+    public function getADSJSON()
+    {
         ob_clean();
         header('Content-Type: application/json');
 
@@ -298,7 +310,8 @@ class ADScoreCardController extends MainController {
             ]);
             exit;
 
-        } catch(Exception $e) {
+        }
+        catch (Exception $e) {
             error_log("Error fetching ADS JSON: " . $e->getMessage());
             echo json_encode(['success' => false, 'message' => 'Error fetching record']);
             exit;

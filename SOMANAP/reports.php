@@ -11,7 +11,7 @@ $username = $_SESSION['username'] ?? 'User';
 ob_start();
 ?>
 
-<div class="max-w-7xl mx-auto">
+<div class="w-full">
     <!-- Page Header -->
     <div class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between">
         <div>

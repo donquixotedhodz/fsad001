@@ -1,27 +1,31 @@
 <?php
 
-class UsersController {
+class UsersController
+{
     protected $conn;
-    
-    public function __construct($db) {
+
+    public function __construct($db)
+    {
         $this->conn = $db;
     }
 
     /**
      * Get all users
      */
-    public function getAllUsers($limit = null, $offset = 0) {
+    public function getAllUsers($limit = null, $offset = 0)
+    {
         try {
             $query = "SELECT id, username, full_name, role, created_at FROM users ORDER BY created_at DESC";
-            
+
             if ($limit) {
                 $query .= " LIMIT " . intval($limit) . " OFFSET " . intval($offset);
             }
-            
+
             $stmt = $this->conn->prepare($query);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             throw new Exception("Error fetching users: " . $e->getMessage());
         }
     }
@@ -29,13 +33,15 @@ class UsersController {
     /**
      * Get total count of users
      */
-    public function getUserCount() {
+    public function getUserCount()
+    {
         try {
             $stmt = $this->conn->prepare("SELECT COUNT(*) as total FROM users");
             $stmt->execute();
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
             return $result['total'];
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             throw new Exception("Error counting users: " . $e->getMessage());
         }
     }
@@ -43,12 +49,14 @@ class UsersController {
     /**
      * Get user by ID
      */
-    public function getUserById($id) {
+    public function getUserById($id)
+    {
         try {
             $stmt = $this->conn->prepare("SELECT id, username, full_name, role FROM users WHERE id = ?");
             $stmt->execute([$id]);
             return $stmt->fetch(PDO::FETCH_ASSOC);
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             throw new Exception("Error fetching user: " . $e->getMessage());
         }
     }
@@ -56,8 +64,12 @@ class UsersController {
     /**
      * Add new user
      */
-    public function addUser($username, $full_name, $password, $role) {
+    public function addUser($username, $full_name, $password, $role)
+    {
         try {
+            require_once __DIR__ . '/../helpers/AuditLogger.php';
+            $auditLogger = new AuditLogger($this->conn);
+
             // Check if username already exists
             $stmt = $this->conn->prepare("SELECT id FROM users WHERE username = ?");
             $stmt->execute([$username]);
@@ -70,9 +82,20 @@ class UsersController {
 
             $stmt = $this->conn->prepare("INSERT INTO users (username, full_name, password, role) VALUES (?, ?, ?, ?)");
             $stmt->execute([$username, $full_name, $hashedPassword, $role]);
-            
-            return $this->conn->lastInsertId();
-        } catch (Exception $e) {
+
+            $newId = $this->conn->lastInsertId();
+
+            // Log the action
+            $auditLogger->logCreate(
+                'users',
+                $newId,
+                "New user account created: $username ($full_name)",
+            ['username' => $username, 'full_name' => $full_name, 'role' => $role]
+            );
+
+            return $newId;
+        }
+        catch (Exception $e) {
             throw new Exception($e->getMessage());
         }
     }
@@ -80,19 +103,43 @@ class UsersController {
     /**
      * Update user
      */
-    public function updateUser($id, $full_name, $role, $password = null) {
+    public function updateUser($id, $full_name, $role, $password = null)
+    {
         try {
+            require_once __DIR__ . '/../helpers/AuditLogger.php';
+            $auditLogger = new AuditLogger($this->conn);
+
+            // Fetch old data for logging
+            $oldData = $this->getUserById($id);
+            if (!$oldData) {
+                throw new Exception("User not found");
+            }
+
             if ($password) {
                 $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
                 $stmt = $this->conn->prepare("UPDATE users SET full_name = ?, role = ?, password = ? WHERE id = ?");
                 $stmt->execute([$full_name, $role, $hashedPassword, $id]);
-            } else {
+            }
+            else {
                 $stmt = $this->conn->prepare("UPDATE users SET full_name = ?, role = ? WHERE id = ?");
                 $stmt->execute([$full_name, $role, $id]);
             }
-            
+
+            // Fetch new data
+            $newData = $this->getUserById($id);
+
+            // Log the action
+            $auditLogger->logUpdate(
+                'users',
+                $id,
+                "User account updated: {$oldData['username']}",
+                $oldData,
+                $newData
+            );
+
             return true;
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             throw new Exception("Error updating user: " . $e->getMessage());
         }
     }
@@ -100,13 +147,32 @@ class UsersController {
     /**
      * Delete user
      */
-    public function deleteUser($id) {
+    public function deleteUser($id)
+    {
         try {
+            require_once __DIR__ . '/../helpers/AuditLogger.php';
+            $auditLogger = new AuditLogger($this->conn);
+
+            // Fetch data for logging
+            $oldData = $this->getUserById($id);
+            if (!$oldData) {
+                throw new Exception("User not found");
+            }
+
             $stmt = $this->conn->prepare("DELETE FROM users WHERE id = ?");
             $stmt->execute([$id]);
-            
+
+            // Log the action
+            $auditLogger->logDelete(
+                'users',
+                $id,
+                "User account deleted: {$oldData['username']} ({$oldData['full_name']})",
+                $oldData
+            );
+
             return true;
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             throw new Exception("Error deleting user: " . $e->getMessage());
         }
     }
@@ -114,12 +180,14 @@ class UsersController {
     /**
      * Get users by role
      */
-    public function getUsersByRole($role) {
+    public function getUsersByRole($role)
+    {
         try {
             $stmt = $this->conn->prepare("SELECT id, username, full_name, role FROM users WHERE role = ? ORDER BY full_name ASC");
             $stmt->execute([$role]);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             throw new Exception("Error fetching users by role: " . $e->getMessage());
         }
     }

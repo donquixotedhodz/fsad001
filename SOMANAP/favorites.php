@@ -56,17 +56,17 @@ $filteredDocuments = $allDocuments;
 
 // Apply filters
 if (!empty($searchTerm) || !empty($filterItem)) {
-    $filteredDocuments = array_filter($allDocuments, function($doc) use ($searchTerm, $filterItem) {
-        $matchSearch = empty($searchTerm) || 
+    $filteredDocuments = array_filter($allDocuments, function ($doc) use ($searchTerm, $filterItem) {
+        $matchSearch = empty($searchTerm) ||
             stripos($doc['ec'], $searchTerm) !== false ||
             stripos($doc['item'], $searchTerm) !== false ||
             stripos($doc['file_name'], $searchTerm) !== false ||
             stripos($doc['recommending_approvals'] ?? '', $searchTerm) !== false ||
             stripos($doc['approving_authority'] ?? '', $searchTerm) !== false;
-        
-        $matchItem = empty($filterItem) || 
+
+        $matchItem = empty($filterItem) ||
             stripos($doc['item'], $filterItem) !== false;
-        
+
         return $matchSearch && $matchItem;
     });
     // Re-index the array
@@ -84,7 +84,7 @@ $documents = array_slice($filteredDocuments, $offset, $itemsPerPage);
 ob_start();
 ?>
 
-<div class="max-w-7xl mx-auto">
+<div class="w-full">
     <!-- Page Header -->
     <div class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between">
         <div>
@@ -130,7 +130,8 @@ ob_start();
                 Browse Documents
             </a>
         </div>
-        <?php else: ?>
+        <?php
+else: ?>
         <table class="w-full">
             <thead class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
                 <tr>
@@ -158,74 +159,80 @@ ob_start();
                         <?php echo htmlspecialchars($doc['approving_authority'] ?: '-'); ?>
                     </td>
                     <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
-                        <?php 
-                        if (!empty($doc['control_point'])) {
-                            $points = array_filter(array_map('trim', explode("\n", $doc['control_point'])));
-                            if (!empty($points)) {
-                                echo '<div class="space-y-1">';
-                                foreach ($points as $point) {
-                                    echo '<div class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">' . htmlspecialchars($point) . '</div>';
-                                }
-                                echo '</div>';
-                            } else {
-                                echo '-';
-                            }
-                        } else {
-                            echo '-';
-                        }
-                        ?>
+                        <?php
+        if (!empty($doc['control_point'])) {
+            $points = array_filter(array_map('trim', explode("\n", $doc['control_point'])));
+            if (!empty($points)) {
+                echo '<div class="space-y-1">';
+                foreach ($points as $point) {
+                    echo '<div class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">' . htmlspecialchars($point) . '</div>';
+                }
+                echo '</div>';
+            }
+            else {
+                echo '-';
+            }
+        }
+        else {
+            echo '-';
+        }
+?>
                     </td>
                     <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
-                        <?php 
-                        if (!empty($doc['department'])) {
-                            $depts = array_filter(array_map('trim', explode("\n", $doc['department'])));
-                            if (!empty($depts)) {
-                                echo '<div class="space-y-1">';
-                                foreach ($depts as $dept) {
-                                    $deptName = preg_replace('/^\d+\.\s+/', '', $dept);
-                                    echo '<div class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">' . htmlspecialchars($deptName) . '</div>';
-                                }
-                                echo '</div>';
-                            } else {
-                                echo '-';
-                            }
-                        } else {
-                            echo '-';
-                        }
-                        ?>
+                        <?php
+        if (!empty($doc['department'])) {
+            $depts = array_filter(array_map('trim', explode("\n", $doc['department'])));
+            if (!empty($depts)) {
+                echo '<div class="space-y-1">';
+                foreach ($depts as $dept) {
+                    $deptName = preg_replace('/^\d+\.\s+/', '', $dept);
+                    echo '<div class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">' . htmlspecialchars($deptName) . '</div>';
+                }
+                echo '</div>';
+            }
+            else {
+                echo '-';
+            }
+        }
+        else {
+            echo '-';
+        }
+?>
                     </td>
                     <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 font-bold">
                         <?php echo htmlspecialchars($doc['ec']); ?>
                     </td>
                     <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
-                        <?php 
-                        if (!empty($doc['team'])) {
-                            $teams = array_filter(array_map('trim', explode("\n", $doc['team'])));
-                            if (!empty($teams)) {
-                                echo '<div class="space-y-1">';
-                                foreach ($teams as $team) {
-                                    $teamName = preg_replace('/^\d+\.\s+/', '', $team);
-                                    echo '<div class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">' . htmlspecialchars($teamName) . '</div>';
-                                }
-                                echo '</div>';
-                            } else {
-                                echo '-';
-                            }
-                        } else {
-                            echo '-';
-                        }
-                        ?>
+                        <?php
+        if (!empty($doc['team'])) {
+            $teams = array_filter(array_map('trim', explode("\n", $doc['team'])));
+            if (!empty($teams)) {
+                echo '<div class="space-y-1">';
+                foreach ($teams as $team) {
+                    $teamName = preg_replace('/^\d+\.\s+/', '', $team);
+                    echo '<div class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">' . htmlspecialchars($teamName) . '</div>';
+                }
+                echo '</div>';
+            }
+            else {
+                echo '-';
+            }
+        }
+        else {
+            echo '-';
+        }
+?>
                     </td>
                     <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
                         <?php echo date('M d, Y', strtotime($doc['created_at'])); ?>
                     </td>
                     <td class="px-6 py-4 text-sm space-x-3 flex items-center justify-center">
                         <?php if (!empty($doc['file_path'])): ?>
-                        <?php 
-                        $filePath = $doc['file_path'];
-                        $fileExt = strtolower(pathinfo($doc['file_name'], PATHINFO_EXTENSION));
-                        $previewableTypes = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
-                        ?>
+                        <?php
+            $filePath = $doc['file_path'];
+            $fileExt = strtolower(pathinfo($doc['file_name'], PATHINFO_EXTENSION));
+            $previewableTypes = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
+?>
                         <!-- Preview Button (Eye Icon) -->
                         <?php if (in_array($fileExt, $previewableTypes)): ?>
                         <button onclick="openPreviewModal(<?php echo $doc['id']; ?>, '<?php echo htmlspecialchars($doc['file_name']); ?>')" title="Preview document" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition" style="background-color: var(--theme-primary);">
@@ -234,29 +241,35 @@ ob_start();
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                             </svg>
                         </button>
-                        <?php endif; ?>
+                        <?php
+            endif; ?>
                         <!-- Remove from Favorites Button (Star Icon) -->
                         <button onclick="removeFavorite(<?php echo $doc['id']; ?>, this)" title="Remove from favorites" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition" style="background-color: var(--theme-danger); border: 2px solid black;">
                             <svg class="w-4 h-4" fill="currentColor" stroke="black" stroke-width="1.5" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
                             </svg>
                         </button>
-                        <?php endif; ?>
+                        <?php
+        endif; ?>
                     </td>
                 </tr>
-                <?php endforeach; ?>
+                <?php
+    endforeach; ?>
             </tbody>
         </table>
-        <?php endif; ?>
+        <?php
+endif; ?>
     </div>
 
     <!-- Pagination -->
     <?php if ($totalPages > 1): ?>
-    <?php 
+    <?php
     $paginationQuery = '&limit=' . $itemsPerPage;
-    if (!empty($searchTerm)) $paginationQuery .= '&search=' . urlencode($searchTerm);
-    if (!empty($filterItem)) $paginationQuery .= '&item=' . urlencode($filterItem);
-    ?>
+    if (!empty($searchTerm))
+        $paginationQuery .= '&search=' . urlencode($searchTerm);
+    if (!empty($filterItem))
+        $paginationQuery .= '&item=' . urlencode($filterItem);
+?>
     <div class="mt-6 flex items-center justify-between">
         <div class="text-sm text-gray-600 dark:text-gray-400">
             Showing <?php echo $offset + 1; ?> to <?php echo min($offset + $itemsPerPage, $totalItems); ?> of <?php echo $totalItems; ?> documents
@@ -269,18 +282,20 @@ ob_start();
             <a href="?page=<?php echo $currentPage - 1; ?><?php echo $paginationQuery; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
                 Previous
             </a>
-            <?php endif; ?>
+            <?php
+    endif; ?>
 
-            <?php 
-            $startPage = max(1, $currentPage - 2);
-            $endPage = min($totalPages, $currentPage + 2);
-            
-            for ($i = $startPage; $i <= $endPage; $i++):
-            ?>
+            <?php
+    $startPage = max(1, $currentPage - 2);
+    $endPage = min($totalPages, $currentPage + 2);
+
+    for ($i = $startPage; $i <= $endPage; $i++):
+?>
             <a href="?page=<?php echo $i; ?><?php echo $paginationQuery; ?>" class="px-4 py-2 rounded-lg <?php echo $i === $currentPage ? 'bg-blue-500 text-white' : 'border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'; ?> transition">
                 <?php echo $i; ?>
             </a>
-            <?php endfor; ?>
+            <?php
+    endfor; ?>
 
             <?php if ($currentPage < $totalPages): ?>
             <a href="?page=<?php echo $currentPage + 1; ?><?php echo $paginationQuery; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
@@ -289,10 +304,12 @@ ob_start();
             <a href="?page=<?php echo $totalPages; ?><?php echo $paginationQuery; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
                 Last
             </a>
-            <?php endif; ?>
+            <?php
+    endif; ?>
         </div>
     </div>
-    <?php endif; ?>
+    <?php
+endif; ?>
 </div>
 
 <!-- Document Preview Modal -->

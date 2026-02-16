@@ -15,8 +15,8 @@ $username = $_SESSION['username'] ?? 'User';
 ob_start();
 ?>
 
-<div class="p-6" style="font-family: Arial, sans-serif;">
-    <div class="mb-6">
+<div class="w-full" style="font-family: Arial, sans-serif;">
+    <div class="mb-8">
         <div class="flex justify-between items-center mb-4">
             <h1 class="text-3xl font-bold text-gray-900 dark:text-white">PPE Provident Fund - Reports</h1>
             <div class="flex gap-3">

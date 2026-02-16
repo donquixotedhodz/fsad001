@@ -90,7 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             $lastBalance = $lastRecord ? floatval($lastRecord['balance']) : $STARTING_BALANCE;
 
             // Calculate new balance
-            $newBalance = $lastBalance - $debit + $credit;
+            $newBalance = $lastBalance + $credit - $debit;
 
             // Insert new record
             $stmt = $conn->prepare("INSERT INTO ppe (date, particulars, check_no, dv_or_no, debit, credit, balance) VALUES (?, ?, ?, ?, ?, ?, ?)");
@@ -103,10 +103,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
 
             // Log the action
             $auditLogger->log(
-                'add_ppe',
-                'PPE record added: ' . $particulars . ' (Debit: ' . $debit . ', Credit: ' . $credit . ')',
+                'CREATE',
                 'ppe',
-                $newPPEId
+                $newPPEId,
+                'PPE record added: ' . $particulars . ' (Debit: ' . $debit . ', Credit: ' . $credit . ')'
             );
 
             // Set session message and redirect to avoid form resubmission warning
@@ -159,7 +159,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
 
                 $currentBalance = $newBalance;
                 foreach ($recordsAfter as $record) {
-                    $currentBalance = $currentBalance - $record['debit'] + $record['credit'];
+                    $currentBalance = $currentBalance + $record['credit'] - $record['debit'];
                     $updateStmt = $conn->prepare("UPDATE ppe SET balance = ? WHERE id = ?");
                     $updateStmt->execute([$currentBalance, $record['id']]);
                 }
@@ -170,10 +170,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
 
                 // Log the action
                 $auditLogger->log(
-                    'delete_ppe',
-                    'PPE record deleted: ' . $recordToDelete['particulars'],
+                    'DELETE',
                     'ppe',
-                    $ppe_id
+                    $ppe_id,
+                    'PPE record deleted: ' . $recordToDelete['particulars']
                 );
 
                 // Set session message and redirect to avoid form resubmission warning
@@ -269,7 +269,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             $prevBalance = $prevRecord ? floatval($prevRecord['balance']) : $STARTING_BALANCE;
 
             // Calculate the new balance for this record
-            $newBalance = $prevBalance - $debit + $credit;
+            $newBalance = $prevBalance + $credit - $debit;
 
             // Update the record
             $stmt = $conn->prepare("UPDATE ppe SET date = ?, particulars = ?, check_no = ?, dv_or_no = ?, debit = ?, credit = ?, balance = ? WHERE id = ?");
@@ -282,7 +282,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
 
             $currentBalance = $newBalance;
             foreach ($recordsAfter as $record) {
-                $currentBalance = $currentBalance - $record['debit'] + $record['credit'];
+                $currentBalance = $currentBalance + $record['credit'] - $record['debit'];
                 $updateStmt = $conn->prepare("UPDATE ppe SET balance = ? WHERE id = ?");
                 $updateStmt->execute([$currentBalance, $record['id']]);
             }
@@ -293,10 +293,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
 
             // Log the action
             $auditLogger->log(
-                'edit_ppe',
-                'PPE record updated: ' . $particulars . ' (Debit: ' . $debit . ', Credit: ' . $credit . ')',
+                'UPDATE',
                 'ppe',
-                $ppe_id
+                $ppe_id,
+                'PPE record updated: ' . $particulars . ' (Debit: ' . $debit . ', Credit: ' . $credit . ')'
             );
 
             // Set session message and redirect to avoid form resubmission warning
@@ -389,9 +389,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
 ob_start();
 ?>
 
-<div class="p-6">
-    <div class="mb-6 flex justify-between items-center">
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">PPE Provident Fund</h1>
+<div class="w-full">
+    <div class="mb-8 flex justify-between items-center">
+        <h1 class="text-4xl font-bold text-gray-900 dark:text-white">PPE Provident Fund</h1>
         <?php if ($canEdit): ?>
         <button onclick="openAddPPE()" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">
             + Add PPE

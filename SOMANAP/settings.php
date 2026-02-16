@@ -19,25 +19,28 @@ if ($userId) {
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
         $profileImage = $user['profile_image'] ?? null;
         $fullName = $user['full_name'] ?? '';
-    } catch (PDOException $e) {
-        // Profile image column might not exist yet
+    }
+    catch (PDOException $e) {
+    // Profile image column might not exist yet
     }
 }
 
 // Handle Update Profile Information
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_profile') {
     $newFullName = isset($_POST['full_name']) ? trim($_POST['full_name']) : '';
-    
+
     if ($userId && !empty($newFullName)) {
         try {
             $stmt = $conn->prepare("UPDATE users SET full_name = ? WHERE id = ?");
             $stmt->execute([$newFullName, $userId]);
             $fullName = $newFullName;
             $successMessage = "Profile information updated successfully!";
-        } catch (PDOException $e) {
+        }
+        catch (PDOException $e) {
             $errorMessage = "Error updating profile: " . $e->getMessage();
         }
-    } elseif (empty($newFullName)) {
+    }
+    elseif (empty($newFullName)) {
         $errorMessage = "Full name cannot be empty!";
     }
 }
@@ -48,29 +51,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         $file = $_FILES['profile_image'];
         $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
         $maxFileSize = 5 * 1024 * 1024; // 5MB
-        
+
         // Validate file
         if ($file['error'] === UPLOAD_ERR_OK) {
             $fileName = basename($file['name']);
             $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
             $fileSize = $file['size'];
-            
+
             if (!in_array($fileExt, $allowedExtensions)) {
                 $errorMessage = "Invalid file type. Allowed types: " . implode(', ', $allowedExtensions);
-            } elseif ($fileSize > $maxFileSize) {
+            }
+            elseif ($fileSize > $maxFileSize) {
                 $errorMessage = "File size exceeds 5MB limit.";
-            } else {
+            }
+            else {
                 try {
                     // Create directory if it doesn't exist
                     $uploadDir = __DIR__ . '/uploads/profile_images/';
                     if (!is_dir($uploadDir)) {
                         mkdir($uploadDir, 0755, true);
                     }
-                    
+
                     // Generate unique filename
                     $uniqueName = uniqid('profile_' . $userId . '_', true) . '.' . $fileExt;
                     $uploadPath = $uploadDir . $uniqueName;
-                    
+
                     // Delete old profile image if exists
                     if ($profileImage) {
                         $oldImagePath = $uploadDir . $profileImage;
@@ -78,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
                             unlink($oldImagePath);
                         }
                     }
-                    
+
                     // Move uploaded file
                     if (move_uploaded_file($file['tmp_name'], $uploadPath)) {
                         // Update database
@@ -86,14 +91,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
                         $stmt->execute([$uniqueName, $userId]);
                         $profileImage = $uniqueName;
                         $successMessage = "Profile image updated successfully!";
-                    } else {
+                    }
+                    else {
                         $errorMessage = "Failed to upload file.";
                     }
-                } catch (Exception $e) {
+                }
+                catch (Exception $e) {
                     $errorMessage = "Error uploading profile image: " . $e->getMessage();
                 }
             }
-        } else {
+        }
+        else {
             $errorMessage = "File upload error.";
         }
     }
@@ -106,17 +114,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     $department = isset($_POST['staff_department']) ? trim($_POST['staff_department']) : '';
     $username = isset($_POST['staff_username']) ? trim($_POST['staff_username']) : '';
     $password = isset($_POST['staff_password']) ? trim($_POST['staff_password']) : '';
-    
+
     if (!empty($name) && !empty($position) && !empty($username) && !empty($password)) {
         try {
             $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
             $stmt = $conn->prepare("INSERT INTO staff (name, position, department, username, password, status) VALUES (?, ?, ?, ?, ?, 'active')");
             $stmt->execute([$name, $position, $department, $username, $hashedPassword]);
             $successMessage = "Staff added successfully!";
-        } catch (PDOException $e) {
+        }
+        catch (PDOException $e) {
             $errorMessage = "Error adding staff: " . $e->getMessage();
         }
-    } else {
+    }
+    else {
         $errorMessage = "Name, Position, Username, and Password are required!";
     }
 }
@@ -124,7 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
 ob_start();
 ?>
 
-<div class="max-w-4xl mx-auto">
+<div class="w-full">
     <!-- Page Header -->
     <div class="mb-8">
         <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-2">Settings</h1>
@@ -153,12 +163,14 @@ ob_start();
                         <div class="mb-4 p-4 bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 rounded-lg border border-green-300 dark:border-green-700">
                             <?php echo htmlspecialchars($successMessage); ?>
                         </div>
-                    <?php endif; ?>
+                    <?php
+endif; ?>
                     <?php if (isset($errorMessage)): ?>
                         <div class="mb-4 p-4 bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300 rounded-lg border border-red-300 dark:border-red-700">
                             <?php echo htmlspecialchars($errorMessage); ?>
                         </div>
-                    <?php endif; ?>
+                    <?php
+endif; ?>
 
                     <form id="profileImageForm" method="POST" enctype="multipart/form-data" class="space-y-4">
                         <input type="hidden" name="action" value="upload_profile_image">
@@ -169,11 +181,13 @@ ob_start();
                                 <div id="profileImagePreview" class="w-24 h-24 bg-blue-500 rounded-full flex items-center justify-center overflow-hidden shadow-lg">
                                     <?php if ($profileImage): ?>
                                         <img id="profileImageDisplay" src="../SOMANAP/uploads/profile_images/<?php echo htmlspecialchars($profileImage); ?>" alt="Profile Image" class="w-full h-full object-cover">
-                                    <?php else: ?>
+                                    <?php
+else: ?>
                                         <svg id="defaultProfileIcon" class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                                         </svg>
-                                    <?php endif; ?>
+                                    <?php
+endif; ?>
                                 </div>
                                 <label for="profileImageInput" class="absolute bottom-0 right-0 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-2 cursor-pointer shadow-lg transition">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -197,7 +211,8 @@ ob_start();
                                         <button type="button" onclick="removeProfileImage()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg font-medium transition">
                                             Remove
                                         </button>
-                                    <?php endif; ?>
+                                    <?php
+endif; ?>
                                 </div>
                             </div>
                         </div>

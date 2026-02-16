@@ -52,7 +52,7 @@ foreach ($chartData as $row) {
 ob_start();
 ?>
 
-<div class="max-w-7xl mx-auto">
+<div class="w-full">
     <!-- Page Header -->
     <div class="mb-8">
         <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-2">PPE Provident Fund Balance</h1>
@@ -132,28 +132,30 @@ ob_start();
                 </thead>
                 <tbody>
                     <?php
-                    try {
-                        $stmt = $conn->prepare("SELECT date, particulars, debit, credit, balance FROM ppe ORDER BY date DESC LIMIT 10");
-                        $stmt->execute();
-                        $recentRecords = $stmt->fetchAll();
-                        
-                        if (count($recentRecords) > 0) {
-                            foreach ($recentRecords as $record) {
-                                echo '<tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">';
-                                echo '<td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['date']) . '</td>';
-                                echo '<td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['particulars']) . '</td>';
-                                echo '<td class="px-6 py-4 text-sm text-right text-red-600 dark:text-red-400">' . ($record['debit'] > 0 ? '₱' . number_format($record['debit'], 2) : '-') . '</td>';
-                                echo '<td class="px-6 py-4 text-sm text-right text-green-600 dark:text-green-400">' . ($record['credit'] > 0 ? '₱' . number_format($record['credit'], 2) : '-') . '</td>';
-                                echo '<td class="px-6 py-4 text-sm text-right font-semibold text-gray-900 dark:text-white">₱' . number_format($record['balance'], 2) . '</td>';
-                                echo '</tr>';
-                            }
-                        } else {
-                            echo '<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No records found</td></tr>';
-                        }
-                    } catch (Exception $e) {
-                        echo '<tr><td colspan="5" class="px-6 py-4 text-center text-red-500">Error loading data: ' . htmlspecialchars($e->getMessage()) . '</td></tr>';
-                    }
-                    ?>
+try {
+    $stmt = $conn->prepare("SELECT date, particulars, debit, credit, balance FROM ppe ORDER BY date DESC LIMIT 10");
+    $stmt->execute();
+    $recentRecords = $stmt->fetchAll();
+
+    if (count($recentRecords) > 0) {
+        foreach ($recentRecords as $record) {
+            echo '<tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">';
+            echo '<td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['date']) . '</td>';
+            echo '<td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['particulars']) . '</td>';
+            echo '<td class="px-6 py-4 text-sm text-right text-red-600 dark:text-red-400">' . ($record['debit'] > 0 ? '₱' . number_format($record['debit'], 2) : '-') . '</td>';
+            echo '<td class="px-6 py-4 text-sm text-right text-green-600 dark:text-green-400">' . ($record['credit'] > 0 ? '₱' . number_format($record['credit'], 2) : '-') . '</td>';
+            echo '<td class="px-6 py-4 text-sm text-right font-semibold text-gray-900 dark:text-white">₱' . number_format($record['balance'], 2) . '</td>';
+            echo '</tr>';
+        }
+    }
+    else {
+        echo '<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No records found</td></tr>';
+    }
+}
+catch (Exception $e) {
+    echo '<tr><td colspan="5" class="px-6 py-4 text-center text-red-500">Error loading data: ' . htmlspecialchars($e->getMessage()) . '</td></tr>';
+}
+?>
                 </tbody>
             </table>
         </div>

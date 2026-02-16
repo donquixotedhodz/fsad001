@@ -28,8 +28,8 @@ $currentPageNum = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 ob_start();
 ?>
 
-<div class="p-6" style="font-family: Arial, sans-serif;">
-    <div class="mb-6">
+<div class="w-full" style="font-family: Arial, sans-serif;">
+    <div class="mb-8">
         <div class="flex justify-between items-center mb-4">
             <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Audit Observation Memorandum - Reports</h1>
             <div class="flex gap-3">

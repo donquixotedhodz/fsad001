@@ -1,9 +1,11 @@
 <?php
 
-class AuditLogger {
+class AuditLogger
+{
     private $conn;
 
-    public function __construct($dbConnection) {
+    public function __construct($dbConnection)
+    {
         $this->conn = $dbConnection;
     }
 
@@ -19,14 +21,15 @@ class AuditLogger {
      * @param int|null $userId The ID of the user performing the action
      * @param string|null $username The username of the user performing the action
      */
-    public function log($action, $tableName, $recordId, $description, $oldValues = null, $newValues = null, $userId = null, $username = null) {
+    public function log($action, $tableName, $recordId, $description, $oldValues = null, $newValues = null, $userId = null, $username = null)
+    {
         try {
             // Get IP address
             $ipAddress = $this->getIpAddress();
-            
+
             // Get User Agent
             $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
-            
+
             // Get user info from session if not provided
             if ($userId === null && isset($_SESSION['user_id'])) {
                 $userId = $_SESSION['user_id'];
@@ -34,11 +37,11 @@ class AuditLogger {
             if ($username === null && isset($_SESSION['username'])) {
                 $username = $_SESSION['username'];
             }
-            
+
             // Convert arrays to JSON
             $oldValuesJson = $oldValues ? json_encode($oldValues) : null;
             $newValuesJson = $newValues ? json_encode($newValues) : null;
-            
+
             // Prepare and execute insert
             $stmt = $this->conn->prepare("
                 INSERT INTO audit_logs 
@@ -46,7 +49,7 @@ class AuditLogger {
                 VALUES 
                 (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
-            
+
             $stmt->execute([
                 $userId,
                 $username,
@@ -59,9 +62,10 @@ class AuditLogger {
                 $ipAddress,
                 $userAgent
             ]);
-            
+
             return true;
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             error_log("Audit Logger Error: " . $e->getMessage());
             return false;
         }
@@ -70,56 +74,67 @@ class AuditLogger {
     /**
      * Log a CREATE action
      */
-    public function logCreate($tableName, $recordId, $description, $newValues = null, $userId = null, $username = null) {
+    public function logCreate($tableName, $recordId, $description, $newValues = null, $userId = null, $username = null)
+    {
         return $this->log('CREATE', $tableName, $recordId, $description, null, $newValues, $userId, $username);
     }
 
     /**
      * Log a READ/VIEW action
      */
-    public function logRead($tableName, $recordId, $description = 'Record viewed', $userId = null, $username = null) {
+    public function logRead($tableName, $recordId, $description = 'Record viewed', $userId = null, $username = null)
+    {
         return $this->log('READ', $tableName, $recordId, $description, null, null, $userId, $username);
     }
 
     /**
      * Log an UPDATE action
      */
-    public function logUpdate($tableName, $recordId, $description, $oldValues = null, $newValues = null, $userId = null, $username = null) {
+    public function logUpdate($tableName, $recordId, $description, $oldValues = null, $newValues = null, $userId = null, $username = null)
+    {
         return $this->log('UPDATE', $tableName, $recordId, $description, $oldValues, $newValues, $userId, $username);
     }
 
     /**
      * Log a DELETE action
      */
-    public function logDelete($tableName, $recordId, $description, $oldValues = null, $userId = null, $username = null) {
+    public function logDelete($tableName, $recordId, $description, $oldValues = null, $userId = null, $username = null)
+    {
         return $this->log('DELETE', $tableName, $recordId, $description, $oldValues, null, $userId, $username);
     }
 
     /**
      * Get user's IP address
      */
-    private function getIpAddress() {
+    private function getIpAddress()
+    {
         if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
             $ip = $_SERVER['HTTP_CF_CONNECTING_IP'];
-        } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        }
+        elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
             $ip = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0];
-        } elseif (!empty($_SERVER['HTTP_X_FORWARDED'])) {
+        }
+        elseif (!empty($_SERVER['HTTP_X_FORWARDED'])) {
             $ip = $_SERVER['HTTP_X_FORWARDED'];
-        } elseif (!empty($_SERVER['HTTP_FORWARDED_FOR'])) {
+        }
+        elseif (!empty($_SERVER['HTTP_FORWARDED_FOR'])) {
             $ip = $_SERVER['HTTP_FORWARDED_FOR'];
-        } elseif (!empty($_SERVER['HTTP_FORWARDED'])) {
+        }
+        elseif (!empty($_SERVER['HTTP_FORWARDED'])) {
             $ip = $_SERVER['HTTP_FORWARDED'];
-        } else {
+        }
+        else {
             $ip = $_SERVER['REMOTE_ADDR'] ?? '';
         }
-        
+
         return filter_var($ip, FILTER_VALIDATE_IP) ? $ip : '';
     }
 
     /**
      * Get audit logs with filters
      */
-    public function getLogs($filters = []) {
+    public function getLogs($filters = [])
+    {
         $query = "SELECT * FROM audit_logs WHERE 1=1";
         $params = [];
 
@@ -162,7 +177,12 @@ class AuditLogger {
 
         if (isset($filters['limit']) && !empty($filters['limit'])) {
             $query .= " LIMIT ?";
-            $params[] = $filters['limit'];
+            $params[] = (int)$filters['limit'];
+
+            if (isset($filters['offset']) && $filters['offset'] > 0) {
+                $query .= " OFFSET ?";
+                $params[] = (int)$filters['offset'];
+            }
         }
 
         $stmt = $this->conn->prepare($query);
@@ -173,7 +193,8 @@ class AuditLogger {
     /**
      * Get audit log by ID
      */
-    public function getLogById($id) {
+    public function getLogById($id)
+    {
         $stmt = $this->conn->prepare("SELECT * FROM audit_logs WHERE id = ?");
         $stmt->execute([$id]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
@@ -182,7 +203,8 @@ class AuditLogger {
     /**
      * Get recent logs for a specific user
      */
-    public function getRecentLogsForUser($userId, $limit = 10) {
+    public function getRecentLogsForUser($userId, $limit = 10)
+    {
         $stmt = $this->conn->prepare("
             SELECT * FROM audit_logs 
             WHERE user_id = ? 
@@ -196,7 +218,8 @@ class AuditLogger {
     /**
      * Get logs for a specific table
      */
-    public function getLogsForTable($tableName, $limit = 50) {
+    public function getLogsForTable($tableName, $limit = 50)
+    {
         $stmt = $this->conn->prepare("
             SELECT * FROM audit_logs 
             WHERE table_name = ? 
@@ -210,7 +233,8 @@ class AuditLogger {
     /**
      * Get count of logs by action type
      */
-    public function getLogCountByAction() {
+    public function getLogCountByAction()
+    {
         $stmt = $this->conn->prepare("
             SELECT action, COUNT(*) as count 
             FROM audit_logs 
@@ -223,7 +247,8 @@ class AuditLogger {
     /**
      * Get count of logs by table
      */
-    public function getLogCountByTable() {
+    public function getLogCountByTable()
+    {
         $stmt = $this->conn->prepare("
             SELECT table_name, COUNT(*) as count 
             FROM audit_logs 
@@ -237,7 +262,8 @@ class AuditLogger {
     /**
      * Get count of logs by user
      */
-    public function getLogCountByUser() {
+    public function getLogCountByUser()
+    {
         $stmt = $this->conn->prepare("
             SELECT username, COUNT(*) as count 
             FROM audit_logs 

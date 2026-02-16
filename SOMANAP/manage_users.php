@@ -50,10 +50,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             $_SESSION['successMessage'] = "User added successfully!";
             header('Location: ' . $_SERVER['REQUEST_URI']);
             exit;
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             $errorMessage = "Error adding user: " . htmlspecialchars($e->getMessage());
         }
-    } else {
+    }
+    else {
         $errorMessage = "Please fill in all required fields.";
     }
 }
@@ -82,10 +84,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             $_SESSION['successMessage'] = "User updated successfully!";
             header('Location: ' . $_SERVER['REQUEST_URI']);
             exit;
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             $errorMessage = "Error updating user: " . htmlspecialchars($e->getMessage());
         }
-    } else {
+    }
+    else {
         $errorMessage = "Please fill in all required fields.";
     }
 }
@@ -111,7 +115,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             $_SESSION['successMessage'] = "User deleted successfully!";
             header('Location: ' . $_SERVER['REQUEST_URI']);
             exit;
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             $errorMessage = "Error deleting user: " . htmlspecialchars($e->getMessage());
         }
     }
@@ -126,10 +131,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         $user = $usersController->getUserById($user_id);
         if ($user) {
             echo json_encode(['success' => true, 'user' => $user]);
-        } else {
+        }
+        else {
             echo json_encode(['success' => false, 'message' => 'User not found']);
         }
-    } catch (Exception $e) {
+    }
+    catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => htmlspecialchars($e->getMessage())]);
     }
     exit;
@@ -143,13 +150,16 @@ if ($itemsPerPage == 'all') {
 $totalItems = $usersController->getUserCount();
 $totalPages = ceil($totalItems / $itemsPerPage);
 $currentPage = isset($_GET['page']) ? intval($_GET['page']) : 1;
-if ($currentPage > $totalPages) $currentPage = $totalPages;
-if ($currentPage < 1) $currentPage = 1;
+if ($currentPage > $totalPages)
+    $currentPage = $totalPages;
+if ($currentPage < 1)
+    $currentPage = 1;
 $offset = ($currentPage - 1) * $itemsPerPage;
 
 try {
     $users = $usersController->getAllUsers($itemsPerPage, $offset);
-} catch (Exception $e) {
+}
+catch (Exception $e) {
     $errorMessage = $e->getMessage();
     $users = [];
 }
@@ -163,36 +173,40 @@ ob_start();
             <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Manage Users</h1>
             <?php if ($isReadOnly): ?>
                 <p class="text-sm text-amber-600 dark:text-amber-400 mt-2">📖 Read-only mode: Admins cannot edit or delete records</p>
-            <?php endif; ?>
+            <?php
+endif; ?>
         </div>
         <?php if ($canManage && !$isReadOnly): ?>
         <button onclick="document.getElementById('addUserModal').showModal()" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">
             + Add User
         </button>
-        <?php endif; ?>
+        <?php
+endif; ?>
     </div>
 
     <!-- Success/Error Messages -->
-    <?php 
-    $displaySuccess = isset($_SESSION['successMessage']) ? $_SESSION['successMessage'] : (isset($successMessage) ? $successMessage : null);
-    if ($displaySuccess): 
-    ?>
+    <?php
+$displaySuccess = isset($_SESSION['successMessage']) ? $_SESSION['successMessage'] : (isset($successMessage) ? $successMessage : null);
+if ($displaySuccess):
+?>
         <div id="successMessage" class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded flex justify-between items-center">
             <span><?php echo $displaySuccess; ?></span>
             <button onclick="document.getElementById('successMessage').style.display = 'none'" class="text-green-700 hover:text-green-900 font-bold ml-4">✕</button>
         </div>
         <?php unset($_SESSION['successMessage']); ?>
-    <?php endif; ?>
-    <?php 
-    $displayError = isset($_SESSION['errorMessage']) ? $_SESSION['errorMessage'] : (isset($errorMessage) ? $errorMessage : null);
-    if ($displayError): 
-    ?>
+    <?php
+endif; ?>
+    <?php
+$displayError = isset($_SESSION['errorMessage']) ? $_SESSION['errorMessage'] : (isset($errorMessage) ? $errorMessage : null);
+if ($displayError):
+?>
         <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded flex justify-between items-center">
             <span><?php echo $displayError; ?></span>
             <button onclick="this.parentElement.style.display = 'none'" class="text-red-700 hover:text-red-900 font-bold ml-4">✕</button>
         </div>
         <?php unset($_SESSION['errorMessage']); ?>
-    <?php endif; ?>
+    <?php
+endif; ?>
 
     <!-- Add User Modal -->
     <dialog id="addUserModal" class="rounded-lg shadow-lg max-w-2xl w-full p-8 dark:bg-gray-800">
@@ -297,10 +311,10 @@ ob_start();
     <div class="mb-4 flex items-center gap-2">
         <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Show</label>
         <select id="limitSelect" onchange="changeLimit()" class="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="5" <?php echo (!isset($_GET['limit']) || $_GET['limit'] == 5) ? 'selected' : ''; ?>>5</option>
-            <option value="10" <?php echo (isset($_GET['limit']) && $_GET['limit'] == 10) ? 'selected' : ''; ?>>10</option>
-            <option value="25" <?php echo (isset($_GET['limit']) && $_GET['limit'] == 25) ? 'selected' : ''; ?>>25</option>
-            <option value="all" <?php echo (isset($_GET['limit']) && $_GET['limit'] == 'all') ? 'selected' : ''; ?>>Show All</option>
+            <option value="5" <?php echo(!isset($_GET['limit']) || $_GET['limit'] == 5) ? 'selected' : ''; ?>>5</option>
+            <option value="10" <?php echo(isset($_GET['limit']) && $_GET['limit'] == 10) ? 'selected' : ''; ?>>10</option>
+            <option value="25" <?php echo(isset($_GET['limit']) && $_GET['limit'] == 25) ? 'selected' : ''; ?>>25</option>
+            <option value="all" <?php echo(isset($_GET['limit']) && $_GET['limit'] == 'all') ? 'selected' : ''; ?>>Show All</option>
         </select>
         <span class="text-sm text-gray-600 dark:text-gray-400">entries</span>
     </div>
@@ -315,20 +329,22 @@ ob_start();
                     <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-900 dark:text-white">Created</th>
                     <?php if ($canManage && !$isReadOnly): ?>
                     <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center font-semibold text-gray-900 dark:text-white">Actions</th>
-                    <?php endif; ?>
+                    <?php
+endif; ?>
                 </tr>
             </thead>
             <tbody>
-                <?php 
-                if (!empty($users)):
-                    foreach ($users as $user):
-                        $roleColor = 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
-                        if ($user['role'] === 'administrator') {
-                            $roleColor = 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
-                        } elseif ($user['role'] === 'superadmin') {
-                            $roleColor = 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-                        }
-                ?>
+                <?php
+if (!empty($users)):
+    foreach ($users as $user):
+        $roleColor = 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+        if ($user['role'] === 'administrator') {
+            $roleColor = 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
+        }
+        elseif ($user['role'] === 'superadmin') {
+            $roleColor = 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+        }
+?>
                 <tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
                     <td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-900 dark:text-gray-100"><?php echo htmlspecialchars($user['username']); ?></td>
                     <td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-900 dark:text-gray-100"><?php echo htmlspecialchars($user['full_name']); ?></td>
@@ -340,23 +356,25 @@ ob_start();
                     <td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-900 dark:text-gray-100"><?php echo date('M d, Y', strtotime($user['created_at'] ?? 'now')); ?></td>
                     <?php if ($canManage && !$isReadOnly): ?>
                     <td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center">
-                        <button onclick="editUser(<?php echo $user['id']; ?>)" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition mr-2" style="background-color: var(--theme-accent);" title="Edit">
+                        <button onclick="editUser(<?php echo $user['id']; ?>)" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition mr-2" style="background-color: #eab308;" title="Edit">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                         </button>
                         <button onclick="deleteUser(<?php echo $user['id']; ?>, '<?php echo htmlspecialchars(addslashes($user['full_name'])); ?>')" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition" style="background-color: var(--theme-danger);" title="Delete">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                         </button>
                     </td>
-                    <?php endif; ?>
+                    <?php
+        endif; ?>
                 </tr>
-                <?php 
-                    endforeach;
-                else:
-                ?>
+                <?php
+    endforeach;
+else:
+?>
                 <tr>
-                    <td colspan="<?php echo ($canManage && !$isReadOnly) ? 5 : 4; ?>" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-gray-500">No users found</td>
+                    <td colspan="<?php echo($canManage && !$isReadOnly) ? 5 : 4; ?>" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-gray-500">No users found</td>
                 </tr>
-                <?php endif; ?>
+                <?php
+endif; ?>
             </tbody>
         </table>
     </div>
@@ -365,43 +383,48 @@ ob_start();
     <?php if ($totalPages > 1): ?>
     <div class="mt-6 flex items-center justify-between">
         <div class="text-sm text-gray-600 dark:text-gray-400">
-            Showing <?php echo ($offset + 1); ?> to <?php echo min($offset + $itemsPerPage, $totalItems); ?> of <?php echo $totalItems; ?> records
+            Showing <?php echo($offset + 1); ?> to <?php echo min($offset + $itemsPerPage, $totalItems); ?> of <?php echo $totalItems; ?> records
         </div>
         <div class="flex gap-2">
             <?php if ($currentPage > 1): ?>
             <a href="?page=<?php echo $currentPage - 1; ?>&limit=<?php echo isset($_GET['limit']) ? $_GET['limit'] : 10; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
                 Previous
             </a>
-            <?php endif; ?>
+            <?php
+    endif; ?>
 
             <?php
-            $startPage = max(1, $currentPage - 2);
-            $endPage = min($totalPages, $currentPage + 2);
-            
-            if ($startPage > 1) {
-                echo '<a href="?page=1&limit=' . (isset($_GET['limit']) ? $_GET['limit'] : 10) . '" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">1</a>';
-                if ($startPage > 2) echo '<span class="px-2 py-2 text-gray-700 dark:text-gray-300">...</span>';
-            }
-            
-            for ($i = $startPage; $i <= $endPage; $i++) {
-                $active = $i == $currentPage ? 'bg-blue-500 text-white' : 'border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700';
-                echo '<a href="?page=' . $i . '&limit=' . (isset($_GET['limit']) ? $_GET['limit'] : 10) . '" class="px-4 py-2 rounded-lg transition ' . $active . '">' . $i . '</a>';
-            }
-            
-            if ($endPage < $totalPages) {
-                if ($endPage < $totalPages - 1) echo '<span class="px-2 py-2 text-gray-700 dark:text-gray-300">...</span>';
-                echo '<a href="?page=' . $totalPages . '&limit=' . (isset($_GET['limit']) ? $_GET['limit'] : 10) . '" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">' . $totalPages . '</a>';
-            }
-            ?>
+    $startPage = max(1, $currentPage - 2);
+    $endPage = min($totalPages, $currentPage + 2);
+
+    if ($startPage > 1) {
+        echo '<a href="?page=1&limit=' . (isset($_GET['limit']) ? $_GET['limit'] : 10) . '" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">1</a>';
+        if ($startPage > 2)
+            echo '<span class="px-2 py-2 text-gray-700 dark:text-gray-300">...</span>';
+    }
+
+    for ($i = $startPage; $i <= $endPage; $i++) {
+        $active = $i == $currentPage ? 'bg-blue-500 text-white' : 'border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700';
+        echo '<a href="?page=' . $i . '&limit=' . (isset($_GET['limit']) ? $_GET['limit'] : 10) . '" class="px-4 py-2 rounded-lg transition ' . $active . '">' . $i . '</a>';
+    }
+
+    if ($endPage < $totalPages) {
+        if ($endPage < $totalPages - 1)
+            echo '<span class="px-2 py-2 text-gray-700 dark:text-gray-300">...</span>';
+        echo '<a href="?page=' . $totalPages . '&limit=' . (isset($_GET['limit']) ? $_GET['limit'] : 10) . '" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">' . $totalPages . '</a>';
+    }
+?>
 
             <?php if ($currentPage < $totalPages): ?>
             <a href="?page=<?php echo $currentPage + 1; ?>&limit=<?php echo isset($_GET['limit']) ? $_GET['limit'] : 10; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
                 Next
             </a>
-            <?php endif; ?>
+            <?php
+    endif; ?>
         </div>
     </div>
-    <?php endif; ?>
+    <?php
+endif; ?>
 
 <script>
 function changeLimit() {

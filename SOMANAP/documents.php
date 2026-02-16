@@ -101,7 +101,7 @@ $filteredDocuments = $allDocuments;
 
 // Apply filters
 if (!empty($searchTerm) || !empty($filterItem)) {
-    $filteredDocuments = array_filter($allDocuments, function($doc) use ($searchTerm, $filterItem) {
+    $filteredDocuments = array_filter($allDocuments, function ($doc) use ($searchTerm, $filterItem) {
         // Apply search filter - search ALL fields
         if (!empty($searchTerm)) {
             $searchLower = strtolower($searchTerm);
@@ -116,13 +116,13 @@ if (!empty($searchTerm) || !empty($filterItem)) {
                 $doc['team'] ?? '',
                 $doc['created_at'] ?? ''
             ];
-            
+
             $combined = strtolower(implode(' ', $searchableFields));
             if (strpos($combined, $searchLower) === false) {
                 return false;
             }
         }
-        
+
         // Apply Item filter (exact match after trim)
         if (!empty($filterItem)) {
             $docItem = isset($doc['item']) ? trim($doc['item']) : '';
@@ -131,7 +131,7 @@ if (!empty($searchTerm) || !empty($filterItem)) {
                 return false;
             }
         }
-        
+
         return true;
     });
     // Re-index the array to avoid issues with pagination
@@ -149,7 +149,7 @@ $documents = array_slice($filteredDocuments, $offset, $itemsPerPage);
 ob_start();
 ?>
 
-<div class="max-w-7xl mx-auto">
+<div class="w-full">
     <!-- Page Header -->
     <div class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between">
         <div>
@@ -190,10 +190,11 @@ ob_start();
                 <select name="item" onchange="document.getElementById('searchForm').submit()" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">All Items</option>
                     <?php foreach ($itemsList as $item): ?>
-                        <option value="<?php echo htmlspecialchars($item['name']); ?>" <?php echo ($filterItem === $item['name']) ? 'selected' : ''; ?>>
+                        <option value="<?php echo htmlspecialchars($item['name']); ?>" <?php echo($filterItem === $item['name']) ? 'selected' : ''; ?>>
                             <?php echo htmlspecialchars($item['name']); ?>
                         </option>
-                    <?php endforeach; ?>
+                    <?php
+endforeach; ?>
                 </select>
             </div>
 
@@ -202,7 +203,8 @@ ob_start();
             <button type="button" onclick="window.location.href='?'" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition font-medium">
                 Clear Filters
             </button>
-            <?php endif; ?>
+            <?php
+endif; ?>
         </form>
     </div>
 
@@ -210,17 +212,16 @@ ob_start();
     <div class="mb-4 flex items-center gap-2">
         <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Show</label>
         <select id="limitSelect" onchange="changeLimit()" class="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="5" <?php echo ($itemsPerPage == 5) ? 'selected' : ''; ?>>5</option>
-            <option value="10" <?php echo ($itemsPerPage == 10) ? 'selected' : ''; ?>>10</option>
-            <option value="25" <?php echo ($itemsPerPage == 25) ? 'selected' : ''; ?>>25</option>
-            <option value="50" <?php echo ($itemsPerPage == 50) ? 'selected' : ''; ?>>50</option>
-            <option value="100" <?php echo ($itemsPerPage == 100) ? 'selected' : ''; ?>>100</option>
+            <option value="5" <?php echo($itemsPerPage == 5) ? 'selected' : ''; ?>>5</option>
+            <option value="10" <?php echo($itemsPerPage == 10) ? 'selected' : ''; ?>>10</option>
+            <option value="25" <?php echo($itemsPerPage == 25) ? 'selected' : ''; ?>>25</option>
+            <option value="50" <?php echo($itemsPerPage == 50) ? 'selected' : ''; ?>>50</option>
         </select>
         <span class="text-sm text-gray-600 dark:text-gray-400">entries</span>
     </div>
 
     <!-- Documents Table -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-x-auto">
         <?php if (empty($allDocuments)): ?>
         <div class="text-center py-12 px-4">
             <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -229,17 +230,18 @@ ob_start();
             <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">No documents yet</h3>
             <p class="text-gray-600 dark:text-gray-400 mb-4">Start by uploading your first document</p>
         </div>
-        <?php else: ?>
+        <?php
+else: ?>
         <table class="w-full">
             <thead class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
                 <tr>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Item</th>
-                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Recommending Approvals</th>
-                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Approving Authority</th>
-                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Control Point</th>
-                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Department/Office</th>
+                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white hidden sm:table-cell">Recommending Approvals</th>
+                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white hidden md:table-cell">Approving Authority</th>
+                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white hidden lg:table-cell">Control Point</th>
+                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white hidden lg:table-cell">Department/Office</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">EC</th>
-                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Team</th>
+                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white hidden xl:table-cell">Team</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Actions</th>
                 </tr>
             </thead>
@@ -249,92 +251,98 @@ ob_start();
                     <td class="px-6 py-4 text-sm text-gray-900 dark:text-white font-medium">
                         <?php echo htmlspecialchars($doc['item']); ?>
                     </td>
-                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
+                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 hidden sm:table-cell">
                         <?php echo htmlspecialchars($doc['recommending_approvals'] ?: '-'); ?>
                     </td>
-                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
+                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 hidden md:table-cell">
                         <?php echo htmlspecialchars($doc['approving_authority'] ?: '-'); ?>
                     </td>
-                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
-                        <?php 
-                        if (!empty($doc['control_point'])) {
-                            $points = array_filter(array_map('trim', explode("\n", $doc['control_point'])));
-                            if (!empty($points)) {
-                                $totalPoints = count($points);
-                                echo '<div class="control-points-container" data-doc-id="' . $doc['id'] . '">';
-                                
-                                // Show first control point
-                                echo '<div class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">' . htmlspecialchars($points[0]) . '</div>';
-                                
-                                // Show additional points (initially hidden)
-                                if ($totalPoints > 1) {
-                                    echo '<div class="additional-points hidden space-y-1 mt-1">';
-                                    for ($i = 1; $i < $totalPoints; $i++) {
-                                        echo '<div class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">' . htmlspecialchars($points[$i]) . '</div>';
-                                    }
-                                    echo '</div>';
-                                    
-                                    // See more/less toggle
-                                    echo '<button onclick="toggleControlPoints(' . $doc['id'] . ', this)" class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 mt-1 focus:outline-none">See more (' . ($totalPoints - 1) . ' more)</button>';
-                                }
-                                
-                                echo '</div>';
-                            } else {
-                                echo '-';
-                            }
-                        } else {
-                            echo '-';
-                        }
-                        ?>
+                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 hidden lg:table-cell">
+                        <?php
+        if (!empty($doc['control_point'])) {
+            $points = array_filter(array_map('trim', explode("\n", $doc['control_point'])));
+            if (!empty($points)) {
+                $totalPoints = count($points);
+                echo '<div class="control-points-container" data-doc-id="' . $doc['id'] . '">';
+
+                // Show first control point
+                echo '<div class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">' . htmlspecialchars($points[0]) . '</div>';
+
+                // Show additional points (initially hidden)
+                if ($totalPoints > 1) {
+                    echo '<div class="additional-points hidden space-y-1 mt-1">';
+                    for ($i = 1; $i < $totalPoints; $i++) {
+                        echo '<div class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">' . htmlspecialchars($points[$i]) . '</div>';
+                    }
+                    echo '</div>';
+
+                    // See more/less toggle
+                    echo '<button onclick="toggleControlPoints(' . $doc['id'] . ', this)" class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 mt-1 focus:outline-none">See more (' . ($totalPoints - 1) . ' more)</button>';
+                }
+
+                echo '</div>';
+            }
+            else {
+                echo '-';
+            }
+        }
+        else {
+            echo '-';
+        }
+?>
                     </td>
-                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
-                        <?php 
-                        if (!empty($doc['department'])) {
-                            $depts = array_filter(array_map('trim', explode("\n", $doc['department'])));
-                            if (!empty($depts)) {
-                                echo '<div class="space-y-1">';
-                                foreach ($depts as $dept) {
-                                    $deptName = preg_replace('/^\d+\.\s+/', '', $dept);
-                                    echo '<div class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">' . htmlspecialchars($deptName) . '</div>';
-                                }
-                                echo '</div>';
-                            } else {
-                                echo '-';
-                            }
-                        } else {
-                            echo '-';
-                        }
-                        ?>
+                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 hidden lg:table-cell">
+                        <?php
+        if (!empty($doc['department'])) {
+            $depts = array_filter(array_map('trim', explode("\n", $doc['department'])));
+            if (!empty($depts)) {
+                echo '<div class="space-y-1">';
+                foreach ($depts as $dept) {
+                    $deptName = preg_replace('/^\d+\.\s+/', '', $dept);
+                    echo '<div class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">' . htmlspecialchars($deptName) . '</div>';
+                }
+                echo '</div>';
+            }
+            else {
+                echo '-';
+            }
+        }
+        else {
+            echo '-';
+        }
+?>
                     </td>
                     <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 font-bold">
                         <?php echo htmlspecialchars($doc['ec']); ?>
                     </td>
-                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
-                        <?php 
-                        if (!empty($doc['team'])) {
-                            $teams = array_filter(array_map('trim', explode("\n", $doc['team'])));
-                            if (!empty($teams)) {
-                                echo '<div class="space-y-1">';
-                                foreach ($teams as $team) {
-                                    $teamName = preg_replace('/^\d+\.\s+/', '', $team);
-                                    echo '<div class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">' . htmlspecialchars($teamName) . '</div>';
-                                }
-                                echo '</div>';
-                            } else {
-                                echo '-';
-                            }
-                        } else {
-                            echo '-';
-                        }
-                        ?>
+                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 hidden xl:table-cell">
+                        <?php
+        if (!empty($doc['team'])) {
+            $teams = array_filter(array_map('trim', explode("\n", $doc['team'])));
+            if (!empty($teams)) {
+                echo '<div class="space-y-1">';
+                foreach ($teams as $team) {
+                    $teamName = preg_replace('/^\d+\.\s+/', '', $team);
+                    echo '<div class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">' . htmlspecialchars($teamName) . '</div>';
+                }
+                echo '</div>';
+            }
+            else {
+                echo '-';
+            }
+        }
+        else {
+            echo '-';
+        }
+?>
                     </td>
                     <td class="px-6 py-4 text-sm space-x-3 flex items-center justify-center">
                         <?php if (!empty($doc['file_path'])): ?>
-                        <?php 
-                        $filePath = $doc['file_path'];
-                        $fileExt = strtolower(pathinfo($doc['file_name'], PATHINFO_EXTENSION));
-                        $previewableTypes = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
-                        ?>
+                        <?php
+            $filePath = $doc['file_path'];
+            $fileExt = strtolower(pathinfo($doc['file_name'], PATHINFO_EXTENSION));
+            $previewableTypes = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
+?>
                         <!-- Preview Button (Eye Icon) -->
                         <?php if (in_array($fileExt, $previewableTypes)): ?>
                         <button onclick="openPreviewModal(<?php echo $doc['id']; ?>, '<?php echo htmlspecialchars($doc['file_name']); ?>')" title="Preview document" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition" style="background-color: var(--theme-primary);">
@@ -343,15 +351,16 @@ ob_start();
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                             </svg>
                         </button>
-                        <?php endif; ?>
+                        <?php
+            endif; ?>
                         <!-- Favorites Button (Star Icon) -->
-                        <?php 
-                        $isFavorited = $favoritesController->isFavorite($doc['id']);
-                        $favClass = $isFavorited ? 'is-favorite' : '';
-                        $favTitle = $isFavorited ? 'Remove from favorites' : 'Add to favorites';
-                        $favBgColor = $isFavorited ? 'background-color: var(--theme-danger);' : 'background-color: var(--theme-secondary);';
-                        $favFill = $isFavorited ? 'currentColor' : 'none';
-                        ?>
+                        <?php
+            $isFavorited = $favoritesController->isFavorite($doc['id']);
+            $favClass = $isFavorited ? 'is-favorite' : '';
+            $favTitle = $isFavorited ? 'Remove from favorites' : 'Add to favorites';
+            $favBgColor = $isFavorited ? 'background-color: var(--theme-danger);' : 'background-color: var(--theme-secondary);';
+            $favFill = $isFavorited ? 'currentColor' : 'none';
+?>
                         <div class="custom-tooltip">
                             <button onclick="toggleFavorite(<?php echo $doc['id']; ?>, this)" class="toggle-favorite-btn inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition favorite-btn-<?php echo $doc['id']; ?> <?php echo $favClass; ?>" style="<?php echo $favBgColor; ?> border: 2px solid black;" data-document-id="<?php echo $doc['id']; ?>" data-is-favorite="<?php echo $isFavorited ? '1' : '0'; ?>" data-tooltip="<?php echo $favTitle; ?>">
                                 <svg class="w-4 h-4 favorite-star" fill="<?php echo $favFill; ?>" stroke="black" stroke-width="1.5" viewBox="0 0 24 24">
@@ -360,9 +369,10 @@ ob_start();
                             </button>
                             <span class="tooltip-text"><?php echo $favTitle; ?></span>
                         </div>
-                        <?php endif; ?>
+                        <?php
+        endif; ?>
                         <?php if (isset($_SESSION['role']) && ($_SESSION['role'] === 'administrator' || $_SESSION['role'] === 'superadmin')): ?>
-                        <button onclick="openEditModal(<?php echo htmlspecialchars(json_encode($doc)); ?>)" title="Edit document" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition mr-2" style="background-color: var(--theme-accent);">
+                        <button onclick="openEditModal(<?php echo htmlspecialchars(json_encode($doc)); ?>)" title="Edit document" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition mr-2" style="background-color: #eab308;">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                             </svg>
@@ -372,66 +382,79 @@ ob_start();
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                             </svg>
                         </button>
-                        <?php endif; ?>
+                        <?php
+        endif; ?>
                     </td>
                 </tr>
-                <?php endforeach; ?>
+                <?php
+    endforeach; ?>
             </tbody>
         </table>
-        <?php endif; ?>
+        <?php
+endif; ?>
     </div>
 
     <!-- Pagination -->
     <?php if ($totalPages > 1): ?>
-    <?php 
+    <?php
     // Build query string for pagination links
     $paginationQuery = '&limit=' . $itemsPerPage;
-    if (!empty($searchTerm)) $paginationQuery .= '&search=' . urlencode($searchTerm);
-    if (!empty($filterItem)) $paginationQuery .= '&item=' . urlencode($filterItem);
-    ?>
+    if (!empty($searchTerm))
+        $paginationQuery .= '&search=' . urlencode($searchTerm);
+    if (!empty($filterItem))
+        $paginationQuery .= '&item=' . urlencode($filterItem);
+?>
     <div class="mt-6 flex items-center justify-between">
         <div class="text-sm text-gray-600 dark:text-gray-400">
-            Showing <?php echo ($offset + 1); ?> to <?php echo min($offset + $itemsPerPage, $totalItems); ?> of <?php echo $totalItems; ?> documents
+            Showing <?php echo($offset + 1); ?> to <?php echo min($offset + $itemsPerPage, $totalItems); ?> of <?php echo $totalItems; ?> documents
         </div>
         <div class="flex gap-2">
             <?php if ($currentPage > 1): ?>
             <a href="?page=<?php echo $currentPage - 1; ?><?php echo $paginationQuery; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
                 Previous
             </a>
-            <?php endif; ?>
+            <?php
+    endif; ?>
 
             <?php
-            $startPage = max(1, $currentPage - 2);
-            $endPage = min($totalPages, $currentPage + 2);
-            
-            if ($startPage > 1): ?>
+    $startPage = max(1, $currentPage - 2);
+    $endPage = min($totalPages, $currentPage + 2);
+
+    if ($startPage > 1): ?>
             <a href="?page=1<?php echo $paginationQuery; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">1</a>
             <?php if ($startPage > 2): ?>
             <span class="px-4 py-2 text-gray-600 dark:text-gray-400">...</span>
-            <?php endif; ?>
-            <?php endif; ?>
+            <?php
+        endif; ?>
+            <?php
+    endif; ?>
 
             <?php for ($i = $startPage; $i <= $endPage; $i++): ?>
-            <a href="?page=<?php echo $i; ?><?php echo $paginationQuery; ?>" class="px-4 py-2 rounded-lg transition <?php echo ($i === $currentPage) ? 'bg-blue-600 text-white' : 'border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'; ?>">
+            <a href="?page=<?php echo $i; ?><?php echo $paginationQuery; ?>" class="px-4 py-2 rounded-lg transition <?php echo($i === $currentPage) ? 'bg-blue-600 text-white' : 'border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'; ?>">
                 <?php echo $i; ?>
             </a>
-            <?php endfor; ?>
+            <?php
+    endfor; ?>
 
             <?php if ($endPage < $totalPages): ?>
             <?php if ($endPage < $totalPages - 1): ?>
             <span class="px-4 py-2 text-gray-600 dark:text-gray-400">...</span>
-            <?php endif; ?>
+            <?php
+        endif; ?>
             <a href="?page=<?php echo $totalPages; ?><?php echo $paginationQuery; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition"><?php echo $totalPages; ?></a>
-            <?php endif; ?>
+            <?php
+    endif; ?>
 
             <?php if ($currentPage < $totalPages): ?>
             <a href="?page=<?php echo $currentPage + 1; ?><?php echo $paginationQuery; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
                 Next
             </a>
-            <?php endif; ?>
+            <?php
+    endif; ?>
         </div>
     </div>
-    <?php endif; ?>
+    <?php
+endif; ?>
 
 <!-- Upload Modal -->
 <div id="uploadModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
@@ -461,7 +484,7 @@ ob_start();
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Items * / Recommending Approvals / Approving Authority</label>
                 <div id="combinedListContainer" class="space-y-2 mb-3">
-                    <div class="grid grid-cols-3 gap-3 items-end">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
                         <!-- Item -->
                         <div class="relative">
                             <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1. Item</span>
@@ -614,7 +637,7 @@ ob_start();
             <div>
                 <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Items <span class="text-red-500">*</span> / Recommending Approvals / Approving Authority</label>
                 <div id="editCombinedListContainer" class="space-y-2">
-                    <div class="grid grid-cols-3 gap-3 items-start">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">
                         <!-- Item -->
                         <div class="relative">
                             <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1. Item</span>
@@ -657,7 +680,7 @@ ob_start();
             </div>
 
             <!-- Two Column Layout: Departments and Teams -->
-            <div class="grid grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Departments Section -->
                 <div>
                     <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Departments</label>
@@ -773,12 +796,24 @@ ob_start();
 
 <script>
 // Autocomplete data
-const itemsData = <?php echo json_encode(array_map(function($item) { return $item['name']; }, $itemsList)); ?>;
-const recAppData = <?php echo json_encode(array_map(function($rec) { return $rec['name']; }, $recommendingApprovals)); ?>;
-const appAuthData = <?php echo json_encode(array_map(function($auth) { return $auth['name']; }, $approvingAuthorities)); ?>;
-const departmentsData = <?php echo json_encode(array_map(function($dept) { return $dept['name']; }, $departmentsList)); ?>;
-const teamsData = <?php echo json_encode(array_map(function($team) { return $team['name']; }, $teamsList)); ?>;
-const ecData = <?php echo json_encode(array_map(function($ec) { return ['name' => $ec['name'], 'code' => $ec['code']]; }, $electricCooperatives)); ?>;
+const itemsData = <?php echo json_encode(array_map(function ($item) {
+    return $item['name'];
+}, $itemsList)); ?>;
+const recAppData = <?php echo json_encode(array_map(function ($rec) {
+    return $rec['name'];
+}, $recommendingApprovals)); ?>;
+const appAuthData = <?php echo json_encode(array_map(function ($auth) {
+    return $auth['name'];
+}, $approvingAuthorities)); ?>;
+const departmentsData = <?php echo json_encode(array_map(function ($dept) {
+    return $dept['name'];
+}, $departmentsList)); ?>;
+const teamsData = <?php echo json_encode(array_map(function ($team) {
+    return $team['name'];
+}, $teamsList)); ?>;
+const ecData = <?php echo json_encode(array_map(function ($ec) {
+    return ['name' => $ec['name'], 'code' => $ec['code']];
+}, $electricCooperatives)); ?>;
 
 // Autocomplete function
 function setupAutocomplete(inputId, suggestionsId, data, displayFn = null) {

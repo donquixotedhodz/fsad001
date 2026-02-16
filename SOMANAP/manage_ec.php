@@ -22,19 +22,22 @@ $isReadOnly = !$canManage;
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_ec') {
     if (!$canManage) {
         $errorMessage = "Only Superadmin users can add EC records.";
-    } else {
+    }
+    else {
         $name = htmlspecialchars($_POST['name'] ?? '');
         $code = htmlspecialchars($_POST['code'] ?? '');
         $description = htmlspecialchars($_POST['description'] ?? '');
-        
+
         if (!empty($name) && !empty($code)) {
             $result = $ecController->addEC($name, $code, $description);
             if ($result['success']) {
                 $successMessage = $result['message'];
-            } else {
+            }
+            else {
                 $errorMessage = $result['message'];
             }
-        } else {
+        }
+        else {
             $errorMessage = "Please fill in Name and Code fields.";
         }
     }
@@ -44,20 +47,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'edit_ec') {
     if (!$canManage) {
         $errorMessage = "Only Superadmin users can edit EC records.";
-    } else {
+    }
+    else {
         $ec_id = intval($_POST['ec_id'] ?? 0);
         $name = htmlspecialchars($_POST['name'] ?? '');
         $code = htmlspecialchars($_POST['code'] ?? '');
         $description = htmlspecialchars($_POST['description'] ?? '');
-        
+
         if ($ec_id > 0 && !empty($name) && !empty($code)) {
             $result = $ecController->updateEC($ec_id, $name, $code, $description);
             if ($result['success']) {
                 $successMessage = $result['message'];
-            } else {
+            }
+            else {
                 $errorMessage = $result['message'];
             }
-        } else {
+        }
+        else {
             $errorMessage = "Please fill in all required fields.";
         }
     }
@@ -67,14 +73,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_ec') {
     if (!$canManage) {
         $errorMessage = "Only Superadmin users can delete EC records.";
-    } else {
+    }
+    else {
         $ec_id = intval($_POST['ec_id'] ?? 0);
-        
+
         if ($ec_id > 0) {
             $result = $ecController->deleteEC($ec_id);
             if ($result['success']) {
                 $successMessage = $result['message'];
-            } else {
+            }
+            else {
                 $errorMessage = $result['message'];
             }
         }
@@ -85,11 +93,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'get_ec') {
     header('Content-Type: application/json');
     $ec_id = intval($_POST['id'] ?? 0);
-    
+
     $record = $ecController->getEC($ec_id);
     if ($record) {
         echo json_encode(['success' => true, 'record' => $record]);
-    } else {
+    }
+    else {
         echo json_encode(['success' => false, 'message' => 'Record not found']);
     }
     exit;
@@ -108,7 +117,8 @@ if (!empty($searchTerm)) {
     $totalItems = $ecController->getSearchCount($searchTerm);
     $totalPages = $itemsPerPage === 0 ? 1 : ceil($totalItems / $itemsPerPage);
     $ecs = $ecController->searchECs($searchTerm, $itemsPerPage === 0 ? 0 : $itemsPerPage, $offset);
-} else {
+}
+else {
     $totalItems = $ecController->getTotalCount();
     $totalPages = $itemsPerPage === 0 ? 1 : ceil($totalItems / $itemsPerPage);
     $ecs = $ecController->getAllECs($itemsPerPage === 0 ? 0 : $itemsPerPage, $offset);
@@ -124,13 +134,15 @@ ob_start();
             <h1 class="text-3xl font-bold text-gray-900 dark:text-white">EC Records</h1>
             <?php if ($isReadOnly): ?>
                 <p class="text-sm text-amber-600 dark:text-amber-400 mt-2">📖 Read-only mode: Only Superadmin can edit or delete records</p>
-            <?php endif; ?>
+            <?php
+endif; ?>
         </div>
         <?php if ($canManage): ?>
         <button onclick="document.getElementById('addECModal').showModal()" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">
             + Add EC
         </button>
-        <?php endif; ?>
+        <?php
+endif; ?>
     </div>
 
     <!-- Success/Error Messages -->
@@ -138,12 +150,14 @@ ob_start();
         <div class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
             <?php echo $successMessage; ?>
         </div>
-    <?php endif; ?>
+    <?php
+endif; ?>
     <?php if (isset($errorMessage)): ?>
         <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
             <?php echo $errorMessage; ?>
         </div>
-    <?php endif; ?>
+    <?php
+endif; ?>
 
     <!-- Add EC Modal -->
     <dialog id="addECModal" class="rounded-lg shadow-lg max-w-2xl w-full p-8 dark:bg-gray-800">
@@ -228,10 +242,10 @@ ob_start();
     <div class="mb-4 flex items-center gap-2 flex-wrap">
         <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Show</label>
         <select id="limitSelect" onchange="changeLimit()" class="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="5" <?php echo (!isset($_GET['limit']) || $_GET['limit'] == 5) ? 'selected' : ''; ?>>5</option>
-            <option value="10" <?php echo (isset($_GET['limit']) && $_GET['limit'] == 10) ? 'selected' : ''; ?>>10</option>
-            <option value="25" <?php echo (isset($_GET['limit']) && $_GET['limit'] == 25) ? 'selected' : ''; ?>>25</option>
-            <option value="all" <?php echo (isset($_GET['limit']) && $_GET['limit'] == 'all') ? 'selected' : ''; ?>>Show All</option>
+            <option value="5" <?php echo(!isset($_GET['limit']) || $_GET['limit'] == 5) ? 'selected' : ''; ?>>5</option>
+            <option value="10" <?php echo(isset($_GET['limit']) && $_GET['limit'] == 10) ? 'selected' : ''; ?>>10</option>
+            <option value="25" <?php echo(isset($_GET['limit']) && $_GET['limit'] == 25) ? 'selected' : ''; ?>>25</option>
+            <option value="all" <?php echo(isset($_GET['limit']) && $_GET['limit'] == 'all') ? 'selected' : ''; ?>>Show All</option>
         </select>
         <span class="text-sm text-gray-600 dark:text-gray-400">entries</span>
 
@@ -242,7 +256,8 @@ ob_start();
             <a href="?page=1&limit=<?php echo isset($_GET['limit']) ? $_GET['limit'] : 10; ?>" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition dark:bg-gray-600 dark:text-white dark:hover:bg-gray-700">
                 Clear
             </a>
-            <?php endif; ?>
+            <?php
+endif; ?>
         </div>
     </div>
 
@@ -267,7 +282,7 @@ ob_start();
                     <td class="px-6 py-4 text-center">
                         <div class="flex gap-2 justify-center">
                             <?php if ($canManage): ?>
-                            <button onclick="editEC(<?php echo $ec['id']; ?>)" class="p-2 text-white rounded hover:opacity-90 transition" style="background-color: var(--theme-accent);" title="Edit">
+                            <button onclick="editEC(<?php echo $ec['id']; ?>)" class="p-2 text-white rounded hover:opacity-90 transition" style="background-color: #eab308;" title="Edit">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                 </svg>
@@ -277,11 +292,13 @@ ob_start();
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                 </svg>
                             </button>
-                            <?php endif; ?>
+                            <?php
+    endif; ?>
                         </div>
                     </td>
                 </tr>
-                <?php endforeach; ?>
+                <?php
+endforeach; ?>
             </tbody>
         </table>
     </div>
@@ -290,46 +307,52 @@ ob_start();
     <?php if ($totalPages > 1): ?>
     <div class="mt-6 flex items-center justify-between">
         <div class="text-sm text-gray-600 dark:text-gray-400">
-            Showing <?php echo ($offset + 1); ?> to <?php echo min($offset + $itemsPerPage, $totalItems); ?> of <?php echo $totalItems; ?> records
+            Showing <?php echo($offset + 1); ?> to <?php echo min($offset + $itemsPerPage, $totalItems); ?> of <?php echo $totalItems; ?> records
         </div>
         <div class="flex gap-2">
             <?php if ($currentPageNum > 1): ?>
             <a href="?page=<?php echo $currentPageNum - 1; ?>&limit=<?php echo isset($_GET['limit']) ? $_GET['limit'] : 10; ?><?php echo !empty($searchTerm) ? '&search=' . urlencode($searchTerm) : ''; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
                 Previous
             </a>
-            <?php endif; ?>
+            <?php
+    endif; ?>
 
             <?php
-            $startPage = max(1, $currentPageNum - 2);
-            $endPage = min($totalPages, $currentPageNum + 2);
-            
-            if ($startPage > 1) {
-                echo '<a href="?page=1&limit=' . (isset($_GET['limit']) ? $_GET['limit'] : 10) . (! empty($searchTerm) ? '&search=' . urlencode($searchTerm) : '') . '" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">1</a>';
-                if ($startPage > 2) echo '<span class="px-2 py-2">...</span>';
-            }
-            
-            for ($i = $startPage; $i <= $endPage; $i++) {
-                if ($i === $currentPageNum) {
-                    echo '<span class="px-4 py-2 bg-blue-500 text-white rounded-lg">' . $i . '</span>';
-                } else {
-                    echo '<a href="?page=' . $i . '&limit=' . (isset($_GET['limit']) ? $_GET['limit'] : 10) . (! empty($searchTerm) ? '&search=' . urlencode($searchTerm) : '') . '" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">' . $i . '</a>';
-                }
-            }
-            
-            if ($endPage < $totalPages) {
-                if ($endPage < $totalPages - 1) echo '<span class="px-2 py-2">...</span>';
-                echo '<a href="?page=' . $totalPages . '&limit=' . (isset($_GET['limit']) ? $_GET['limit'] : 10) . (! empty($searchTerm) ? '&search=' . urlencode($searchTerm) : '') . '" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">' . $totalPages . '</a>';
-            }
-            ?>
+    $startPage = max(1, $currentPageNum - 2);
+    $endPage = min($totalPages, $currentPageNum + 2);
+
+    if ($startPage > 1) {
+        echo '<a href="?page=1&limit=' . (isset($_GET['limit']) ? $_GET['limit'] : 10) . (!empty($searchTerm) ? '&search=' . urlencode($searchTerm) : '') . '" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">1</a>';
+        if ($startPage > 2)
+            echo '<span class="px-2 py-2">...</span>';
+    }
+
+    for ($i = $startPage; $i <= $endPage; $i++) {
+        if ($i === $currentPageNum) {
+            echo '<span class="px-4 py-2 bg-blue-500 text-white rounded-lg">' . $i . '</span>';
+        }
+        else {
+            echo '<a href="?page=' . $i . '&limit=' . (isset($_GET['limit']) ? $_GET['limit'] : 10) . (!empty($searchTerm) ? '&search=' . urlencode($searchTerm) : '') . '" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">' . $i . '</a>';
+        }
+    }
+
+    if ($endPage < $totalPages) {
+        if ($endPage < $totalPages - 1)
+            echo '<span class="px-2 py-2">...</span>';
+        echo '<a href="?page=' . $totalPages . '&limit=' . (isset($_GET['limit']) ? $_GET['limit'] : 10) . (!empty($searchTerm) ? '&search=' . urlencode($searchTerm) : '') . '" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">' . $totalPages . '</a>';
+    }
+?>
 
             <?php if ($currentPageNum < $totalPages): ?>
             <a href="?page=<?php echo $currentPageNum + 1; ?>&limit=<?php echo isset($_GET['limit']) ? $_GET['limit'] : 10; ?><?php echo !empty($searchTerm) ? '&search=' . urlencode($searchTerm) : ''; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
                 Next
             </a>
-            <?php endif; ?>
+            <?php
+    endif; ?>
         </div>
     </div>
-    <?php endif; ?>
+    <?php
+endif; ?>
 </div>
 
 <script>

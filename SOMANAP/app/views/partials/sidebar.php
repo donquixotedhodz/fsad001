@@ -6,7 +6,7 @@
             <img src="app/views/partials/nealogo.png" alt="NEA" class="w-10 h-10 object-contain">
             <h2 class="text-2xl font-bold text-gray-900 dark:text-white">IAQSMO</h2>
         </div>
-        <button onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full')" class="lg:hidden text-gray-500 hover:text-gray-900 dark:hover:text-white">
+        <button onclick="toggleSidebar()" class="lg:hidden text-gray-500 hover:text-gray-900 dark:hover:text-white">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
@@ -25,8 +25,8 @@
             </a>
 
             <!-- MANAP Dropdown -->
-            <div x-data="{ manap_open: <?php echo ($currentPage === 'documents' || $currentPage === 'favorites' || $currentPage === 'manap_reports') ? 'true' : 'false'; ?> }">
-                <button @click="if (document.getElementById('sidebar').style.width === '5rem') { toggleSidebar(); setTimeout(() => { manap_open = !manap_open }, 300); } else { manap_open = !manap_open }" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo ($currentPage === 'documents' || $currentPage === 'favorites' || $currentPage === 'manap_reports') ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
+            <div x-data="{ manap_open: <?php echo($currentPage === 'documents' || $currentPage === 'favorites' || $currentPage === 'manap_reports') ? 'true' : 'false'; ?> }">
+                <button @click="if (document.getElementById('sidebar').style.width === '5rem') { toggleSidebar(); setTimeout(() => { manap_open = !manap_open }, 300); } else { manap_open = !manap_open }" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo($currentPage === 'documents' || $currentPage === 'favorites' || $currentPage === 'manap_reports') ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
@@ -64,8 +64,8 @@
 
             <!-- PPE Provident Fund Dropdown - Only for Administrator and Superadmin -->
             <?php if (isset($_SESSION['role']) && ($_SESSION['role'] === 'administrator' || $_SESSION['role'] === 'superadmin')): ?>
-            <div x-data="{ ppe_open: <?php echo ($currentPage === 'ppe' || $currentPage === 'ppe_reports' || $currentPage === 'ppe_balance') ? 'true' : 'false'; ?> }">
-                <button @click="if (document.getElementById('sidebar').style.width === '5rem') { toggleSidebar(); setTimeout(() => { ppe_open = !ppe_open }, 300); } else { ppe_open = !ppe_open }" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo ($currentPage === 'ppe' || $currentPage === 'ppe_reports' || $currentPage === 'ppe_balance') ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
+            <div x-data="{ ppe_open: <?php echo($currentPage === 'ppe' || $currentPage === 'ppe_reports' || $currentPage === 'ppe_balance') ? 'true' : 'false'; ?> }">
+                <button @click="if (document.getElementById('sidebar').style.width === '5rem') { toggleSidebar(); setTimeout(() => { ppe_open = !ppe_open }, 300); } else { ppe_open = !ppe_open }" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo($currentPage === 'ppe' || $currentPage === 'ppe_reports' || $currentPage === 'ppe_balance') ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" />
                     </svg>
@@ -100,11 +100,12 @@
                     </a>
                 </div>
             </div>
-            <?php endif; ?>
+            <?php
+endif; ?>
 
             <!-- AD Scorecard Dropdown -->
-            <div x-data="{ ads_open: <?php echo ($currentPage === 'ads' || $currentPage === 'ad_scorecard_reports') ? 'true' : 'false'; ?> }">
-                <button @click="if (document.getElementById('sidebar').style.width === '5rem') { toggleSidebar(); setTimeout(() => { ads_open = !ads_open }, 300); } else { ads_open = !ads_open }" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo ($currentPage === 'ads' || $currentPage === 'ad_scorecard_reports') ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
+            <div x-data="{ ads_open: <?php echo($currentPage === 'ads' || $currentPage === 'ad_scorecard_reports') ? 'true' : 'false'; ?> }">
+                <button @click="if (document.getElementById('sidebar').style.width === '5rem') { toggleSidebar(); setTimeout(() => { ads_open = !ads_open }, 300); } else { ads_open = !ads_open }" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo($currentPage === 'ads' || $currentPage === 'ad_scorecard_reports') ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                     </svg>
@@ -133,6 +134,37 @@
                 </div>
             </div>
 
+            <!-- AOM Dropdown -->
+            <div x-data="{ aom_open: <?php echo($currentPage === 'aom' || $currentPage === 'aom_reports') ? 'true' : 'false'; ?> }">
+                <button @click="if (document.getElementById('sidebar').style.width === '5rem') { toggleSidebar(); setTimeout(() => { aom_open = !aom_open }, 300); } else { aom_open = !aom_open }" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo($currentPage === 'aom' || $currentPage === 'aom_reports') ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" />
+                    </svg>
+                    <span class="font-medium flex-1 text-left">AOM</span>
+                    <svg class="w-5 h-5 transition-transform" :class="{ 'rotate-180': aom_open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+                    </svg>
+                </button>
+
+                <!-- AOM Submenu -->
+                <div x-show="aom_open" class="pl-6 space-y-1 mt-2">
+                    <!-- Documents -->
+                    <a href="aom.php" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo $currentPage === 'aom' ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <span class="text-sm font-medium">Documents</span>
+                    </a>
+                    <!-- Reports -->
+                    <a href="aom_reports.php" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo $currentPage === 'aom_reports' ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                        <span class="text-sm font-medium">Reports</span>
+                    </a>
+                </div>
+            </div>
+
             <!-- Divider -->
             <div class="my-4 border-t border-gray-200 dark:border-gray-700"></div>
 
@@ -152,7 +184,19 @@
                 </svg>
                 <span class="font-medium">Manage Users</span>
             </a>
-            <?php endif; ?>
+            <?php
+endif; ?>
+
+            <!-- Manage Departments - Only for Administrator and Superadmin -->
+            <?php if (isset($_SESSION['role']) && ($_SESSION['role'] === 'administrator' || $_SESSION['role'] === 'superadmin')): ?>
+            <a href="manage_departments.php" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo $currentPage === 'manage_departments' ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Z" />
+                </svg>
+                <span class="font-medium">Manage Departments</span>
+            </a>
+            <?php
+endif; ?>
 
             <!-- Divider -->
             <div class="my-4 border-t border-gray-200 dark:border-gray-700"></div>
@@ -165,7 +209,8 @@
                 </svg>
                 <span class="font-medium">Audit Log</span>
             </a>
-            <?php endif; ?>
+            <?php
+endif; ?>
 
             <!-- Settings - Only for Administrator and Superadmin -->
             <?php if (isset($_SESSION['role']) && ($_SESSION['role'] === 'administrator' || $_SESSION['role'] === 'superadmin')): ?>
@@ -176,7 +221,8 @@
                 </svg>
                 <span class="font-medium">Settings</span>
             </a>
-            <?php endif; ?>
+            <?php
+endif; ?>
 
             <!-- Divider -->
             <div class="my-4 border-t border-gray-200 dark:border-gray-700"></div>
@@ -189,7 +235,8 @@
                 </svg>
                 <span class="font-medium">Support</span>
             </a>
-            <?php endif; ?>
+            <?php
+endif; ?>
 
             <!-- Logout -->
             <button onclick="confirmLogout()" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-gray-700 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20">

@@ -13,33 +13,33 @@ $username = $_SESSION['username'] ?? 'User';
 // Handle PPE Fund Balance Update
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_ppe_balance') {
     $newBalance = isset($_POST['ppe_balance']) ? floatval($_POST['ppe_balance']) : 0;
-    
+
     // Fetch old balance for audit log
     $oldBalanceStmt = $conn->prepare("SELECT remaining_balance FROM ppe_funds WHERE fund_name = 'PPE Provident Fund' LIMIT 1");
     $oldBalanceStmt->execute();
     $oldBalanceResult = $oldBalanceStmt->fetch(PDO::FETCH_ASSOC);
     $oldBalance = $oldBalanceResult ? $oldBalanceResult['remaining_balance'] : 0;
-    
+
     $updateStmt = $conn->prepare("UPDATE ppe_funds SET remaining_balance = ? WHERE fund_name = 'PPE Provident Fund'");
     $updateStmt->execute([$newBalance]);
-    
+
     // Create comprehensive description
     $difference = $newBalance - $oldBalance;
     $differenceType = $difference > 0 ? 'Increased' : ($difference < 0 ? 'Decreased' : 'No change');
     $absDifference = abs($difference);
-    
+
     $description = "PPE Provident Fund balance updated from Dashboard | ";
     $description .= "Previous Balance: ₱" . number_format($oldBalance, 2) . " | ";
     $description .= "New Balance: ₱" . number_format($newBalance, 2) . " | ";
     $description .= "{$differenceType} by: ₱" . number_format($absDifference, 2) . " | ";
     $description .= "Updated by: " . htmlspecialchars($_SESSION['username']);
-    
+
     // Log the balance update with full details
-    $auditLogger->logUpdate('ppe_funds', 1, $description, 
-        ['fund_name' => 'PPE Provident Fund', 'remaining_balance' => $oldBalance], 
-        ['fund_name' => 'PPE Provident Fund', 'remaining_balance' => $newBalance]
+    $auditLogger->logUpdate('ppe_funds', 1, $description,
+    ['fund_name' => 'PPE Provident Fund', 'remaining_balance' => $oldBalance],
+    ['fund_name' => 'PPE Provident Fund', 'remaining_balance' => $newBalance]
     );
-    
+
     // Refresh the balance
     $ppeStmt = $conn->prepare("SELECT remaining_balance FROM ppe_funds WHERE fund_name = 'PPE Provident Fund' LIMIT 1");
     $ppeStmt->execute();
@@ -47,25 +47,63 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     $ppeBalance = $ppeResult ? $ppeResult['remaining_balance'] : 0;
 }
 
-// Fetch documents data
-$stmt = $conn->prepare("SELECT * FROM manap ORDER BY created_at DESC");
+// Fetch total documents count efficiently
+$stmt = $conn->prepare("SELECT COUNT(*) as total FROM manap");
 $stmt->execute();
-$allDocuments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$totalDocuments = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
 
-// Calculate statistics
-$totalDocuments = count($allDocuments);
-
-// Count documents by EC
-$ecCount = [];
-$stmt = $conn->prepare("
-    SELECT COALESCE(ec.code, m.ec) as ec, COUNT(*) as count 
-    FROM manap m
-    LEFT JOIN electric_cooperatives ec ON TRIM(m.ec) LIKE CONCAT('%', TRIM(ec.name), '%')
-    GROUP BY COALESCE(ec.code, m.ec)
-    ORDER BY count DESC
-");
+// Fetch recent documents (limit to 5)
+$stmt = $conn->prepare("SELECT * FROM manap ORDER BY created_at DESC LIMIT 5");
 $stmt->execute();
-$ecStats = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$recentDocuments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Count documents by EC - Optimized
+// First get raw counts by EC string
+$stmt = $conn->prepare("SELECT ec, COUNT(*) as count FROM manap GROUP BY ec");
+$stmt->execute();
+$rawEcStats = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Get all electric cooperatives for matching
+$ecStmt = $conn->prepare("SELECT code, name FROM electric_cooperatives");
+$ecStmt->execute();
+$elecCoops = $ecStmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Process and map ECs in PHP
+$ecCounts = [];
+foreach ($rawEcStats as $row) {
+    if (empty($row['ec']))
+        continue;
+
+    $rawEc = trim($row['ec']);
+    $count = $row['count'];
+    $matchedCode = null;
+
+    // Try to match with known cooperatives
+    foreach ($elecCoops as $coop) {
+        if (stripos($rawEc, trim($coop['name'])) !== false) {
+            $matchedCode = $coop['code'];
+            break;
+        }
+    }
+
+    // Use matched code or raw string if no match
+    $key = $matchedCode ?? $rawEc;
+
+    if (!isset($ecCounts[$key])) {
+        $ecCounts[$key] = 0;
+    }
+    $ecCounts[$key] += $count;
+}
+
+// Convert back to array format for chart
+$ecStats = [];
+foreach ($ecCounts as $ec => $count) {
+    $ecStats[] = ['ec' => $ec, 'count' => $count];
+}
+// Sort by count descending
+usort($ecStats, function ($a, $b) {
+    return $b['count'] - $a['count']; });
+
 
 // Count total electric cooperatives
 $ecStmt = $conn->prepare("SELECT COUNT(*) as total FROM electric_cooperatives");
@@ -83,76 +121,94 @@ $stmt = $conn->prepare("SELECT item, COUNT(*) as count FROM manap GROUP BY item 
 $stmt->execute();
 $itemStats = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Count documents by Department
+// Count documents by Department - Optimized
 $deptCount = [];
-$stmt = $conn->prepare("SELECT department, COUNT(*) as count FROM manap WHERE department IS NOT NULL AND department != '' GROUP BY department ORDER BY count DESC");
+$stmt = $conn->prepare("SELECT department, COUNT(*) as count FROM manap WHERE department IS NOT NULL AND department != '' GROUP BY department");
 $stmt->execute();
 $deptRawStats = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Process department data to remove numbering
-$deptStats = [];
-$processedDepts = [];
+// Process department data to remove numbering and aggregate counts
+$deptStatsMap = [];
 foreach ($deptRawStats as $record) {
     if (!empty($record['department'])) {
+        $count = $record['count'];
         $depts = array_filter(array_map('trim', explode("\n", $record['department'])));
+
+        // Use a temporary array to avoid double counting if the same department appears multiple times in one record
+        // (Though logically one document is likely one 'count' for that department)
+        $uniqueDeptsInrecord = [];
+
         foreach ($depts as $dept) {
             $deptName = preg_replace('/^\d+\.\s+/', '', $dept);
-            if (!in_array($deptName, $processedDepts)) {
-                $processedDepts[] = $deptName;
+            if (!in_array($deptName, $uniqueDeptsInrecord)) {
+                $uniqueDeptsInrecord[] = $deptName;
             }
+        }
+
+        foreach ($uniqueDeptsInrecord as $deptName) {
+            if (!isset($deptStatsMap[$deptName])) {
+                $deptStatsMap[$deptName] = 0;
+            }
+            // Logic change: Previously we counted matching rows. 
+            // If a row has "Dept A" and "Dept B", it counted as 1 for A and 1 for B.
+            // So we add 'count' (number of rows with this exact string) to the department's total.
+            $deptStatsMap[$deptName] += $count;
         }
     }
 }
 
-// Count actual department occurrences
-foreach ($processedDepts as $deptName) {
-    $countStmt = $conn->prepare("SELECT COUNT(*) as count FROM manap WHERE department LIKE ?");
-    $searchTerm = '%' . $deptName . '%';
-    $countStmt->execute([$searchTerm]);
-    $countResult = $countStmt->fetch(PDO::FETCH_ASSOC);
-    $deptStats[] = ['department' => $deptName, 'count' => $countResult['count']];
+// Convert to array
+$deptStats = [];
+foreach ($deptStatsMap as $dept => $count) {
+    $deptStats[] = ['department' => $dept, 'count' => $count];
 }
-usort($deptStats, function($a, $b) { return $b['count'] - $a['count']; });
+usort($deptStats, function ($a, $b) {
+    return $b['count'] - $a['count']; });
 
-// Count documents by Team
+
+// Count documents by Team - Optimized
 $teamCount = [];
-$stmt = $conn->prepare("SELECT team, COUNT(*) as count FROM manap WHERE team IS NOT NULL AND team != '' GROUP BY team ORDER BY count DESC");
+$stmt = $conn->prepare("SELECT team, COUNT(*) as count FROM manap WHERE team IS NOT NULL AND team != '' GROUP BY team");
 $stmt->execute();
 $teamRawStats = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Process team data to remove numbering
-$teamStats = [];
-$processedTeams = [];
+// Process team data to remove numbering and aggregate counts
+$teamStatsMap = [];
 foreach ($teamRawStats as $record) {
     if (!empty($record['team'])) {
+        $count = $record['count'];
         $teams = array_filter(array_map('trim', explode("\n", $record['team'])));
+
+        $uniqueTeamsInRecord = [];
         foreach ($teams as $team) {
             $teamName = preg_replace('/^\d+\.\s+/', '', $team);
-            if (!in_array($teamName, $processedTeams)) {
-                $processedTeams[] = $teamName;
+            if (!in_array($teamName, $uniqueTeamsInRecord)) {
+                $uniqueTeamsInRecord[] = $teamName;
             }
+        }
+
+        foreach ($uniqueTeamsInRecord as $teamName) {
+            if (!isset($teamStatsMap[$teamName])) {
+                $teamStatsMap[$teamName] = 0;
+            }
+            $teamStatsMap[$teamName] += $count;
         }
     }
 }
 
-// Count actual team occurrences
-foreach ($processedTeams as $teamName) {
-    $countStmt = $conn->prepare("SELECT COUNT(*) as count FROM manap WHERE team LIKE ?");
-    $searchTerm = '%' . $teamName . '%';
-    $countStmt->execute([$searchTerm]);
-    $countResult = $countStmt->fetch(PDO::FETCH_ASSOC);
-    $teamStats[] = ['team' => $teamName, 'count' => $countResult['count']];
+// Convert to array
+$teamStats = [];
+foreach ($teamStatsMap as $team => $count) {
+    $teamStats[] = ['team' => $team, 'count' => $count];
 }
-usort($teamStats, function($a, $b) { return $b['count'] - $a['count']; });
+usort($teamStats, function ($a, $b) {
+    return $b['count'] - $a['count']; });
 
 // Get PPE Provident Fund remaining balance - Calculate from actual PPE table data
 $ppeStmt = $conn->prepare("SELECT balance FROM ppe ORDER BY id DESC LIMIT 1");
 $ppeStmt->execute();
 $ppeResult = $ppeStmt->fetch(PDO::FETCH_ASSOC);
 $ppeBalance = $ppeResult ? floatval($ppeResult['balance']) : 0;
-
-// Recent documents
-$recentDocuments = array_slice($allDocuments, 0, 3);
 
 ob_start();
 ?>
@@ -202,13 +258,14 @@ ob_start();
                 <div>
                     <p class="text-sm font-medium text-gray-500 dark:text-gray-400">PPE Provident Fund</p>
                     <p class="text-3xl font-bold text-gray-900 dark:text-white mt-2">
-                        <?php 
-                            if (isset($_SESSION['role']) && $_SESSION['role'] === 'staff') {
-                                echo '***';
-                            } else {
-                                echo '₱' . number_format($ppeBalance, 2);
-                            }
-                        ?>
+                        <?php
+if (isset($_SESSION['role']) && $_SESSION['role'] === 'staff') {
+    echo '***';
+}
+else {
+    echo '₱' . number_format($ppeBalance, 2);
+}
+?>
                     </p>
                 </div>
                 <div class="p-3 rounded-lg" style="background-color: rgba(var(--theme-accent-rgb), 0.15);">
@@ -298,12 +355,15 @@ ob_start();
                                 <?php echo date('M d', strtotime($doc['created_at'])); ?>
                             </span>
                         </div>
-                        <?php endforeach; ?>
-                    <?php else: ?>
+                        <?php
+    endforeach; ?>
+                    <?php
+else: ?>
                         <div class="text-center py-8">
                             <p class="text-gray-500 dark:text-gray-400">No documents available yet</p>
                         </div>
-                    <?php endif; ?>
+                    <?php
+endif; ?>
                 </div>
                 <a href="documents.php" class="mt-4 inline-block text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium text-sm">
                     View all documents →

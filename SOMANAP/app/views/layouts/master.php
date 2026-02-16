@@ -335,11 +335,20 @@
     require_once __DIR__ . '/../partials/sidebar.php';
     ?>
 
+    <!-- Mobile Sidebar Overlay -->
+    <div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden hidden" onclick="toggleSidebar()"></div>
+
     <!-- Main Content -->
     <div class="lg:ml-64 min-h-screen bg-gray-50 dark:bg-gray-900">
         <!-- Top Header -->
         <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-20">
             <div class="flex items-center justify-between h-20 px-6">
+                <!-- Mobile Menu Button -->
+                <button onclick="toggleSidebar()" class="lg:hidden text-gray-500 hover:text-gray-900 dark:hover:text-white transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
                 <div class="flex-1"></div>
 
                 <!-- Right Header Items -->
@@ -432,6 +441,25 @@
         const savedTheme = localStorage.getItem('theme') || 'system';
         applyTheme(savedTheme);
     });
+
+    // Sidebar toggle function for mobile
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        const isHidden = sidebar.classList.contains('-translate-x-full');
+        
+        if (isHidden) {
+            // Show sidebar and overlay
+            sidebar.classList.remove('-translate-x-full');
+            sidebar.classList.add('translate-x-0');
+            overlay.classList.remove('hidden');
+        } else {
+            // Hide sidebar and overlay
+            sidebar.classList.remove('translate-x-0');
+            sidebar.classList.add('-translate-x-full');
+            overlay.classList.add('hidden');
+        }
+    }
 
     // Logout confirmation function
     function confirmLogout() {

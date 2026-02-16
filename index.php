@@ -10,7 +10,8 @@ $password = '';
 try {
     $conn = new PDO("mysql:host=$host;dbname=$dbname", $username, $password);
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch(PDOException $e) {
+}
+catch (PDOException $e) {
     die("Connection Error: " . $e->getMessage());
 }
 
@@ -22,7 +23,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     if (empty($username_input) || empty($password_input)) {
         $login_error = 'Please enter both username and password';
-    } else {
+    }
+    else {
         try {
             // First, check users table (administrators and superadmins)
             $stmt = $conn->prepare("SELECT id, username, full_name, password, role FROM users WHERE username = ?");
@@ -52,7 +54,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             // No match found in either table
             $login_error = 'Invalid username or password';
-        } catch(PDOException $e) {
+        }
+        catch (PDOException $e) {
             $login_error = 'Login error: ' . $e->getMessage();
         }
     }
@@ -171,7 +174,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             <div class="mb-5 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                                 <p class="text-sm text-red-600 dark:text-red-400"><?php echo htmlspecialchars($login_error); ?></p>
                             </div>
-                        <?php endif; ?>
+                        <?php
+endif; ?>
 
                         <form method="POST" action="">
                             <div class="space-y-5">
@@ -279,7 +283,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                     </div>
                                 </div>
                                 
-                                <h3 class="text-xl font-semibold text-gray-800 dark:text-white mb-2">Powering Up</h3>
+                                <h3 class="text-xl font-semibold text-gray-800 dark:text-white mb-2">Loading Dashboard</h3>
                                 
                                 <!-- Progress Bar -->
                                 <div class="mt-6 w-64 mx-auto">
@@ -339,7 +343,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             window.location.href = 'SOMANAP/dashboard.php';
         }, 3000);
     });
-    <?php endif; ?>
+    <?php
+endif; ?>
     </script>
 </body>
 </html>

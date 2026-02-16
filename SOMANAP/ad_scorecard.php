@@ -52,7 +52,7 @@ $filteredADS = $allADS;
 
 // Apply filters
 if (!empty($searchTerm) || $filterBy !== 'all') {
-    $filteredADS = array_filter($allADS, function($record) use ($searchTerm, $filterBy) {
+    $filteredADS = array_filter($allADS, function ($record) use ($searchTerm, $filterBy) {
         // Apply search filter - search ALL fields
         if (!empty($searchTerm)) {
             $searchLower = strtolower($searchTerm);
@@ -64,13 +64,13 @@ if (!empty($searchTerm) || $filterBy !== 'all') {
                 $record['boa_reso'] ?? '',
                 $record['remarks'] ?? '',
             ];
-            
+
             $combined = strtolower(implode(' ', $searchableFields));
             if (strpos($combined, $searchLower) === false) {
                 return false;
             }
         }
-        
+
         return true;
     });
     $filteredADS = array_values($filteredADS);
@@ -99,7 +99,7 @@ if ($itemsPerPage !== 10) {
 ob_start();
 ?>
 
-<div class="max-w-7xl mx-auto">
+<div class="w-full">
     <!-- Page Header -->
     <div class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between">
         <div>
@@ -140,7 +140,8 @@ ob_start();
             <button type="button" onclick="window.location.href='?'" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition font-medium">
                 Clear Filters
             </button>
-            <?php endif; ?>
+            <?php
+endif; ?>
         </form>
     </div>
 
@@ -148,11 +149,11 @@ ob_start();
     <div class="mb-4 flex items-center gap-2">
         <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Show</label>
         <select id="limitSelect" onchange="changeLimit()" class="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="5" <?php echo ($itemsPerPage == 5) ? 'selected' : ''; ?>>5</option>
-            <option value="10" <?php echo ($itemsPerPage == 10) ? 'selected' : ''; ?>>10</option>
-            <option value="25" <?php echo ($itemsPerPage == 25) ? 'selected' : ''; ?>>25</option>
-            <option value="50" <?php echo ($itemsPerPage == 50) ? 'selected' : ''; ?>>50</option>
-            <option value="100" <?php echo ($itemsPerPage == 100) ? 'selected' : ''; ?>>100</option>
+            <option value="5" <?php echo($itemsPerPage == 5) ? 'selected' : ''; ?>>5</option>
+            <option value="10" <?php echo($itemsPerPage == 10) ? 'selected' : ''; ?>>10</option>
+            <option value="25" <?php echo($itemsPerPage == 25) ? 'selected' : ''; ?>>25</option>
+            <option value="50" <?php echo($itemsPerPage == 50) ? 'selected' : ''; ?>>50</option>
+            <option value="100" <?php echo($itemsPerPage == 100) ? 'selected' : ''; ?>>100</option>
         </select>
         <span class="text-sm text-gray-600 dark:text-gray-400">entries</span>
     </div>
@@ -167,7 +168,8 @@ ob_start();
             <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">No scorecards yet</h3>
             <p class="text-gray-600 dark:text-gray-400 mb-4">Start by adding your first audit decision scorecard</p>
         </div>
-        <?php else: ?>
+        <?php
+else: ?>
         <table class="w-full">
             <thead class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
                 <tr>
@@ -219,7 +221,7 @@ ob_start();
                         </button>
                         
                         <!-- Edit Button -->
-                        <button onclick="editADS(<?php echo $record['id']; ?>)" title="Edit scorecard" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition" style="background-color: var(--theme-secondary);">
+                        <button onclick="editADS(<?php echo $record['id']; ?>)" title="Edit scorecard" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition" style="background-color: #eab308;">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                             </svg>
@@ -240,57 +242,67 @@ ob_start();
                         </button>
                     </td>
                 </tr>
-                <?php endforeach; ?>
+                <?php
+    endforeach; ?>
             </tbody>
         </table>
-        <?php endif; ?>
+        <?php
+endif; ?>
     </div>
 
     <!-- Pagination -->
     <?php if ($totalPages > 1): ?>
     <div class="mt-6 flex items-center justify-between">
         <div class="text-sm text-gray-600 dark:text-gray-400">
-            Showing <?php echo ($offset + 1); ?> to <?php echo min($offset + $itemsPerPage, $totalItems); ?> of <?php echo $totalItems; ?> scorecards
+            Showing <?php echo($offset + 1); ?> to <?php echo min($offset + $itemsPerPage, $totalItems); ?> of <?php echo $totalItems; ?> scorecards
         </div>
         <div class="flex gap-2">
             <?php if ($currentPage > 1): ?>
             <a href="?page=<?php echo $currentPage - 1; ?><?php echo $paginationQuery; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
                 Previous
             </a>
-            <?php endif; ?>
+            <?php
+    endif; ?>
 
             <?php
-            $startPage = max(1, $currentPage - 2);
-            $endPage = min($totalPages, $currentPage + 2);
-            
-            if ($startPage > 1): ?>
+    $startPage = max(1, $currentPage - 2);
+    $endPage = min($totalPages, $currentPage + 2);
+
+    if ($startPage > 1): ?>
             <a href="?page=1<?php echo $paginationQuery; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">1</a>
             <?php if ($startPage > 2): ?>
             <span class="px-4 py-2 text-gray-600 dark:text-gray-400">...</span>
-            <?php endif; ?>
-            <?php endif; ?>
+            <?php
+        endif; ?>
+            <?php
+    endif; ?>
 
             <?php for ($i = $startPage; $i <= $endPage; $i++): ?>
-            <a href="?page=<?php echo $i; ?><?php echo $paginationQuery; ?>" class="px-4 py-2 rounded-lg transition <?php echo ($i === $currentPage) ? 'bg-blue-600 text-white' : 'border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'; ?>">
+            <a href="?page=<?php echo $i; ?><?php echo $paginationQuery; ?>" class="px-4 py-2 rounded-lg transition <?php echo($i === $currentPage) ? 'bg-blue-600 text-white' : 'border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'; ?>">
                 <?php echo $i; ?>
             </a>
-            <?php endfor; ?>
+            <?php
+    endfor; ?>
 
             <?php if ($endPage < $totalPages): ?>
             <?php if ($endPage < $totalPages - 1): ?>
             <span class="px-4 py-2 text-gray-600 dark:text-gray-400">...</span>
-            <?php endif; ?>
+            <?php
+        endif; ?>
             <a href="?page=<?php echo $totalPages; ?><?php echo $paginationQuery; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition"><?php echo $totalPages; ?></a>
-            <?php endif; ?>
+            <?php
+    endif; ?>
 
             <?php if ($currentPage < $totalPages): ?>
             <a href="?page=<?php echo $currentPage + 1; ?><?php echo $paginationQuery; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
                 Next
             </a>
-            <?php endif; ?>
+            <?php
+    endif; ?>
         </div>
     </div>
-    <?php endif; ?>
+    <?php
+endif; ?>
 </div>
 
 <!-- Add/Edit ADS Modal -->

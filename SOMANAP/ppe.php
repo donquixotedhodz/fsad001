@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         header('Location: ' . $_SERVER['REQUEST_URI']);
         exit;
     }
-    
+
     $date = $_POST['date'] ?? date('Y-m-d'); // User-provided date or current date
     $particulars = htmlspecialchars($_POST['particulars'] ?? '');
     $check_type = htmlspecialchars($_POST['check_type'] ?? 'actual');
@@ -45,39 +45,42 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     $dv_or_no = htmlspecialchars($_POST['dv_or_no'] ?? '');
     $debit = floatval($_POST['debit'] ?? 0);
     $credit = floatval($_POST['credit'] ?? 0);
-    
+
     $filePath = null;
     $fileName = null;
-    
+
     // Handle file upload
     if (!empty($_FILES['ppe_file']['tmp_name'])) {
         $uploadDir = __DIR__ . '/uploads/ppe/';
-        
+
         // Create upload directory if it doesn't exist
         if (!is_dir($uploadDir)) {
             mkdir($uploadDir, 0755, true);
         }
-        
+
         $fileExt = strtolower(pathinfo($_FILES['ppe_file']['name'], PATHINFO_EXTENSION));
         $allowedExts = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'jpg', 'jpeg', 'png', 'gif', 'ppt', 'pptx'];
-        
+
         if (!in_array($fileExt, $allowedExts)) {
             $errorMessage = "File type not allowed. Only PDF, Word, Excel, Image and PowerPoint files are accepted.";
-        } elseif ($_FILES['ppe_file']['size'] > 50 * 1024 * 1024) {
+        }
+        elseif ($_FILES['ppe_file']['size'] > 50 * 1024 * 1024) {
             $errorMessage = "File size exceeds 50MB limit.";
-        } else {
+        }
+        else {
             $uniqueFileName = uniqid() . '_' . time() . '.' . $fileExt;
             $uploadPath = $uploadDir . $uniqueFileName;
-            
+
             if (move_uploaded_file($_FILES['ppe_file']['tmp_name'], $uploadPath)) {
                 $filePath = 'uploads/ppe/' . $uniqueFileName;
                 $fileName = $_FILES['ppe_file']['name'];
-            } else {
+            }
+            else {
                 $errorMessage = "Failed to upload file.";
             }
         }
     }
-    
+
     if (!isset($errorMessage) && !empty($particulars) && ($check_no > 0 || $check_no === 'ONLINE' || $check_no === '')) {
         try {
             // Get the last balance
@@ -85,19 +88,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             $stmt->execute();
             $lastRecord = $stmt->fetch();
             $lastBalance = $lastRecord ? floatval($lastRecord['balance']) : $STARTING_BALANCE;
-            
+
             // Calculate new balance
             $newBalance = $lastBalance - $debit + $credit;
-            
+
             // Insert new record
             $stmt = $conn->prepare("INSERT INTO ppe (date, particulars, check_no, dv_or_no, debit, credit, balance) VALUES (?, ?, ?, ?, ?, ?, ?)");
             $stmt->execute([$date, $particulars, $check_no, $dv_or_no, $debit, $credit, $newBalance]);
             $newPPEId = $conn->lastInsertId();
-            
+
             // Update PPE Provident Fund remaining balance
             $updateFundStmt = $conn->prepare("UPDATE ppe_funds SET remaining_balance = ? WHERE fund_name = 'PPE Provident Fund'");
             $updateFundStmt->execute([$newBalance]);
-            
+
             // Log the action
             $auditLogger->log(
                 'add_ppe',
@@ -105,15 +108,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
                 'ppe',
                 $newPPEId
             );
-            
+
             // Set session message and redirect to avoid form resubmission warning
             $_SESSION['successMessage'] = "PPE record added successfully!";
             header('Location: ' . $_SERVER['REQUEST_URI']);
             exit;
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             $errorMessage = "Error adding record: " . htmlspecialchars($e->getMessage());
         }
-    } elseif (!isset($errorMessage)) {
+    }
+    elseif (!isset($errorMessage)) {
         $errorMessage = "Please fill in all required fields. Particulars: " . ($particulars ? "OK" : "EMPTY") . ", Check No: " . ($check_no > 0 || $check_no === 'ONLINE' ? "OK" : "INVALID (" . $check_no . ")");
     }
 }
@@ -126,43 +131,43 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         header('Location: ' . $_SERVER['REQUEST_URI']);
         exit;
     }
-    
+
     $ppe_id = intval($_POST['ppe_id'] ?? 0);
-    
+
     if ($ppe_id > 0) {
         try {
             // Get the record to be deleted (for logging)
             $stmt = $conn->prepare("SELECT balance, particulars FROM ppe WHERE id = ?");
             $stmt->execute([$ppe_id]);
             $recordToDelete = $stmt->fetch();
-            
+
             if ($recordToDelete) {
                 // Get the previous balance
                 $stmt = $conn->prepare("SELECT balance FROM ppe WHERE id < ? ORDER BY id DESC LIMIT 1");
                 $stmt->execute([$ppe_id]);
                 $prevRecord = $stmt->fetch();
                 $newBalance = $prevRecord ? floatval($prevRecord['balance']) : $STARTING_BALANCE;
-                
+
                 // Delete the record
                 $stmt = $conn->prepare("DELETE FROM ppe WHERE id = ?");
                 $stmt->execute([$ppe_id]);
-                
+
                 // Recalculate balances for all records after this one
                 $stmt = $conn->prepare("SELECT id, debit, credit FROM ppe WHERE id > ? ORDER BY id ASC");
                 $stmt->execute([$ppe_id]);
                 $recordsAfter = $stmt->fetchAll();
-                
+
                 $currentBalance = $newBalance;
                 foreach ($recordsAfter as $record) {
                     $currentBalance = $currentBalance - $record['debit'] + $record['credit'];
                     $updateStmt = $conn->prepare("UPDATE ppe SET balance = ? WHERE id = ?");
                     $updateStmt->execute([$currentBalance, $record['id']]);
                 }
-                
+
                 // Update PPE Provident Fund remaining balance
                 $updateFundStmt = $conn->prepare("UPDATE ppe_funds SET remaining_balance = ? WHERE fund_name = 'PPE Provident Fund'");
                 $updateFundStmt->execute([$currentBalance]);
-                
+
                 // Log the action
                 $auditLogger->log(
                     'delete_ppe',
@@ -170,13 +175,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
                     'ppe',
                     $ppe_id
                 );
-                
+
                 // Set session message and redirect to avoid form resubmission warning
                 $_SESSION['successMessage'] = "PPE record deleted successfully!";
                 header('Location: ' . $_SERVER['REQUEST_URI']);
                 exit;
             }
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             $errorMessage = "Error deleting record: " . htmlspecialchars($e->getMessage());
         }
     }
@@ -198,33 +204,35 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     $dv_or_no = htmlspecialchars($_POST['dv_or_no'] ?? '');
     $debit = floatval($_POST['debit'] ?? 0);
     $credit = floatval($_POST['credit'] ?? 0);
-    
+
     $filePath = null;
     $fileName = null;
     $deleteExistingFile = false;
-    
+
     // Handle file upload
     if (!empty($_FILES['ppe_file']['tmp_name'])) {
         $uploadDir = __DIR__ . '/uploads/ppe/';
-        
+
         // Create upload directory if it doesn't exist
         if (!is_dir($uploadDir)) {
             mkdir($uploadDir, 0755, true);
         }
-        
+
         $fileExt = strtolower(pathinfo($_FILES['ppe_file']['name'], PATHINFO_EXTENSION));
         $allowedExts = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'jpg', 'jpeg', 'png', 'gif', 'ppt', 'pptx'];
-        
+
         if (!in_array($fileExt, $allowedExts)) {
             $errorMessage = "File type not allowed. Only PDF, Word, Excel, Image and PowerPoint files are accepted.";
-        } elseif ($_FILES['ppe_file']['size'] > 50 * 1024 * 1024) {
+        }
+        elseif ($_FILES['ppe_file']['size'] > 50 * 1024 * 1024) {
             $errorMessage = "File size exceeds 50MB limit.";
-        } else {
+        }
+        else {
             // Get the old file path to delete it
             $stmt = $conn->prepare("SELECT file_path FROM ppe WHERE id = ?");
             $stmt->execute([$ppe_id]);
             $oldRecord = $stmt->fetch();
-            
+
             // Delete old file if it exists
             if ($oldRecord && !empty($oldRecord['file_path'])) {
                 $oldFile = __DIR__ . '/' . $oldRecord['file_path'];
@@ -232,56 +240,57 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
                     unlink($oldFile);
                 }
             }
-            
+
             $uniqueFileName = uniqid() . '_' . time() . '.' . $fileExt;
             $uploadPath = $uploadDir . $uniqueFileName;
-            
+
             if (move_uploaded_file($_FILES['ppe_file']['tmp_name'], $uploadPath)) {
                 $filePath = 'uploads/ppe/' . $uniqueFileName;
                 $fileName = $_FILES['ppe_file']['name'];
-            } else {
+            }
+            else {
                 $errorMessage = "Failed to upload file.";
             }
         }
     }
     // If no new file, keep the existing file - don't delete it
-    
+
     if (!isset($errorMessage) && $ppe_id > 0 && !empty($particulars) && ($check_no > 0 || $check_no === 'ONLINE' || $check_no === '')) {
         try {
             // Get the current record
             $stmt = $conn->prepare("SELECT debit, credit FROM ppe WHERE id = ?");
             $stmt->execute([$ppe_id]);
             $currentRecord = $stmt->fetch();
-            
+
             // Get the previous balance
             $stmt = $conn->prepare("SELECT balance FROM ppe WHERE id < ? ORDER BY id DESC LIMIT 1");
             $stmt->execute([$ppe_id]);
             $prevRecord = $stmt->fetch();
             $prevBalance = $prevRecord ? floatval($prevRecord['balance']) : $STARTING_BALANCE;
-            
+
             // Calculate the new balance for this record
             $newBalance = $prevBalance - $debit + $credit;
-            
+
             // Update the record
             $stmt = $conn->prepare("UPDATE ppe SET date = ?, particulars = ?, check_no = ?, dv_or_no = ?, debit = ?, credit = ?, balance = ? WHERE id = ?");
             $stmt->execute([$date, $particulars, $check_no, $dv_or_no, $debit, $credit, $newBalance, $ppe_id]);
-            
+
             // Recalculate balances for all records after this one
             $stmt = $conn->prepare("SELECT id, debit, credit FROM ppe WHERE id > ? ORDER BY id ASC");
             $stmt->execute([$ppe_id]);
             $recordsAfter = $stmt->fetchAll();
-            
+
             $currentBalance = $newBalance;
             foreach ($recordsAfter as $record) {
                 $currentBalance = $currentBalance - $record['debit'] + $record['credit'];
                 $updateStmt = $conn->prepare("UPDATE ppe SET balance = ? WHERE id = ?");
                 $updateStmt->execute([$currentBalance, $record['id']]);
             }
-            
+
             // Update PPE Provident Fund remaining balance
             $updateFundStmt = $conn->prepare("UPDATE ppe_funds SET remaining_balance = ? WHERE fund_name = 'PPE Provident Fund'");
             $updateFundStmt->execute([$currentBalance]);
-            
+
             // Log the action
             $auditLogger->log(
                 'edit_ppe',
@@ -289,15 +298,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
                 'ppe',
                 $ppe_id
             );
-            
+
             // Set session message and redirect to avoid form resubmission warning
             $_SESSION['successMessage'] = "PPE record updated successfully!";
             header('Location: ' . $_SERVER['REQUEST_URI']);
             exit;
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             $errorMessage = "Error updating record: " . htmlspecialchars($e->getMessage());
         }
-    } else {
+    }
+    else {
         $errorMessage = "Please fill in all required fields.";
     }
 }
@@ -312,18 +323,20 @@ $nextCheckNo = ($result && $result['max_check']) ? intval($result['max_check']) 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'get_ppe') {
     header('Content-Type: application/json');
     $ppe_id = intval($_POST['id'] ?? 0);
-    
+
     try {
         $stmt = $conn->prepare("SELECT * FROM ppe WHERE id = ?");
         $stmt->execute([$ppe_id]);
         $record = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         if ($record) {
             echo json_encode(['success' => true, 'record' => $record]);
-        } else {
+        }
+        else {
             echo json_encode(['success' => false, 'message' => 'Record not found']);
         }
-    } catch (Exception $e) {
+    }
+    catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => htmlspecialchars($e->getMessage())]);
     }
     exit;
@@ -333,7 +346,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'search_ppe') {
     header('Content-Type: application/json');
     $searchTerm = htmlspecialchars($_POST['search'] ?? '');
-    
+
     try {
         $stmt = $conn->prepare("
             SELECT * FROM ppe 
@@ -343,13 +356,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             OR dv_or_no LIKE ?
             ORDER BY date DESC
         ");
-        
+
         $searchPattern = '%' . $searchTerm . '%';
         $stmt->execute([$searchPattern, $searchPattern, $searchPattern, $searchPattern]);
         $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         echo json_encode(['success' => true, 'records' => $records]);
-    } catch (Exception $e) {
+    }
+    catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => htmlspecialchars($e->getMessage())]);
     }
     exit;
@@ -366,32 +380,35 @@ ob_start();
         <button onclick="document.getElementById('addPPEModal').showModal()" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">
             + Add PPE
         </button>
-        <?php endif; ?>
+        <?php
+endif; ?>
     </div>
 
     <!-- Success/Error Messages -->
-    <?php 
-    // Check for session message first, then check local variable
-    $displaySuccess = isset($_SESSION['successMessage']) ? $_SESSION['successMessage'] : (isset($successMessage) ? $successMessage : null);
-    if ($displaySuccess): 
-    ?>
+    <?php
+// Check for session message first, then check local variable
+$displaySuccess = isset($_SESSION['successMessage']) ? $_SESSION['successMessage'] : (isset($successMessage) ? $successMessage : null);
+if ($displaySuccess):
+?>
         <div id="successMessage" class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded flex justify-between items-center">
             <span><?php echo $displaySuccess; ?></span>
             <button onclick="document.getElementById('successMessage').style.display = 'none'" class="text-green-700 hover:text-green-900 font-bold ml-4">✕</button>
         </div>
         <?php unset($_SESSION['successMessage']); ?>
-    <?php endif; ?>
-    <?php 
-    // Check for session error message first, then check local variable
-    $displayError = isset($_SESSION['errorMessage']) ? $_SESSION['errorMessage'] : (isset($errorMessage) ? $errorMessage : null);
-    if ($displayError): 
-    ?>
+    <?php
+endif; ?>
+    <?php
+// Check for session error message first, then check local variable
+$displayError = isset($_SESSION['errorMessage']) ? $_SESSION['errorMessage'] : (isset($errorMessage) ? $errorMessage : null);
+if ($displayError):
+?>
         <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded flex justify-between items-center">
             <span><?php echo $displayError; ?></span>
             <button onclick="this.parentElement.style.display = 'none'" class="text-red-700 hover:text-red-900 font-bold ml-4">✕</button>
         </div>
         <?php unset($_SESSION['errorMessage']); ?>
-    <?php endif; ?>
+    <?php
+endif; ?>
 
     <!-- Add PPE Modal -->
     <dialog id="addPPEModal" class="rounded-lg shadow-lg max-w-2xl w-full p-8 dark:bg-gray-800">
@@ -661,10 +678,10 @@ ob_start();
     <div class="mb-4 flex items-center gap-2">
         <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Show</label>
         <select id="limitSelect" onchange="changeLimit()" class="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="5" <?php echo (!isset($_GET['limit']) || $_GET['limit'] == 5) ? 'selected' : ''; ?>>5</option>
-            <option value="10" <?php echo (isset($_GET['limit']) && $_GET['limit'] == 10) ? 'selected' : ''; ?>>10</option>
-            <option value="25" <?php echo (isset($_GET['limit']) && $_GET['limit'] == 25) ? 'selected' : ''; ?>>25</option>
-            <option value="all" <?php echo (isset($_GET['limit']) && $_GET['limit'] == 'all') ? 'selected' : ''; ?>>Show All</option>
+            <option value="5" <?php echo(!isset($_GET['limit']) || $_GET['limit'] == 5) ? 'selected' : ''; ?>>5</option>
+            <option value="10" <?php echo(isset($_GET['limit']) && $_GET['limit'] == 10) ? 'selected' : ''; ?>>10</option>
+            <option value="25" <?php echo(isset($_GET['limit']) && $_GET['limit'] == 25) ? 'selected' : ''; ?>>25</option>
+            <option value="all" <?php echo(isset($_GET['limit']) && $_GET['limit'] == 'all') ? 'selected' : ''; ?>>Show All</option>
         </select>
         <span class="text-sm text-gray-600 dark:text-gray-400">entries</span>
         
@@ -688,87 +705,93 @@ ob_start();
                 <tr class="bg-gray-100 dark:bg-gray-700">
                     <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center font-semibold text-gray-900 dark:text-white">Date</th>
                     <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center font-semibold text-gray-900 dark:text-white">Particulars (Names)</th>
-                    <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center font-semibold text-gray-900 dark:text-white">Check No.</th>
-                    <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center font-semibold text-gray-900 dark:text-white">DV/OR No.</th>
+                    <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center font-semibold text-gray-900 dark:text-white hidden sm:table-cell">Check No.</th>
+                    <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center font-semibold text-gray-900 dark:text-white hidden md:table-cell">DV/OR No.</th>
                     <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center font-semibold text-gray-900 dark:text-white">Debit</th>
                     <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center font-semibold text-gray-900 dark:text-white">Credit</th>
                     <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center font-semibold text-gray-900 dark:text-white">Balance</th>
-                    <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center font-semibold text-gray-900 dark:text-white">File</th>
+                    <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center font-semibold text-gray-900 dark:text-white hidden lg:table-cell">File</th>
                     <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center font-semibold text-gray-900 dark:text-white">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 <?php
-                // Pagination
-                $itemsPerPage = isset($_GET['limit']) && $_GET['limit'] !== 'all' ? (int)$_GET['limit'] : 5;
-                
-                // Fetch PPE data from database
-                try {
-                    // Get total count
-                    $countStmt = $conn->prepare("SELECT COUNT(*) as total FROM ppe");
-                    $countStmt->execute();
-                    $countResult = $countStmt->fetch();
-                    $totalItems = $countResult['total'];
-                    
-                    // Calculate pagination
-                    if (isset($_GET['limit']) && $_GET['limit'] === 'all') {
-                        $totalPages = 1;
-                        $currentPage = 1;
-                        $offset = 0;
-                    } else {
-                        $totalPages = ceil($totalItems / $itemsPerPage);
-                        $currentPage = isset($_GET['page']) ? max(1, min((int)$_GET['page'], $totalPages)) : 1;
-                        $offset = ($currentPage - 1) * $itemsPerPage;
-                    }
-                    
-                    // Fetch records with limit
-                    if (isset($_GET['limit']) && $_GET['limit'] === 'all') {
-                        $stmt = $conn->prepare("SELECT * FROM ppe ORDER BY id DESC");
-                    } else {
-                        $stmt = $conn->prepare("SELECT * FROM ppe ORDER BY id DESC LIMIT ? OFFSET ?");
-                        $stmt->bindParam(1, $itemsPerPage, PDO::PARAM_INT);
-                        $stmt->bindParam(2, $offset, PDO::PARAM_INT);
-                    }
-                    $stmt->execute();
-                    $ppeRecords = $stmt->fetchAll();
-                    
-                    if (count($ppeRecords) > 0) {
-                        foreach ($ppeRecords as $record) {
-                            $formattedDate = date('m/d/Y', strtotime($record['date']));
-                            echo '<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">';
-                            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($formattedDate) . '</td>';
-                            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['particulars']) . '</td>';
-                            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['check_no'] ?? '') . '</td>';
-                            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['dv_or_no'] ?? '') . '</td>';
-                            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-right text-gray-700 dark:text-gray-300">' . number_format($record['debit'], 2) . '</td>';
-                            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-right text-gray-700 dark:text-gray-300">' . number_format($record['credit'], 2) . '</td>';
-                            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-right font-semibold text-gray-900 dark:text-white">' . number_format($record['balance'], 2) . '</td>';
-                            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center">';
-                            if (!empty($record['file_path']) && file_exists(__DIR__ . '/' . $record['file_path'])) {
-                                echo '<a href="../' . htmlspecialchars($record['file_path']) . '" target="_blank" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition" style="background-color: var(--theme-secondary);" title="Download file">';
-                                echo '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>';
-                                echo '</a>';
-                            } else {
-                                echo '<span class="text-gray-400 text-sm">-</span>';
-                            }
-                            echo '</td>';
-                            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center">';
-                            if ($canEdit) {
-                                echo '<button onclick="editPPE(' . $record['id'] . ')" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition mr-2" style="background-color: var(--theme-accent);" title="Edit" style="font-size: 14px;"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>';
-                                echo '<button onclick="deletePPE(' . htmlspecialchars(json_encode($record)) . ')" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition" style="background-color: var(--theme-danger);" title="Delete"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>';
-                            } else {
-                                echo '<span class="text-gray-400 text-sm">View Only</span>';
-                            }
-                            echo '</td>';
-                            echo '</tr>';
-                        }
-                    } else {
-                        echo '<tr><td colspan="9" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-gray-500">No records found</td></tr>';
-                    }
-                } catch (Exception $e) {
-                    echo '<tr><td colspan="8" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-red-500">Error loading data: ' . htmlspecialchars($e->getMessage()) . '</td></tr>';
-                }
-                ?>
+// Pagination
+$itemsPerPage = isset($_GET['limit']) && $_GET['limit'] !== 'all' ? (int)$_GET['limit'] : 5;
+
+// Fetch PPE data from database
+try {
+    // Get total count
+    $countStmt = $conn->prepare("SELECT COUNT(*) as total FROM ppe");
+    $countStmt->execute();
+    $countResult = $countStmt->fetch();
+    $totalItems = $countResult['total'];
+
+    // Calculate pagination
+    if (isset($_GET['limit']) && $_GET['limit'] === 'all') {
+        $totalPages = 1;
+        $currentPage = 1;
+        $offset = 0;
+    }
+    else {
+        $totalPages = ceil($totalItems / $itemsPerPage);
+        $currentPage = isset($_GET['page']) ? max(1, min((int)$_GET['page'], $totalPages)) : 1;
+        $offset = ($currentPage - 1) * $itemsPerPage;
+    }
+
+    // Fetch records with limit
+    if (isset($_GET['limit']) && $_GET['limit'] === 'all') {
+        $stmt = $conn->prepare("SELECT * FROM ppe ORDER BY id DESC");
+    }
+    else {
+        $stmt = $conn->prepare("SELECT * FROM ppe ORDER BY id DESC LIMIT ? OFFSET ?");
+        $stmt->bindParam(1, $itemsPerPage, PDO::PARAM_INT);
+        $stmt->bindParam(2, $offset, PDO::PARAM_INT);
+    }
+    $stmt->execute();
+    $ppeRecords = $stmt->fetchAll();
+
+    if (count($ppeRecords) > 0) {
+        foreach ($ppeRecords as $record) {
+            $formattedDate = date('m/d/Y', strtotime($record['date']));
+            echo '<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">';
+            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($formattedDate) . '</td>';
+            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['particulars']) . '</td>';
+            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-gray-700 dark:text-gray-300 hidden sm:table-cell">' . htmlspecialchars($record['check_no'] ?? '') . '</td>';
+            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-gray-700 dark:text-gray-300 hidden md:table-cell">' . htmlspecialchars($record['dv_or_no'] ?? '') . '</td>';
+            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-right text-gray-700 dark:text-gray-300">' . number_format($record['debit'], 2) . '</td>';
+            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-right text-gray-700 dark:text-gray-300">' . number_format($record['credit'], 2) . '</td>';
+            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-right font-semibold text-gray-900 dark:text-white">' . number_format($record['balance'], 2) . '</td>';
+            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center hidden lg:table-cell">';
+            if (!empty($record['file_path']) && file_exists(__DIR__ . '/' . $record['file_path'])) {
+                echo '<a href="../' . htmlspecialchars($record['file_path']) . '" target="_blank" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition" style="background-color: var(--theme-secondary);" title="Download file">';
+                echo '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>';
+                echo '</a>';
+            }
+            else {
+                echo '<span class="text-gray-400 text-sm">-</span>';
+            }
+            echo '</td>';
+            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center">';
+            if ($canEdit) {
+                echo '<button onclick="editPPE(' . $record['id'] . ')" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition mr-2" style="background-color: #eab308;" title="Edit"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>';
+                echo '<button onclick="deletePPE(' . htmlspecialchars(json_encode($record)) . ')" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition" style="background-color: var(--theme-danger);" title="Delete"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>';
+            }
+            else {
+                echo '<span class="text-gray-400 text-sm">View Only</span>';
+            }
+            echo '</td>';
+            echo '</tr>';
+        }
+    }
+    else {
+        echo '<tr><td colspan="9" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-gray-500">No records found</td></tr>';
+    }
+}
+catch (Exception $e) {
+    echo '<tr><td colspan="8" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-red-500">Error loading data: ' . htmlspecialchars($e->getMessage()) . '</td></tr>';
+}
+?>
             </tbody>
         </table>
     </div>
@@ -777,50 +800,54 @@ ob_start();
     <?php if ($totalPages > 1): ?>
     <div class="mt-6 flex items-center justify-between">
         <div class="text-sm text-gray-600 dark:text-gray-400">
-            Showing <?php echo ($offset + 1); ?> to <?php echo min($offset + $itemsPerPage, $totalItems); ?> of <?php echo $totalItems; ?> records
+            Showing <?php echo($offset + 1); ?> to <?php echo min($offset + $itemsPerPage, $totalItems); ?> of <?php echo $totalItems; ?> records
         </div>
         <div class="flex gap-2">
             <?php if ($currentPage > 1): ?>
             <a href="?page=<?php echo $currentPage - 1; ?>&limit=<?php echo isset($_GET['limit']) ? $_GET['limit'] : 5; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
                 Previous
             </a>
-            <?php endif; ?>
+            <?php
+    endif; ?>
 
             <?php
-            $startPage = max(1, $currentPage - 2);
-            $endPage = min($totalPages, $currentPage + 2);
-            
-            if ($startPage > 1) {
-                echo '<a href="?page=1&limit=' . (isset($_GET['limit']) ? $_GET['limit'] : 5) . '" class="px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">1</a>';
-                if ($startPage > 2) {
-                    echo '<span class="px-3 py-2 text-gray-500 dark:text-gray-400">...</span>';
-                }
-            }
-            
-            for ($i = $startPage; $i <= $endPage; $i++) {
-                if ($i === $currentPage) {
-                    echo '<span class="px-3 py-2 bg-blue-500 text-white rounded-lg">' . $i . '</span>';
-                } else {
-                    echo '<a href="?page=' . $i . '&limit=' . (isset($_GET['limit']) ? $_GET['limit'] : 5) . '" class="px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">' . $i . '</a>';
-                }
-            }
-            
-            if ($endPage < $totalPages) {
-                if ($endPage < $totalPages - 1) {
-                    echo '<span class="px-3 py-2 text-gray-500 dark:text-gray-400">...</span>';
-                }
-                echo '<a href="?page=' . $totalPages . '&limit=' . (isset($_GET['limit']) ? $_GET['limit'] : 5) . '" class="px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">' . $totalPages . '</a>';
-            }
-            ?>
+    $startPage = max(1, $currentPage - 2);
+    $endPage = min($totalPages, $currentPage + 2);
+
+    if ($startPage > 1) {
+        echo '<a href="?page=1&limit=' . (isset($_GET['limit']) ? $_GET['limit'] : 5) . '" class="px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">1</a>';
+        if ($startPage > 2) {
+            echo '<span class="px-3 py-2 text-gray-500 dark:text-gray-400">...</span>';
+        }
+    }
+
+    for ($i = $startPage; $i <= $endPage; $i++) {
+        if ($i === $currentPage) {
+            echo '<span class="px-3 py-2 bg-blue-500 text-white rounded-lg">' . $i . '</span>';
+        }
+        else {
+            echo '<a href="?page=' . $i . '&limit=' . (isset($_GET['limit']) ? $_GET['limit'] : 5) . '" class="px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">' . $i . '</a>';
+        }
+    }
+
+    if ($endPage < $totalPages) {
+        if ($endPage < $totalPages - 1) {
+            echo '<span class="px-3 py-2 text-gray-500 dark:text-gray-400">...</span>';
+        }
+        echo '<a href="?page=' . $totalPages . '&limit=' . (isset($_GET['limit']) ? $_GET['limit'] : 5) . '" class="px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">' . $totalPages . '</a>';
+    }
+?>
 
             <?php if ($currentPage < $totalPages): ?>
             <a href="?page=<?php echo $currentPage + 1; ?>&limit=<?php echo isset($_GET['limit']) ? $_GET['limit'] : 5; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
                 Next
             </a>
-            <?php endif; ?>
+            <?php
+    endif; ?>
         </div>
     </div>
-    <?php endif; ?>
+    <?php
+endif; ?>
 
 <script>
 function toggleCheckNoInput() {

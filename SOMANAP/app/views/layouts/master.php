@@ -308,32 +308,73 @@
 >
     <!-- Sidebar -->
     <?php
-    $username = $_SESSION['username'] ?? 'User';
-    $currentPage = isset($_SESSION['currentPage']) ? $_SESSION['currentPage'] : 'dashboard';
-    $userId = $_SESSION['user_id'] ?? null;
-    
-    // Get user's profile image, full name, and role
-    $userProfileImage = null;
-    $userFullName = $username;
-    $userRole = $_SESSION['role'] ?? 'User';
-    
-    if ($userId) {
-        try {
-            $stmt = $conn->prepare("SELECT profile_image, full_name, role FROM users WHERE id = ?");
-            $stmt->execute([$userId]);
-            $userInfo = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($userInfo) {
-                $userProfileImage = $userInfo['profile_image'] ?? null;
-                $userFullName = $userInfo['full_name'] ?? $username;
-                $userRole = $userInfo['role'] ?? $_SESSION['role'] ?? 'User';
-            }
-        } catch (PDOException $e) {
-            // If query fails, use defaults
+$username = $_SESSION['username'] ?? 'User';
+$currentPage = isset($_SESSION['currentPage']) ? $_SESSION['currentPage'] : 'dashboard';
+$userId = $_SESSION['user_id'] ?? null;
+
+// Get user's profile image, full name, and role
+$userProfileImage = null;
+$userFullName = $username;
+$userRole = $_SESSION['role'] ?? 'User';
+
+if ($userId) {
+    try {
+        $stmt = $conn->prepare("SELECT profile_image, full_name, role FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $userInfo = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($userInfo) {
+            $userProfileImage = $userInfo['profile_image'] ?? null;
+            $userFullName = $userInfo['full_name'] ?? $username;
+            $userRole = $userInfo['role'] ?? $_SESSION['role'] ?? 'User';
         }
     }
-    
-    require_once __DIR__ . '/../partials/sidebar.php';
-    ?>
+    catch (PDOException $e) {
+    // If query fails, use defaults
+    }
+}
+
+// Fetch AOM notification count (unexpired AOMs within 15-day window)
+$aomNotificationCount = 0;
+$latestAoms = [];
+try {
+    $aomNotifyStmt = $conn->prepare("SELECT COUNT(*) as total FROM aom_table WHERE date IS NOT NULL AND DATE_ADD(date, INTERVAL 15 DAY) >= CURDATE()");
+    $aomNotifyStmt->execute();
+    $actualAomCount = (int)($aomNotifyStmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
+
+    // Get the maximum ID to detect new AOMs
+    $maxAomStmt = $conn->prepare("SELECT MAX(id) as max_id FROM aom_table");
+    $maxAomStmt->execute();
+    $maxAomId = (int)($maxAomStmt->fetch(PDO::FETCH_ASSOC)['max_id'] ?? 0);
+
+    // Clear notifications if visiting aom.php
+    if (basename($_SERVER['PHP_SELF']) === 'aom.php') {
+        $_SESSION['last_seen_aom_max_id'] = $maxAomId;
+        $_SESSION['last_seen_aom_count'] = $actualAomCount;
+    }
+
+    // Determine if we should show the badge
+    $hasNewAom = $maxAomId > ($_SESSION['last_seen_aom_max_id'] ?? 0);
+    $countIncreased = $actualAomCount > ($_SESSION['last_seen_aom_count'] ?? 0);
+
+    if ($actualAomCount > 0 && ($hasNewAom || $countIncreased || !isset($_SESSION['last_seen_aom_count']))) {
+        $aomNotificationCount = $actualAomCount;
+    }
+    else {
+        $aomNotificationCount = 0;
+    }
+
+    if ($actualAomCount > 0) {
+        $aomLatestStmt = $conn->prepare("SELECT item, title, date FROM aom_table WHERE date IS NOT NULL AND DATE_ADD(date, INTERVAL 15 DAY) >= CURDATE() ORDER BY date DESC LIMIT 3");
+        $aomLatestStmt->execute();
+        $latestAoms = $aomLatestStmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+}
+catch (PDOException $e) {
+// Silent fail if table doesn't exist yet
+}
+
+require_once __DIR__ . '/../partials/sidebar.php';
+?>
 
     <!-- Mobile Sidebar Overlay -->
     <div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden hidden" onclick="toggleSidebar()"></div>
@@ -353,15 +394,70 @@
 
                 <!-- Right Header Items -->
                 <div class="flex items-center gap-6">
-                    <!-- Dark Mode Toggle -->
-                    <button @click="darkMode = !darkMode" class="text-gray-500 hover:text-gray-900 dark:hover:text-white transition">
-                        <svg x-show="!darkMode" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707"></path>
-                        </svg>
-                        <svg x-show="darkMode" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                        </svg>
-                    </button>
+                    <!-- AOM Notification Bell -->
+                    <div class="relative group">
+                        <a href="aom.php" class="p-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors relative" title="AOM Notifications">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                            </svg>
+                            <?php if ($aomNotificationCount > 0): ?>
+                                <span class="absolute top-1 right-1 flex h-4 w-4">
+                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                    <span class="relative inline-flex rounded-full h-4 w-4 bg-red-600 text-[10px] text-white items-center justify-center font-bold">
+                                        <?php echo $aomNotificationCount; ?>
+                                    </span>
+                                </span>
+                            <?php
+endif; ?>
+                        </a>
+                        
+                        <!-- Notification Dropdown -->
+                        <div class="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-xl py-2 border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 transform origin-top-right">
+                            <div class="px-4 py-2 border-b border-gray-100 dark:border-gray-700">
+                                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">AOM Notifications</h3>
+                            </div>
+                            <div class="max-h-64 overflow-y-auto">
+                                <?php if ($aomNotificationCount > 0): ?>
+                                    <div class="divide-y divide-gray-100 dark:divide-gray-700">
+                                        <?php foreach ($latestAoms as $aom):
+        $aomDate = new DateTime($aom['date']);
+        $targetDate = clone $aomDate;
+        $targetDate->modify('+15 days');
+        $now = new DateTime();
+        $interval = $now->diff($targetDate);
+        $daysLeft = $interval->invert ? 0 : $interval->days;
+?>
+                                            <a href="aom.php" class="block px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                                                <p class="text-xs font-semibold text-gray-900 dark:text-white truncate"><?php echo htmlspecialchars($aom['title']); ?></p>
+                                                <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+                                                    Item: <?php echo htmlspecialchars($aom['item']); ?> • 
+                                                    <span class="<?php echo $daysLeft <= 5 ? 'text-orange-500 font-bold' : 'text-green-500'; ?>">
+                                                        <?php echo $daysLeft; ?> days left
+                                                    </span>
+                                                </p>
+                                            </a>
+                                        <?php
+    endforeach; ?>
+                                    </div>
+                                    <?php if ($aomNotificationCount > 3): ?>
+                                        <div class="px-4 py-2 text-center text-[10px] text-gray-500 border-t border-gray-100 dark:border-gray-700">
+                                            + <?php echo($aomNotificationCount - 3); ?> more notifications
+                                        </div>
+                                    <?php
+    endif; ?>
+                                <?php
+else: ?>
+                                    <div class="p-4 text-sm text-center text-gray-500 dark:text-gray-400">
+                                        No active AOM notifications.
+                                    </div>
+                                <?php
+endif; ?>
+                            </div>
+                            <div class="border-t border-gray-100 dark:border-gray-700 px-4 py-2">
+                                <a href="aom.php" class="text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">View AOM Details →</a>
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- User Profile Section -->
                     <div class="flex items-center gap-3 pl-6 border-l border-gray-200 dark:border-gray-700">
@@ -370,11 +466,13 @@
                             <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center overflow-hidden hover:ring-2 hover:ring-blue-400 transition">
                                 <?php if ($userProfileImage): ?>
                                     <img src="uploads/profile_images/<?php echo htmlspecialchars($userProfileImage); ?>" alt="<?php echo htmlspecialchars($userFullName); ?>" class="w-full h-full object-cover">
-                                <?php else: ?>
+                                <?php
+else: ?>
                                     <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                                     </svg>
-                                <?php endif; ?>
+                                <?php
+endif; ?>
                             </div>
                         </a>
                         

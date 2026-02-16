@@ -1,6 +1,13 @@
 <?php
 session_start();
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/vendor/autoload.php';
+
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 
 // Get report name for filename
 $reportName = 'Check_Issued';
@@ -41,73 +48,85 @@ try {
     $stmt = $conn->prepare($sql);
     $stmt->execute($params);
     $ppeRecords = $stmt->fetchAll();
-} catch (Exception $e) {
+}
+catch (Exception $e) {
     $ppeRecords = [];
     $error = htmlspecialchars($e->getMessage());
 }
 
 // Handle Excel export
 if ($format === 'excel') {
-    $filename = $reportName . '_' . date('Y-m-d_His') . '.xls';
-    header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
-    header('Content-Disposition: attachment; filename="' . $filename . '"');
-    
-    echo '<!DOCTYPE html>';
-    echo '<html>';
-    echo '<head>';
-    echo '<meta charset="UTF-8">';
-    echo '<style>';
-    echo 'body { font-family: Arial, sans-serif; margin: 20px; }';
-    echo 'h1 { font-size: 16px; font-weight: bold; margin: 10px 0 5px 0; text-transform: uppercase; }';
-    echo 'h2 { font-size: 14px; font-weight: normal; margin: 5px 0 10px 0; text-transform: uppercase; }';
-    echo '.date { font-size: 12px; margin-bottom: 15px; text-transform: uppercase; }';
-    echo 'table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; font-family: Arial, sans-serif; }';
-    echo 'th { background-color: #e0e0e0; border: 1px solid #000; padding: 8px; text-align: left; font-weight: bold; font-size: 11px; text-transform: uppercase; }';
-    echo 'td { border: 1px solid #ccc; padding: 8px; height: 20px; }';
-    echo '.text-right { text-align: right; }';
-    echo '.total-row { font-weight: bold; background-color: #f5f5f5; }';
-    echo '</style>';
-    echo '</head>';
-    echo '<body>';
-    echo '<h1>PPE PROVIDENT FUND INC.</h1>';
-    echo '<h2>Check Issued</h2>';
-    echo '<div class="date">' . strtoupper(date('F d, Y')) . '</div>';
-    
-    echo '<table>';
-    echo '<thead>';
-    echo '<tr>';
-    echo '<th style="width: 15%;">Check No.</th>';
-    echo '<th style="width: 15%;">DV No.</th>';
-    echo '<th style="width: 40%;">Name</th>';
-    echo '<th style="width: 15%; text-align: right;">Amount</th>';
-    echo '<th style="width: 15%; text-align: right;">Date Issued</th>';
-    echo '</tr>';
-    echo '</thead>';
-    echo '<tbody>';
-    
+    $spreadsheet = new Spreadsheet();
+    $sheet = $spreadsheet->getActiveSheet();
+    $sheet->setTitle('Check Issued Report');
+
+    // Title and Header
+    $sheet->setCellValue('A1', 'PPE PROVIDENT FUND INC.');
+    $sheet->setCellValue('A2', 'Check Issued');
+    $sheet->setCellValue('A3', strtoupper(date('F d, Y')));
+
+    $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+    $sheet->getStyle('A2')->getFont()->setSize(12);
+
+    // Header row
+    $headers = ['CHECK NO.', 'DV NO.', 'NAME', 'AMOUNT', 'DATE ISSUED'];
+    $sheet->fromArray($headers, NULL, 'A5');
+
+    // Style the header
+    $headerStyle = [
+        'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+        'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '2563EB']], // Blue-600
+        'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
+    ];
+    $sheet->getStyle('A5:E5')->applyFromArray($headerStyle);
+
+    $currentRow = 6;
     $totalAmount = 0;
     foreach ($ppeRecords as $record) {
         $totalAmount += $record['amount'];
         $formattedDate = date('m/d/Y', strtotime($record['date']));
-        echo '<tr>';
-        echo '<td style="text-align: center;">' . strtoupper(htmlspecialchars($record['check_no'] ?? '')) . '</td>';
-        echo '<td style="text-align: center;">' . strtoupper(htmlspecialchars($record['dv_or_no'] ?? '')) . '</td>';
-        echo '<td>' . strtoupper(htmlspecialchars($record['particulars'])) . '</td>';
-        echo '<td class="text-right">' . number_format($record['amount'], 2) . '</td>';
-        echo '<td class="text-right">' . strtoupper($formattedDate) . '</td>';
-        echo '</tr>';
+
+        $sheet->setCellValue('A' . $currentRow, $record['check_no'] ?? '');
+        $sheet->setCellValue('B' . $currentRow, $record['dv_or_no'] ?? '');
+        $sheet->setCellValue('C' . $currentRow, strtoupper($record['particulars']));
+        $sheet->setCellValue('D' . $currentRow, $record['amount']);
+        $sheet->setCellValue('E' . $currentRow, $formattedDate);
+
+        $currentRow++;
     }
-    
-    echo '<tr class="total-row">';
-    echo '<td colspan="4" style="text-align: right;">TOTAL</td>';
-    echo '<td class="text-right">' . number_format($totalAmount, 2) . '</td>';
-    echo '<td></td>';
-    echo '</tr>';
-    
-    echo '</tbody>';
-    echo '</table>';
-    echo '</body>';
-    echo '</html>';
+
+    // Total row
+    $sheet->setCellValue('C' . $currentRow, 'TOTAL');
+    $sheet->setCellValue('D' . $currentRow, $totalAmount);
+
+    $totalStyle = [
+        'font' => ['bold' => true],
+        'borders' => ['top' => ['borderStyle' => Border::BORDER_THIN]]
+    ];
+    $sheet->getStyle('A' . $currentRow . ':E' . $currentRow)->applyFromArray($totalStyle);
+    $sheet->getStyle('C' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+
+    // Formatting
+    $lastRow = $currentRow;
+    $sheet->getStyle('A6:B' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+    $sheet->getStyle('E6:E' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+    $sheet->getStyle('D6:D' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+    $sheet->getStyle('D6:D' . $lastRow)->getNumberFormat()->setFormatCode('#,##0.00');
+
+    // Auto-size columns
+    foreach (range('A', 'E') as $col) {
+        $sheet->getColumnDimension($col)->setAutoSize(true);
+    }
+    $sheet->getColumnDimension('C')->setAutoSize(false)->setWidth(50);
+
+    $filename = $reportName . '_' . date('Y-m-d_His') . '.xlsx';
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment;filename="' . $filename . '"');
+    header('Cache-Control: max-age=0');
+
+    $writer = new Xlsx($spreadsheet);
+    $writer->save('php://output');
     exit;
 }
 
@@ -115,9 +134,9 @@ if ($format === 'excel') {
 if ($format === 'pdf') {
     // Include the controller
     require_once __DIR__ . '/app/controllers/PPEReportController.php';
-    
+
     $controller = new PPEReportController($conn);
-    
+
     // Prepare filters
     $filters = [
         'date_from' => $_GET['date_from'] ?? null,
@@ -126,10 +145,11 @@ if ($format === 'pdf') {
         'dv_or_no' => $_GET['dv_or_no'] ?? null,
         'particulars' => $_GET['particulars'] ?? null,
     ];
-    
+
     try {
         $controller->exportCheckIssuedPDF($filters);
-    } catch (Exception $e) {
+    }
+    catch (Exception $e) {
         die('Error generating PDF: ' . htmlspecialchars($e->getMessage()));
     }
 }
@@ -288,32 +308,33 @@ if ($format === 'pdf') {
             </thead>
             <tbody>
                 <?php
-                if (count($ppeRecords) > 0) {
-                    $totalAmount = 0;
-                    
-                    foreach ($ppeRecords as $record) {
-                        $totalAmount += $record['amount'];
-                        
-                        $formattedDate = date('m/d/Y', strtotime($record['date']));
-                        echo '<tr>';
-                        echo '<td>' . strtoupper(htmlspecialchars($record['check_no'] ?? '')) . '</td>';
-                        echo '<td>' . strtoupper(htmlspecialchars($record['dv_or_no'] ?? '')) . '</td>';
-                        echo '<td>' . strtoupper(htmlspecialchars($record['particulars'])) . '</td>';
-                        echo '<td class="text-right">' . number_format($record['amount'], 2) . '</td>';
-                        echo '<td class="text-right">' . strtoupper(htmlspecialchars($formattedDate)) . '</td>';
-                        echo '</tr>';
-                    }
-                    
-                    // Add total row
-                    echo '<tr style="font-weight: bold;">';
-                    echo '<td colspan="3" style="text-align: right; border: none;">TOTAL</td>';
-                    echo '<td style="text-align: right; border: none;">' . number_format($totalAmount, 2) . '</td>';
-                    echo '<td style="text-align: right; border: none;"></td>';
-                    echo '</tr>';
-                } else {
-                    echo '<tr><td colspan="5" class="text-center">NO RECORDS FOUND</td></tr>';
-                }
-                ?>
+if (count($ppeRecords) > 0) {
+    $totalAmount = 0;
+
+    foreach ($ppeRecords as $record) {
+        $totalAmount += $record['amount'];
+
+        $formattedDate = date('m/d/Y', strtotime($record['date']));
+        echo '<tr>';
+        echo '<td>' . strtoupper(htmlspecialchars($record['check_no'] ?? '')) . '</td>';
+        echo '<td>' . strtoupper(htmlspecialchars($record['dv_or_no'] ?? '')) . '</td>';
+        echo '<td>' . strtoupper(htmlspecialchars($record['particulars'])) . '</td>';
+        echo '<td class="text-right">' . number_format($record['amount'], 2) . '</td>';
+        echo '<td class="text-right">' . strtoupper(htmlspecialchars($formattedDate)) . '</td>';
+        echo '</tr>';
+    }
+
+    // Add total row
+    echo '<tr style="font-weight: bold;">';
+    echo '<td colspan="3" style="text-align: right; border: none;">TOTAL</td>';
+    echo '<td style="text-align: right; border: none;">' . number_format($totalAmount, 2) . '</td>';
+    echo '<td style="text-align: right; border: none;"></td>';
+    echo '</tr>';
+}
+else {
+    echo '<tr><td colspan="5" class="text-center">NO RECORDS FOUND</td></tr>';
+}
+?>
             </tbody>
         </table>
     </div>

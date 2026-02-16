@@ -102,7 +102,8 @@ foreach ($ecCounts as $ec => $count) {
 }
 // Sort by count descending
 usort($ecStats, function ($a, $b) {
-    return $b['count'] - $a['count']; });
+    return $b['count'] - $a['count'];
+});
 
 
 // Count total electric cooperatives
@@ -114,57 +115,6 @@ $totalECs = $ecStmt->fetch(PDO::FETCH_ASSOC)['total'];
 $adsStmt = $conn->prepare("SELECT COUNT(*) as total FROM ads");
 $adsStmt->execute();
 $totalADS = $adsStmt->fetch(PDO::FETCH_ASSOC)['total'];
-
-// Count documents by Item
-$itemCount = [];
-$stmt = $conn->prepare("SELECT item, COUNT(*) as count FROM manap GROUP BY item ORDER BY count DESC");
-$stmt->execute();
-$itemStats = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Count documents by Department - Optimized
-$deptCount = [];
-$stmt = $conn->prepare("SELECT department, COUNT(*) as count FROM manap WHERE department IS NOT NULL AND department != '' GROUP BY department");
-$stmt->execute();
-$deptRawStats = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Process department data to remove numbering and aggregate counts
-$deptStatsMap = [];
-foreach ($deptRawStats as $record) {
-    if (!empty($record['department'])) {
-        $count = $record['count'];
-        $depts = array_filter(array_map('trim', explode("\n", $record['department'])));
-
-        // Use a temporary array to avoid double counting if the same department appears multiple times in one record
-        // (Though logically one document is likely one 'count' for that department)
-        $uniqueDeptsInrecord = [];
-
-        foreach ($depts as $dept) {
-            $deptName = preg_replace('/^\d+\.\s+/', '', $dept);
-            if (!in_array($deptName, $uniqueDeptsInrecord)) {
-                $uniqueDeptsInrecord[] = $deptName;
-            }
-        }
-
-        foreach ($uniqueDeptsInrecord as $deptName) {
-            if (!isset($deptStatsMap[$deptName])) {
-                $deptStatsMap[$deptName] = 0;
-            }
-            // Logic change: Previously we counted matching rows. 
-            // If a row has "Dept A" and "Dept B", it counted as 1 for A and 1 for B.
-            // So we add 'count' (number of rows with this exact string) to the department's total.
-            $deptStatsMap[$deptName] += $count;
-        }
-    }
-}
-
-// Convert to array
-$deptStats = [];
-foreach ($deptStatsMap as $dept => $count) {
-    $deptStats[] = ['department' => $dept, 'count' => $count];
-}
-usort($deptStats, function ($a, $b) {
-    return $b['count'] - $a['count']; });
-
 
 // Count documents by Team - Optimized
 $teamCount = [];
@@ -202,13 +152,19 @@ foreach ($teamStatsMap as $team => $count) {
     $teamStats[] = ['team' => $team, 'count' => $count];
 }
 usort($teamStats, function ($a, $b) {
-    return $b['count'] - $a['count']; });
+    return $b['count'] - $a['count'];
+});
 
 // Get PPE Provident Fund remaining balance - Calculate from actual PPE table data
 $ppeStmt = $conn->prepare("SELECT balance FROM ppe ORDER BY id DESC LIMIT 1");
 $ppeStmt->execute();
 $ppeResult = $ppeStmt->fetch(PDO::FETCH_ASSOC);
 $ppeBalance = $ppeResult ? floatval($ppeResult['balance']) : 0;
+
+// Fetch latest AOM records for countdown
+$stmt = $conn->prepare("SELECT item, date, title FROM aom_table ORDER BY date DESC LIMIT 5");
+$stmt->execute();
+$aomRecentRecords = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 ob_start();
 ?>
@@ -302,25 +258,6 @@ else {
             </div>
         </div>
 
-        <!-- Item Distribution Chart -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Documents by Item</h2>
-            <div style="height: 300px;">
-                <canvas id="itemChart"></canvas>
-            </div>
-        </div>
-    </div>
-
-    <!-- Additional Charts Section -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <!-- Department Distribution Chart -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Documents by Department</h2>
-            <div style="height: 300px;">
-                <canvas id="deptChart"></canvas>
-            </div>
-        </div>
-
         <!-- Team Distribution Chart -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
             <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Documents by Team</h2>
@@ -329,6 +266,69 @@ else {
             </div>
         </div>
     </div>
+
+    <!-- AOM Notification Table -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-8">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">AOM Notification (15-Day Countdown)</h2>
+        <div class="overflow-x-auto">
+            <table class="w-full border-collapse">
+                <thead>
+                    <tr class="bg-gray-50 dark:bg-gray-700">
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b dark:border-gray-600">Item</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b dark:border-gray-600">Date</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b dark:border-gray-600">Title</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b dark:border-gray-600">Countdown</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                    <?php if (empty($aomRecentRecords)): ?>
+                        <tr>
+                            <td colspan="4" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">No AOM records found</td>
+                        </tr>
+                    <?php
+else: ?>
+                        <?php foreach ($aomRecentRecords as $record):
+        $dateObj = new DateTime($record['date']);
+        $targetDate = clone $dateObj;
+        $targetDate->modify('+15 days');
+        $now = new DateTime();
+
+        $interval = $now->diff($targetDate);
+        $isExpired = $now > $targetDate;
+        $daysLeft = $interval->days;
+
+        $statusClass = 'text-green-700 bg-green-100 dark:bg-green-900/30 dark:text-green-400';
+        if ($isExpired) {
+            $statusClass = 'text-red-700 bg-red-100 dark:bg-red-900/30 dark:text-red-400';
+            $displayDiff = 'Expired';
+        }
+        elseif ($daysLeft <= 5) {
+            $statusClass = 'text-orange-700 bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400';
+            $displayDiff = $daysLeft . ' days left';
+        }
+        else {
+            $displayDiff = $daysLeft . ' days left';
+        }
+?>
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white"><?php echo htmlspecialchars($record['item']); ?></td>
+                                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400"><?php echo $dateObj->format('M d, Y'); ?></td>
+                                <td class="px-4 py-4 text-sm text-gray-900 dark:text-white max-w-md truncate"><?php echo htmlspecialchars($record['title']); ?></td>
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?php echo $statusClass; ?>">
+                                        <?php echo $displayDiff; ?>
+                                    </span>
+                                </td>
+                            </tr>
+                        <?php
+    endforeach; ?>
+                    <?php
+endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
 
     <!-- Main Content Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -466,42 +466,7 @@ endif; ?>
         const ecCtx = document.getElementById('ecChart').getContext('2d');
         new Chart(ecCtx, getChartConfig('bar', ecLabels, ecValues, 'Number of Documents'));
 
-        // Item Distribution Chart
-        const itemData = <?php echo json_encode($itemStats); ?>;
-        const itemLabels = itemData.map(item => item.item).slice(0, 8);
-        const itemValues = itemData.map(item => item.count).slice(0, 8);
 
-        const itemCtx = document.getElementById('itemChart').getContext('2d');
-        const itemColors = ChartColorHelper.getChartColorsByCount(itemLabels.length);
-        new Chart(itemCtx, {
-            type: 'doughnut',
-            data: {
-                labels: itemLabels,
-                datasets: [{
-                    data: itemValues,
-                    backgroundColor: itemColors,
-                    borderColor: 'rgba(255, 255, 255, 0.1)',
-                    borderWidth: 2
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                }
-            }
-        });
-
-        // Department Distribution Chart
-        const deptData = <?php echo json_encode($deptStats); ?>;
-        const deptLabels = deptData.map(item => item.department);
-        const deptValues = deptData.map(item => item.count);
-
-        const deptCtx = document.getElementById('deptChart').getContext('2d');
-        new Chart(deptCtx, getChartConfig('bar', deptLabels, deptValues, 'Number of Documents', true));
 
         // Team Distribution Chart
         const teamData = <?php echo json_encode($teamStats); ?>;

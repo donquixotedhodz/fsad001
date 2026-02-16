@@ -319,6 +319,22 @@ $stmt->execute();
 $result = $stmt->fetch();
 $nextCheckNo = ($result && $result['max_check']) ? intval($result['max_check']) + 1 : $STARTING_CHECK_NO;
 
+// Handle AJAX request to get latest check number
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'get_next_check_no') {
+    header('Content-Type: application/json');
+    try {
+        $stmt = $conn->prepare("SELECT MAX(CAST(check_no AS UNSIGNED)) as max_check FROM ppe WHERE check_no != 'ONLINE' AND check_no IS NOT NULL AND check_no != ''");
+        $stmt->execute();
+        $result = $stmt->fetch();
+        $next = ($result && $result['max_check']) ? intval($result['max_check']) + 1 : $STARTING_CHECK_NO;
+        echo json_encode(['success' => true, 'next_check_no' => $next]);
+    }
+    catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+    exit;
+}
+
 // Handle AJAX request to get PPE record data
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'get_ppe') {
     header('Content-Type: application/json');
@@ -377,36 +393,48 @@ ob_start();
     <div class="mb-6 flex justify-between items-center">
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white">PPE Provident Fund</h1>
         <?php if ($canEdit): ?>
-        <button onclick="document.getElementById('addPPEModal').showModal()" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">
+        <button onclick="openAddPPE()" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">
             + Add PPE
         </button>
         <?php
 endif; ?>
     </div>
 
-    <!-- Success/Error Messages -->
+    <!-- Success/Error Messages (SweetAlert2) -->
     <?php
-// Check for session message first, then check local variable
 $displaySuccess = isset($_SESSION['successMessage']) ? $_SESSION['successMessage'] : (isset($successMessage) ? $successMessage : null);
+$displayError = isset($_SESSION['errorMessage']) ? $_SESSION['errorMessage'] : (isset($errorMessage) ? $errorMessage : null);
+
 if ($displaySuccess):
+    unset($_SESSION['successMessage']);
 ?>
-        <div id="successMessage" class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded flex justify-between items-center">
-            <span><?php echo $displaySuccess; ?></span>
-            <button onclick="document.getElementById('successMessage').style.display = 'none'" class="text-green-700 hover:text-green-900 font-bold ml-4">✕</button>
-        </div>
-        <?php unset($_SESSION['successMessage']); ?>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            Swal.fire({
+                icon: 'success',
+                title: 'Success',
+                text: '<?php echo addslashes($displaySuccess); ?>',
+                confirmButtonColor: '#3b82f6'
+            });
+        });
+    </script>
     <?php
 endif; ?>
+
     <?php
-// Check for session error message first, then check local variable
-$displayError = isset($_SESSION['errorMessage']) ? $_SESSION['errorMessage'] : (isset($errorMessage) ? $errorMessage : null);
 if ($displayError):
+    unset($_SESSION['errorMessage']);
 ?>
-        <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded flex justify-between items-center">
-            <span><?php echo $displayError; ?></span>
-            <button onclick="this.parentElement.style.display = 'none'" class="text-red-700 hover:text-red-900 font-bold ml-4">✕</button>
-        </div>
-        <?php unset($_SESSION['errorMessage']); ?>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: '<?php echo addslashes($displayError); ?>',
+                confirmButtonColor: '#ef4444'
+            });
+        });
+    </script>
     <?php
 endif; ?>
 
@@ -447,7 +475,7 @@ endif; ?>
                 </div>
 
                 <!-- DV/OR No -->
-                <div class="col-span-2">
+                <div class="col-span-2" id="addDVContainer">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">DV/OR No.</label>
                     <!-- Actual Check Format -->
                     <div id="addDVFormatted" class="flex gap-2">
@@ -570,7 +598,7 @@ endif; ?>
                 </div>
 
                 <!-- DV/OR No -->
-                <div class="col-span-2">
+                <div class="col-span-2" id="editDVContainer">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">DV/OR No.</label>
                     <!-- Actual Check Format -->
                     <div id="editDVFormatted" class="flex gap-2">
@@ -754,7 +782,7 @@ try {
     if (count($ppeRecords) > 0) {
         foreach ($ppeRecords as $record) {
             $formattedDate = date('m/d/Y', strtotime($record['date']));
-            echo '<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">';
+            echo '<tr class="hover:bg-gray-50 dark:hover:bg-gray-700 align-top">';
             echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($formattedDate) . '</td>';
             echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['particulars']) . '</td>';
             echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-gray-700 dark:text-gray-300 hidden sm:table-cell">' . htmlspecialchars($record['check_no'] ?? '') . '</td>';
@@ -772,13 +800,15 @@ try {
                 echo '<span class="text-gray-400 text-sm">-</span>';
             }
             echo '</td>';
-            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center">';
+            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3">';
             if ($canEdit) {
-                echo '<button onclick="editPPE(' . $record['id'] . ')" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition mr-2" style="background-color: #eab308;" title="Edit"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>';
+                echo '<div class="flex justify-center items-center gap-2">';
+                echo '<button onclick="editPPE(' . $record['id'] . ')" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition" style="background-color: #eab308;" title="Edit"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>';
                 echo '<button onclick="deletePPE(' . htmlspecialchars(json_encode($record)) . ')" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition" style="background-color: var(--theme-danger);" title="Delete"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>';
+                echo '</div>';
             }
             else {
-                echo '<span class="text-gray-400 text-sm">View Only</span>';
+                echo '<div class="text-center"><span class="text-gray-400 text-sm">View Only</span></div>';
             }
             echo '</td>';
             echo '</tr>';
@@ -854,45 +884,81 @@ function toggleCheckNoInput() {
     const checkType = document.getElementById('checkType').value;
     const checkNoDiv = document.getElementById('checkNoDiv');
     const checkNoInput = document.getElementById('checkNoInput');
+    const dvContainer = document.getElementById('addDVContainer');
     const dvFormatted = document.getElementById('addDVFormatted');
     const dvOnline = document.getElementById('addDVOnline');
     
-    if (checkType === 'online' || checkType === 'remittance') {
+    if (checkType === 'online') {
         checkNoDiv.style.display = 'none';
         checkNoInput.required = false;
         checkNoInput.value = '';
+        dvContainer.style.display = 'none';
+    } else if (checkType === 'remittance') {
+        checkNoDiv.style.display = 'none';
+        checkNoInput.required = false;
+        checkNoInput.value = '';
+        dvContainer.style.display = 'block';
         dvFormatted.style.display = 'none';
         dvOnline.style.display = 'block';
-        document.getElementById('addDVManual').required = false;
     } else {
         checkNoDiv.style.display = 'block';
         checkNoInput.required = true;
+        dvContainer.style.display = 'block';
         dvFormatted.style.display = 'flex';
         dvOnline.style.display = 'none';
-        document.getElementById('addDVManual').required = false;
+        // Fetch latest check no when switching to actual
+        fetchLatestCheckNo();
     }
+}
+
+function fetchLatestCheckNo() {
+    fetch('', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'action=get_next_check_no'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const input = document.getElementById('checkNoInput');
+            if (input) input.value = data.next_check_no;
+        }
+    });
+}
+
+function openAddPPE() {
+    fetchLatestCheckNo();
+    document.getElementById('addPPEModal').showModal();
 }
 
 function toggleCheckNoInputEdit() {
     const checkType = document.getElementById('editCheckType').value;
     const checkNoDiv = document.getElementById('editCheckNoDiv');
     const checkNoInput = document.getElementById('editCheckNoInput');
+    const dvContainer = document.getElementById('editDVContainer');
     const dvFormatted = document.getElementById('editDVFormatted');
     const dvOnline = document.getElementById('editDVOnline');
     
-    if (checkType === 'online' || checkType === 'remittance') {
+    if (checkType === 'online') {
         checkNoDiv.style.display = 'none';
         checkNoInput.required = false;
         checkNoInput.value = '';
+        dvContainer.style.display = 'none';
+    } else if (checkType === 'remittance') {
+        checkNoDiv.style.display = 'none';
+        checkNoInput.required = false;
+        checkNoInput.value = '';
+        dvContainer.style.display = 'block';
         dvFormatted.style.display = 'none';
         dvOnline.style.display = 'block';
-        document.getElementById('editDVManual').required = false;
     } else {
         checkNoDiv.style.display = 'block';
         checkNoInput.required = true;
+        dvContainer.style.display = 'block';
         dvFormatted.style.display = 'flex';
         dvOnline.style.display = 'none';
-        document.getElementById('editDVManual').required = false;
     }
 }
 
@@ -1077,10 +1143,17 @@ function prepareAddPPESubmit(event) {
     const checkType = document.getElementById('checkType').value;
     const hiddenDV = document.getElementById('addDVNumber');
     
-    if (checkType === 'online' || checkType === 'remittance') {
+    if (checkType === 'online') {
+        hiddenDV.value = '';
+    } else if (checkType === 'remittance') {
         const manualDV = document.getElementById('addDVManual').value;
         if (!manualDV) {
-            alert('Please enter DV/OR suffix');
+            Swal.fire({
+                icon: 'error',
+                title: 'Validation Error',
+                text: 'Please enter DV/OR suffix',
+                confirmButtonColor: '#ef4444'
+            });
             return;
         }
         hiddenDV.value = manualDV;
@@ -1088,7 +1161,12 @@ function prepareAddPPESubmit(event) {
         const prefix = document.getElementById('addDVPrefix').value;
         const suffix = document.getElementById('addDVSuffix').value;
         if (!suffix) {
-            alert('Please enter DV/OR suffix');
+            Swal.fire({
+                icon: 'error',
+                title: 'Validation Error',
+                text: 'Please enter DV/OR suffix',
+                confirmButtonColor: '#ef4444'
+            });
             return;
         }
         hiddenDV.value = prefix + suffix;
@@ -1097,7 +1175,12 @@ function prepareAddPPESubmit(event) {
     // Validate particulars
     const particulars = document.querySelector('[name="particulars"]').value.trim();
     if (!particulars) {
-        alert('Please enter particulars (names)');
+        Swal.fire({
+            icon: 'error',
+            title: 'Validation Error',
+            text: 'Please enter particulars (names)',
+            confirmButtonColor: '#ef4444'
+        });
         return;
     }
     
@@ -1184,7 +1267,9 @@ function prepareEditPPESubmit(event) {
     const checkType = document.getElementById('editCheckType').value;
     const hiddenDV = document.getElementById('editDVNumber');
     
-    if (checkType === 'online' || checkType === 'remittance') {
+    if (checkType === 'online') {
+        hiddenDV.value = '';
+    } else if (checkType === 'remittance') {
         const manualDV = document.getElementById('editDVManual').value.trim();
         hiddenDV.value = manualDV;
     } else if (checkType === 'actual') {
@@ -1202,7 +1287,12 @@ function prepareEditPPESubmit(event) {
     // Validate particulars
     const particulars = document.getElementById('editParticulars').value.trim();
     if (!particulars) {
-        alert('Please enter particulars (names)');
+        Swal.fire({
+            icon: 'error',
+            title: 'Validation Error',
+            text: 'Please enter particulars (names)',
+            confirmButtonColor: '#ef4444'
+        });
         return;
     }
     
@@ -1321,7 +1411,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Add search results
                     data.records.forEach(record => {
                         const row = document.createElement('tr');
-                        row.className = 'border-b border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition';
+                        row.className = 'border-b border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition align-top';
                         
                         const balance = parseFloat(record.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                         const debit = parseFloat(record.debit || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

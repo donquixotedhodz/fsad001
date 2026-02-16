@@ -216,20 +216,20 @@ $dateGenerated = date('F d, Y');
                     </th>
                 </tr>
                 <tr>
-                    <th style="width: 10%;">Item</th>
-                    <th style="width: 5%;">Date</th>
-                    <th style="width: 15%;">Department</th>
-                    <th style="width: 20%;">Title</th>
+                    <th style="width: 10%; text-align: center;">Item</th>
+                    <th style="width: 7%; text-align: center;">Date</th>
+                    <th style="width: 5%; text-align: center;">Department</th>
+                    <th style="width: 15%;">Title</th>
                     <th style="width: 20%;">COA Observation</th>
-                    <th style="width: 15%;">Recommendations</th>
-                    <th style="width: 15%;">Comments / Justification</th>
+                    <th style="width: 20%;">Recommendations</th>
+                    <th style="width: 20%;">Comments / Justification</th>
                 </tr>
             </thead>
             <tbody>
                 <?php
 if (count($records) > 0) {
     foreach ($records as $record) {
-        $formattedDate = $record['date'] ? date('m/d/Y', strtotime($record['date'])) : '';
+        $formattedDate = $record['date'] ? date('F d, Y', strtotime($record['date'])) : '';
 
         // Parse recommendations and justifications
         $recs = [];
@@ -254,45 +254,29 @@ if (count($records) > 0) {
 
         $maxRows = max(count($recs), count($justs));
 
-        echo '<tr>';
-        echo '<td>' . htmlspecialchars($record['item'] ?? '') . '</td>';
-        echo '<td>' . htmlspecialchars($formattedDate) . '</td>';
-        echo '<td>' . htmlspecialchars($record['department_acronym'] ?: ($record['department_name'] ?? '')) . '</td>';
-        echo '<td>' . htmlspecialchars($record['title']) . '</td>';
-        echo '<td style="white-space: pre-wrap;">' . htmlspecialchars($record['coa_observation'] ?? '') . '</td>';
-
-        // Recommendations
-        echo '<td style="white-space: pre-wrap;">';
         for ($i = 0; $i < $maxRows; $i++) {
+            echo '<tr>';
+            if ($i === 0) {
+                echo '<td rowspan="' . $maxRows . '" style="text-align: center;">' . htmlspecialchars($record['item'] ?? '') . '</td>';
+                echo '<td rowspan="' . $maxRows . '" style="text-align: center;">' . htmlspecialchars($formattedDate) . '</td>';
+                echo '<td rowspan="' . $maxRows . '" style="text-align: center;">' . htmlspecialchars($record['department_acronym'] ?: ($record['department_name'] ?? '')) . '</td>';
+                echo '<td rowspan="' . $maxRows . '" style="text-align: justify;">' . htmlspecialchars($record['title']) . '</td>';
+                echo '<td rowspan="' . $maxRows . '" style="white-space: pre-wrap; text-align: justify;">' . htmlspecialchars($record['coa_observation'] ?? '') . '</td>';
+            }
+
             $rec = isset($recs[$i]) ? trim($recs[$i]) : '';
             $just = isset($justs[$i]) ? trim($justs[$i]) : '';
-            if ($i > 0)
-                echo "\n\n";
-            if ($rec === '' && $just !== '') {
-                echo '<span style="opacity:0; user-select:none; pointer-events:none;">' . htmlspecialchars($just) . '</span>';
-            }
-            else {
-                echo htmlspecialchars($rec);
-            }
-        }
-        echo '</td>';
 
-        // Justification
-        echo '<td style="white-space: pre-wrap;">';
-        for ($i = 0; $i < $maxRows; $i++) {
-            $rec = isset($recs[$i]) ? trim($recs[$i]) : '';
-            $just = isset($justs[$i]) ? trim($justs[$i]) : '';
+            $borderStyle = "";
             if ($i > 0)
-                echo "\n\n";
-            if ($just === '' && $rec !== '') {
-                echo '<span style="opacity:0; user-select:none; pointer-events:none;">' . htmlspecialchars($rec) . '</span>';
-            }
-            else {
-                echo htmlspecialchars($just);
-            }
+                $borderStyle .= "border-top: none; ";
+            if ($i < $maxRows - 1)
+                $borderStyle .= "border-bottom: none; ";
+
+            echo '<td style="white-space: pre-wrap; text-align: justify; ' . $borderStyle . '">' . htmlspecialchars($rec) . '</td>';
+            echo '<td style="white-space: pre-wrap; text-align: justify; ' . $borderStyle . '">' . htmlspecialchars($just) . '</td>';
+            echo '</tr>';
         }
-        echo '</td>';
-        echo '</tr>';
     }
 }
 else {

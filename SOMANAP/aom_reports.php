@@ -33,7 +33,10 @@ ob_start();
         <div class="flex justify-between items-center mb-4">
             <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Audit Observation Memorandum - Reports</h1>
             <div class="flex gap-3">
-                <button onclick="window.open('aom_print.php' + getQueryString(), '_blank')" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">
+                <button onclick="window.open('aom_print.php' + getQueryString(), '_blank')" class="flex items-center gap-2 px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5Zm-3 0h.008v.008H15V10.5Z" />
+                    </svg>
                     Print
                 </button>
                 <button onclick="exportToExcel()" class="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition">
@@ -219,13 +222,13 @@ for ($year = $currentYear; $year >= 2020; $year--) {
         <table class="w-full border-collapse">
             <thead>
                 <tr class="bg-gray-100 dark:bg-gray-700">
-                    <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-900 dark:text-white">Item</th>
-                    <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-900 dark:text-white">Date</th>
-                    <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-900 dark:text-white">Department</th>
-                    <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-900 dark:text-white">Title</th>
-                    <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-900 dark:text-white">COA Observation</th>
-                    <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-900 dark:text-white">Recommendations</th>
-                    <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-900 dark:text-white">Comments / Justification</th>
+                    <th style="width: 10%; text-align: center;" class="border border-gray-300 dark:border-gray-600 px-4 py-3 font-semibold text-gray-900 dark:text-white">Item</th>
+                    <th style="width: 7%; text-align: center;" class="border border-gray-300 dark:border-gray-600 px-4 py-3 font-semibold text-gray-900 dark:text-white">Date</th>
+                    <th style="width: 5%; text-align: center;" class="border border-gray-300 dark:border-gray-600 px-4 py-3 font-semibold text-gray-900 dark:text-white">Department</th>
+                    <th style="width: 15%;" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-900 dark:text-white">Title</th>
+                    <th style="width: 20%;" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-900 dark:text-white">COA Observation</th>
+                    <th style="width: 20%;" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-900 dark:text-white">Recommendations</th>
+                    <th style="width: 20%;" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-900 dark:text-white">Comments / Justification</th>
                 </tr>
             </thead>
             <tbody>
@@ -307,7 +310,7 @@ try {
 
     if (count($records) > 0) {
         foreach ($records as $record) {
-            $formattedDate = $record['date'] ? date('m/d/Y', strtotime($record['date'])) : '';
+            $formattedDate = $record['date'] ? date('M/d/Y', strtotime($record['date'])) : '';
 
             // Parse recommendations and justifications
             $recs = [];
@@ -332,45 +335,29 @@ try {
 
             $maxRows = max(count($recs), count($justs));
 
-            echo '<tr class="hover:bg-gray-50 dark:hover:bg-gray-700 align-top">';
-            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['item'] ?? '') . '</td>';
-            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($formattedDate) . '</td>';
-            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['department_acronym'] ?: ($record['department_name'] ?? '')) . '</td>';
-            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['title']) . '</td>';
-            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-pre-wrap text-sm">' . htmlspecialchars($record['coa_observation'] ?? '') . '</td>';
-
-            // Recommendations column
-            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300 text-sm whitespace-pre-wrap">';
             for ($i = 0; $i < $maxRows; $i++) {
+                echo '<tr class="hover:bg-gray-50 dark:hover:bg-gray-700 align-top">';
+                if ($i === 0) {
+                    echo '<td rowspan="' . $maxRows . '" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['item'] ?? '') . '</td>';
+                    echo '<td rowspan="' . $maxRows . '" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-gray-700 dark:text-gray-300">' . htmlspecialchars($formattedDate) . '</td>';
+                    echo '<td rowspan="' . $maxRows . '" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['department_acronym'] ?: ($record['department_name'] ?? '')) . '</td>';
+                    echo '<td rowspan="' . $maxRows . '" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['title']) . '</td>';
+                    echo '<td rowspan="' . $maxRows . '" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-pre-wrap text-sm">' . htmlspecialchars($record['coa_observation'] ?? '') . '</td>';
+                }
+
                 $rec = isset($recs[$i]) ? trim($recs[$i]) : '';
                 $just = isset($justs[$i]) ? trim($justs[$i]) : '';
-                if ($i > 0)
-                    echo "\n\n";
-                if ($rec === '' && $just !== '') {
-                    echo '<span style="opacity:0; user-select:none; pointer-events:none;">' . htmlspecialchars($just) . '</span>';
-                }
-                else {
-                    echo htmlspecialchars($rec);
-                }
-            }
-            echo '</td>';
 
-            // Justification column
-            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300 text-sm whitespace-pre-wrap">';
-            for ($i = 0; $i < $maxRows; $i++) {
-                $rec = isset($recs[$i]) ? trim($recs[$i]) : '';
-                $just = isset($justs[$i]) ? trim($justs[$i]) : '';
+                $borderStyle = "";
                 if ($i > 0)
-                    echo "\n\n";
-                if ($just === '' && $rec !== '') {
-                    echo '<span style="opacity:0; user-select:none; pointer-events:none;">' . htmlspecialchars($rec) . '</span>';
-                }
-                else {
-                    echo htmlspecialchars($just);
-                }
+                    $borderStyle .= "border-top: none; ";
+                if ($i < $maxRows - 1)
+                    $borderStyle .= "border-bottom: none; ";
+
+                echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-sm whitespace-pre-wrap" style="' . $borderStyle . '">' . htmlspecialchars($rec) . '</td>';
+                echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-sm whitespace-pre-wrap" style="' . $borderStyle . '">' . htmlspecialchars($just) . '</td>';
+                echo '</tr>';
             }
-            echo '</td>';
-            echo '</tr>';
         }
     }
     else {

@@ -163,26 +163,26 @@ else: ?>
             <table class="w-full">
                 <thead class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
                     <tr>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Item</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Date</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Department</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white w-1/5">Title</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white w-1/4">COA Observation</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white w-1/4">COA Recommendation</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white w-1/4">Comments/Justification</th>
+                        <th style="width: 10%; text-align: center;" class="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white">Item</th>
+                        <th style="width: 7%; text-align: center;" class="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white">Date</th>
+                        <th style="width: 5%; text-align: center;" class="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white">Department</th>
+                        <th style="width: 15%;" class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Title</th>
+                        <th style="width: 20%;" class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">COA Observation</th>
+                        <th style="width: 20%;" class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">COA Recommendation</th>
+                        <th style="width: 20%;" class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Comments/Justification</th>
                         <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($records as $idx => $record): ?>
-                    <tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
-                        <td class="px-6 py-4 text-sm text-gray-900 dark:text-white font-medium">
+                    <tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition align-top">
+                        <td class="px-6 py-4 text-sm text-gray-900 dark:text-white font-medium text-center">
                             <?php echo htmlspecialchars($record['item'] ?? ''); ?>
                         </td>
-                        <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
-                            <?php echo $record['date'] ? date('F d, Y', strtotime($record['date'])) : ''; ?>
+                        <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 text-center">
+                            <?php echo $record['date'] ? date('M/d/Y', strtotime($record['date'])) : ''; ?>
                         </td>
-                        <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
+                        <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 text-center">
                             <?php echo htmlspecialchars($record['department_acronym'] ?: ($record['department_name'] ?? '')); ?>
                         </td>
                         <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 align-top">
@@ -301,28 +301,30 @@ else: ?>
 ?>
                             </div>
                         </td>
-                        <td class="px-6 py-4 text-sm space-x-2 flex items-center">
-                            <!-- View Button -->
-                            <button onclick="viewAOM(<?php echo $record['id']; ?>)" title="View details" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition" style="background-color: var(--theme-primary);">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                                </svg>
-                            </button>
-                            
-                            <!-- Edit Button -->
-                            <button onclick="editAOM(<?php echo $record['id']; ?>)" title="Edit AOM" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition" style="background-color: #eab308;">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                </svg>
-                            </button>
-                            
-                            <!-- Delete Button -->
-                            <button onclick="deleteAOM(<?php echo $record['id']; ?>, '<?php echo htmlspecialchars(addslashes($record['title'])); ?>')" title="Delete AOM" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition" style="background-color: var(--theme-danger);">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                </svg>
-                            </button>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-2">
+                                <!-- View Button -->
+                                <button onclick="viewAOM(<?php echo $record['id']; ?>)" title="View details" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition" style="background-color: var(--theme-primary);">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                    </svg>
+                                </button>
+                                
+                                <!-- Edit Button -->
+                                <button onclick="editAOM(<?php echo $record['id']; ?>)" title="Edit AOM" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition" style="background-color: #eab308;">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                    </svg>
+                                </button>
+                                
+                                <!-- Delete Button -->
+                                <button onclick="deleteAOM(<?php echo $record['id']; ?>, '<?php echo htmlspecialchars(addslashes($record['title'])); ?>')" title="Delete AOM" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition" style="background-color: var(--theme-danger);">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                    </svg>
+                                </button>
+                            </div>
                         </td>
                     </tr>
                     <?php
@@ -424,7 +426,7 @@ endif; ?>
                 <select id="department" name="department_id" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                     <option value="">Select Department</option>
                     <?php foreach ($departments as $dept): ?>
-                    <option value="<?php echo $dept['id']; ?>"><?php echo htmlspecialchars($dept['name'] . ($dept['acronym'] ? ' (' . $dept['acronym'] . ')' : '')); ?></option>
+                    <option value="<?php echo $dept['id']; ?>"><?php echo htmlspecialchars($dept['name']); ?></option>
                     <?php
 endforeach; ?>
                 </select>
@@ -692,7 +694,11 @@ function viewAOM(id) {
                             </div>
                             <div>
                                 <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Date</p>
-                                <p class="text-gray-900 dark:text-white">${record.date ? new Date(record.date).toLocaleDateString('en-US', {year: 'numeric', month: 'long', day: 'numeric'}) : ''}</p>
+                                <p class="text-gray-900 dark:text-white">${record.date ? (() => {
+                                    const d = new Date(record.date);
+                                    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                                    return `${months[d.getMonth()]}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
+                                })() : ''}</p>
                             </div>
                         </div>
                         <div>

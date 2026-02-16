@@ -2,6 +2,13 @@
 session_start();
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/app/controllers/MainController.php';
+require_once __DIR__ . '/vendor/autoload.php';
+
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 
 MainController::requireAuth();
 
@@ -74,93 +81,31 @@ $stmt = $conn->prepare($sql);
 $stmt->execute($params);
 $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Create Excel (XLSX) manually like in ppe_export.php
-$tempDir = sys_get_temp_dir() . '/aom_' . uniqid();
-mkdir($tempDir, 0777, true);
-mkdir($tempDir . '/_rels', 0777, true);
-mkdir($tempDir . '/xl/_rels', 0777, true);
-mkdir($tempDir . '/xl/worksheets', 0777, true);
+// Create Spreadsheet
+$spreadsheet = new Spreadsheet();
+$sheet = $spreadsheet->getActiveSheet();
+$sheet->setTitle('AOM Reports');
 
-// Create _rels/.rels
-file_put_contents($tempDir . '/_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-    <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
-</Relationships>');
+// Header row
+$headers = ['Item', 'Date', 'Department', 'Title', 'COA Observation', 'Recommendations', 'Comments / Justification'];
+$sheet->fromArray($headers, NULL, 'A1');
 
-// Create xl/_rels/workbook.xml.rels
-file_put_contents($tempDir . '/xl/_rels/workbook.xml.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-    <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
-    <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
-</Relationships>');
+// Style the header
+$headerStyle = [
+    'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '4F81BD']],
+    'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
+];
+$sheet->getStyle('A1:G1')->applyFromArray($headerStyle);
 
-// Create xl/workbook.xml
-file_put_contents($tempDir . '/xl/workbook.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-    <fileVersion appName="xl" lastEdited="6" lowestEdited="6" rupBuild="9302"/>
-    <workbookPr defaultTheme="1"/>
-    <sheets>
-        <sheet name="AOM Reports" sheetId="1" r:id="rId1"/>
-    </sheets>
-</workbook>');
-
-// Create xl/styles.xml
-file_put_contents($tempDir . '/xl/styles.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-    <fonts count="2">
-        <font><sz val="11"/><color theme="1"/><name val="Calibri"/><family val="2"/></font>
-        <font><b/><sz val="11"/><color rgb="FFFFFF"/><name val="Calibri"/><family val="2"/></font>
-    </fonts>
-    <fills count="3">
-        <fill><patternFill patternType="none"/></fill>
-        <fill><patternFill patternType="gray125"/></fill>
-        <fill><patternFill patternType="solid"><fgColor rgb="366092"/></patternFill></fill>
-    </fills>
-    <borders count="2">
-        <border><left/><right/><top/><bottom/><diagonal/></border>
-        <border><left style="thin"/><right style="thin"/><top style="thin"/><bottom style="thin"/><diagonal/></border>
-    </borders>
-    <cellStyleXfs count="1">
-        <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
-    </cellStyleXfs>
-    <cellXfs count="2">
-        <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf>
-        <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
-    </cellXfs>
-</styleSheet>');
-
-// Create xl/worksheets/sheet1.xml
-$rowCount = count($records) + 1;
-$sheetXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-    <dimension ref="A1:G' . $rowCount . '"/>
-    <cols>
-        <col min="1" max="1" width="15" customWidth="true"/>
-        <col min="2" max="2" width="12" customWidth="true"/>
-        <col min="3" max="3" width="20" customWidth="true"/>
-        <col min="4" max="4" width="30" customWidth="true"/>
-        <col min="5" max="5" width="40" customWidth="true"/>
-        <col min="6" max="6" width="30" customWidth="true"/>
-        <col min="7" max="7" width="30" customWidth="true"/>
-    </cols>
-    <sheetData>
-        <row r="1" ht="25" customHeight="true">
-            <c r="A1" s="1" t="str"><v>Item</v></c>
-            <c r="B1" s="1" t="str"><v>Date</v></c>
-            <c r="C1" s="1" t="str"><v>Department</v></c>
-            <c r="D1" s="1" t="str"><v>Title</v></c>
-            <c r="E1" s="1" t="str"><v>COA Observation</v></c>
-            <c r="F1" s="1" t="str"><v>Recommendations</v></c>
-            <c r="G1" s="1" t="str"><v>Comments / Justification</v></c>
-        </row>';
-
-$row = 2;
+$currentRow = 2;
 foreach ($records as $record) {
-    $date = $record['date'] ? date('m/d/Y', strtotime($record['date'])) : '';
-    $item = htmlspecialchars($record['item'] ?? '');
-    $dept = htmlspecialchars($record['department_acronym'] ?: ($record['department_name'] ?? ''));
-    $title = htmlspecialchars($record['title'] ?? '');
-    $obs = htmlspecialchars($record['coa_observation'] ?? '');
+    $date = $record['date'] ? date('M/d/Y', strtotime($record['date'])) : '';
+    $item = $record['item'] ?? '';
+    $dept = $record['department_acronym'] ?: ($record['department_name'] ?? '');
+    $title = $record['title'] ?? '';
+    $obs = $record['coa_observation'] ?? '';
 
     // Recommendations and Justifications
     $recs = [];
@@ -183,99 +128,68 @@ foreach ($records as $record) {
         $justs = [];
     }
 
-    $maxRows = max(count($recs), count($justs));
-    $recItems = [];
-    $justItems = [];
-    for ($i = 0; $i < $maxRows; $i++) {
-        $recItems[] = isset($recs[$i]) ? trim($recs[$i]) : '';
-        $justItems[] = isset($justs[$i]) ? trim($justs[$i]) : '';
-    }
-    $recsStr = htmlspecialchars(implode("\n\n", $recItems));
-    $justsStr = htmlspecialchars(implode("\n\n", $justItems));
+    $maxSubRows = max(count($recs), count($justs));
+    $startRow = $currentRow;
 
-    $sheetXml .= '
-        <row r="' . $row . '">
-            <c r="A' . $row . '" s="0" t="str"><v>' . $item . '</v></c>
-            <c r="B' . $row . '" s="0" t="str"><v>' . $date . '</v></c>
-            <c r="C' . $row . '" s="0" t="str"><v>' . $dept . '</v></c>
-            <c r="D' . $row . '" s="0" t="str"><v>' . $title . '</v></c>
-            <c r="E' . $row . '" s="0" t="str"><v>' . $obs . '</v></c>
-            <c r="F' . $row . '" s="0" t="str"><v>' . $recsStr . '</v></c>
-            <c r="G' . $row . '" s="0" t="str"><v>' . $justsStr . '</v></c>
-        </row>';
-    $row++;
-}
+    for ($i = 0; $i < $maxSubRows; $i++) {
+        $rec = isset($recs[$i]) ? trim($recs[$i]) : '';
+        $just = isset($justs[$i]) ? trim($justs[$i]) : '';
 
-$sheetXml .= '
-    </sheetData>
-</worksheet>';
-
-file_put_contents($tempDir . '/xl/worksheets/sheet1.xml', $sheetXml);
-
-// Create [Content_Types].xml
-file_put_contents($tempDir . '/[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-    <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-    <Default Extension="xml" ContentType="application/xml"/>
-    <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
-    <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
-    <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
-</Types>');
-
-// Create ZIP file
-$zipPath = sys_get_temp_dir() . '/AOM_Reports_' . uniqid() . '.xlsx';
-
-if (class_exists('ZipArchive')) {
-    $zip = new ZipArchive();
-    if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true) {
-        $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($tempDir), RecursiveIteratorIterator::SELF_FIRST);
-        foreach ($files as $file) {
-            if ($file->isFile()) {
-                $filePath = $file->getRealPath();
-                $relativePath = str_replace($tempDir . DIRECTORY_SEPARATOR, '', $filePath);
-                $zip->addFile($filePath, $relativePath);
-            }
+        if ($i === 0) {
+            $sheet->setCellValue('A' . $currentRow, $item);
+            $sheet->setCellValue('B' . $currentRow, $date);
+            $sheet->setCellValue('C' . $currentRow, $dept);
+            $sheet->setCellValue('D' . $currentRow, $title);
+            $sheet->setCellValue('E' . $currentRow, $obs);
         }
-        $zip->close();
+        $sheet->setCellValue('F' . $currentRow, $rec);
+        $sheet->setCellValue('G' . $currentRow, $just);
+        $currentRow++;
+    }
+
+    if ($maxSubRows > 1) {
+        $endRow = $currentRow - 1;
+        // Merge cells for the main record info
+        $sheet->mergeCells("A$startRow:A$endRow");
+        $sheet->mergeCells("B$startRow:B$endRow");
+        $sheet->mergeCells("C$startRow:C$endRow");
+        $sheet->mergeCells("D$startRow:D$endRow");
+        $sheet->mergeCells("E$startRow:E$endRow");
     }
 }
-elseif (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-    $sourceDirWin = str_replace('/', '\\', $tempDir);
-    $zipPathWin = str_replace('/', '\\', $zipPath);
-    $psScript = "[System.Reflection.Assembly]::LoadWithPartialName('System.IO.Compression.FileSystem') | Out-Null; " .
-        "[System.IO.Compression.ZipFile]::CreateFromDirectory('" . str_replace("'", "''", $sourceDirWin) . "', '" . str_replace("'", "''", $zipPathWin) . "')";
-    $tempScript = tempnam(sys_get_temp_dir(), 'zip') . '.ps1';
-    file_put_contents($tempScript, $psScript);
-    shell_exec('powershell -NoProfile -ExecutionPolicy Bypass -File ' . escapeshellarg($tempScript));
-    unlink($tempScript);
+
+// Global formatting
+$lastRow = $currentRow - 1;
+if ($lastRow >= 1) {
+    $bodyStyle = [
+        'alignment' => ['vertical' => Alignment::VERTICAL_TOP, 'wrapText' => true],
+        'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
+    ];
+    $sheet->getStyle('A1:G' . $lastRow)->applyFromArray($bodyStyle);
+
+    // Center Align Item, Date, Department columns
+    $sheet->getStyle('A2:C' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+    // Justify Align Title, Observation, Recs, Justs (Spreadsheet doesn't have true "justify" like HTML, but we can set it)
+    $sheet->getStyle('D2:G' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_JUSTIFY);
 }
 
-// Send to browser
-if (file_exists($zipPath)) {
-    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    header('Content-Disposition: attachment; filename="AOM_Reports_' . date('Y-m-d') . '.xlsx"');
-    header('Content-Length: ' . filesize($zipPath));
-    readfile($zipPath);
-    unlink($zipPath);
+// Auto-size columns with limits
+foreach (range('A', 'G') as $col) {
+    $sheet->getColumnDimension($col)->setAutoSize(true);
 }
+// Set specific widths for text-heavy columns
+$sheet->getColumnDimension('D')->setAutoSize(false)->setWidth(30); // Title
+$sheet->getColumnDimension('E')->setAutoSize(false)->setWidth(40); // Observation
+$sheet->getColumnDimension('F')->setAutoSize(false)->setWidth(40); // Recommendations
+$sheet->getColumnDimension('G')->setAutoSize(false)->setWidth(40); // Justifications
 
-// Cleanup
-function deleteDir($dir)
-{
-    if (!is_dir($dir))
-        return;
-    $items = scandir($dir);
-    foreach ($items as $item) {
-        if ($item === '.' || $item === '..')
-            continue;
-        $path = $dir . DIRECTORY_SEPARATOR . $item;
-        if (is_dir($path))
-            deleteDir($path);
-        else
-            unlink($path);
-    }
-    rmdir($dir);
-}
-deleteDir($tempDir);
-exit();
-?>
+// Redirect output to a client's web browser (Xlsx)
+header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+header('Content-Disposition: attachment;filename="AOM_Reports_' . date('Y-m-d_His') . '.xlsx"');
+header('Cache-Control: max-age=0');
+header('Cache-Control: max-age=1');
+
+$writer = new Xlsx($spreadsheet);
+$writer->save('php://output');
+exit;

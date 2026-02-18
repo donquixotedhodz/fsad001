@@ -402,7 +402,7 @@ endif; ?>
 
     <!-- Chart.js Script -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="../SOMANAP/app/js/ChartColorHelper.js"></script>
+    <script src="../main/app/js/ChartColorHelper.js"></script>
     <script>
         // Helper function to get chart config with colors
         function getChartConfig(type, labels, data, label, hideXLabels = false) {

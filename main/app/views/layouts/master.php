@@ -149,6 +149,53 @@
         .dark .custom-tooltip .tooltip-text::after {
             border-color: #1f2937 transparent transparent transparent;
         }
+
+        /* Ensure SweetAlert2 is always on top */
+        .swal2-container {
+            z-index: 99999 !important;
+        }
+
+        /* Sidebar Collapse Styles */
+        #sidebar {
+            transition: width 0.3s ease-in-out, transform 0.3s ease-in-out;
+        }
+        
+        #main-content {
+            transition: margin-left 0.3s ease-in-out;
+        }
+
+        .sidebar-collapsed #sidebar {
+            width: 5rem !important;
+        }
+
+        .sidebar-collapsed #main-content {
+            margin-left: 5rem !important;
+        }
+
+        .sidebar-collapsed #sidebar .h-20 h2,
+        .sidebar-collapsed #sidebar span,
+        .sidebar-collapsed #sidebar nav svg:nth-child(3) {
+            display: none !important;
+        }
+
+        .sidebar-collapsed #sidebar .px-4 {
+            padding-left: 0.75rem !important;
+            padding-right: 0.75rem !important;
+        }
+
+        .sidebar-collapsed #sidebar a,
+        .sidebar-collapsed #sidebar button {
+            justify-content: center !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+        }
+
+        /* Hide specific sidebar header items when collapsed */
+        .sidebar-collapsed #sidebar .h-20 {
+            justify-content: center !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+        }
     </style>
     <script>
         // Set PDF worker
@@ -300,10 +347,10 @@
     </script>
 </head>
 <body
-    x-data="{ darkMode: false }"
-    x-init="initTheme()"
+    x-data="{ darkMode: false, sidebarCollapsed: false }"
+    x-init="initTheme(); sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true'; if(sidebarCollapsed) document.body.classList.add('sidebar-collapsed')"
     @keydown.window="if(event.key === 'd' && event.ctrlKey) { darkMode = !darkMode; applyDarkMode(); }"
-    :class="{ 'dark bg-gray-900': darkMode === true }"
+    :class="{ 'dark bg-gray-900': darkMode === true, 'sidebar-collapsed': sidebarCollapsed }"
     class="bg-white dark:bg-gray-900"
 >
     <!-- Sidebar -->
@@ -380,7 +427,7 @@ require_once __DIR__ . '/../partials/sidebar.php';
     <div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden hidden" onclick="toggleSidebar()"></div>
 
     <!-- Main Content -->
-    <div class="lg:ml-64 min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div id="main-content" class="lg:ml-64 min-h-screen bg-gray-50 dark:bg-gray-900 transition-all duration-300">
         <!-- Top Header -->
         <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-20">
             <div class="flex items-center justify-between h-20 px-4">
@@ -388,6 +435,13 @@ require_once __DIR__ . '/../partials/sidebar.php';
                 <button onclick="toggleSidebar()" class="lg:hidden text-gray-500 hover:text-gray-900 dark:hover:text-white transition">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
+
+                <!-- Desktop Sidebar Toggle (Hamburger) -->
+                <button @click="sidebarCollapsed = !sidebarCollapsed; localStorage.setItem('sidebarCollapsed', sidebarCollapsed)" class="hidden lg:flex p-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-all hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" title="Toggle Sidebar">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                     </svg>
                 </button>
                 <div class="flex-1"></div>
@@ -559,23 +613,40 @@ endif; ?>
         }
     }
 
-    // Logout confirmation function
-    function confirmLogout() {
-        Swal.fire({
-            title: 'Are you sure?',
-            text: 'You will be logged out and redirected to the sign-in page.',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#dc2626',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: 'Yes, logout',
-            cancelButtonText: 'Cancel'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                window.location.href = 'logout.php';
-            }
-        });
-    }
+        // Logout confirmation function
+        function confirmLogout() {
+            Swal.fire({
+                title: 'Are you sure?',
+                text: 'You will be logged out and redirected to the sign-in page.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Yes, logout',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = 'logout.php';
+                }
+            });
+        }
+
+        // Ensure SweetAlert2 is always in front of native dialogs
+        (function() {
+            const originalFire = Swal.fire;
+            Swal.fire = function(...args) {
+                const openDialogs = document.querySelectorAll('dialog[open]');
+                if (openDialogs.length > 0) {
+                    const lastDialog = openDialogs[openDialogs.length - 1];
+                    if (typeof args[0] === 'object' && args[0] !== null) {
+                        if (!args[0].target) {
+                            args[0].target = lastDialog;
+                        }
+                    }
+                }
+                return originalFire.apply(this, args);
+            };
+        })();
     </script>
 
     <!-- Footer -->

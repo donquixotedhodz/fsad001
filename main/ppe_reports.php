@@ -174,10 +174,10 @@ foreach ($months as $monthNum => $monthName) {
         <table class="w-full border-collapse">
             <thead>
                 <tr class="bg-gray-100 dark:bg-gray-700">
-                    <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-900 dark:text-white">Date</th>
+                    <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center font-semibold text-gray-900 dark:text-white">Date</th>
+                    <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-900 dark:text-white">Name</th>
                     <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center font-semibold text-gray-900 dark:text-white">Check No.</th>
                     <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center font-semibold text-gray-900 dark:text-white">DV No.</th>
-                    <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-900 dark:text-white">Name</th>
                     <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-right font-semibold text-gray-900 dark:text-white">Debit</th>
                     <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-right font-semibold text-gray-900 dark:text-white">Credit</th>
                     <th class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-right font-semibold text-gray-900 dark:text-white">Balance</th>
@@ -322,10 +322,10 @@ try {
 
             $formattedDate = date('m/d/Y', strtotime($record['date']));
             echo '<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">';
-            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($formattedDate) . '</td>';
+            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-gray-700 dark:text-gray-300">' . htmlspecialchars($formattedDate) . '</td>';
+            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['particulars']) . '</td>';
             echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['check_no'] ?? '') . '</td>';
             echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['dv_or_no'] ?? '') . '</td>';
-            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['particulars']) . '</td>';
             echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-right text-gray-700 dark:text-gray-300">' . number_format($record['debit'], 2) . '</td>';
             echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-right text-gray-700 dark:text-gray-300">' . number_format($record['credit'], 2) . '</td>';
             echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-right font-semibold text-gray-900 dark:text-white">' . number_format($currentBalance, 2) . '</td>';
@@ -392,23 +392,19 @@ if (!empty($filterParams)) {
 $reports = [
     [
         'title' => 'Check Issued',
-        'printUrl' => 'ppe_check_issued_print.php',
-        'color' => 'blue'
+        'printUrl' => 'ppe_check_issued_print.php'
     ],
     [
         'title' => 'Remittance',
-        'printUrl' => 'ppe_remittance_print.php',
-        'color' => 'indigo'
+        'printUrl' => 'ppe_remittance_print.php'
     ],
     [
         'title' => 'Check Issued - Receiving',
-        'printUrl' => 'ppe_print.php',
-        'color' => 'purple'
+        'printUrl' => 'ppe_print.php'
     ],
     [
         'title' => 'Cash Balance',
-        'printUrl' => 'ppe_table_print.php',
-        'color' => 'green'
+        'printUrl' => 'ppe_table_print.php'
     ]
 ];
 
@@ -417,16 +413,18 @@ foreach ($reports as $report):
                 <div class="border border-gray-300 dark:border-gray-600 rounded-lg p-4">
                     <h3 class="font-semibold text-gray-900 dark:text-white mb-3"><?php echo $report['title']; ?></h3>
                     <div class="grid grid-cols-3 gap-2">
-                        <a href="<?php echo $report['printUrl'] . $queryString; ?>" target="_blank" class="flex items-center justify-center gap-2 px-4 py-2 bg-<?php echo $report['color']; ?>-500 text-white rounded-lg hover:bg-<?php echo $report['color']; ?>-600 transition text-center text-sm font-medium">
+                        <a href="<?php echo $report['printUrl'] . $queryString; ?>" target="_blank" class="flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition text-center text-sm font-medium">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                               <path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5Zm-3 0h.008v.008H15V10.5Z" />
                             </svg>
                             Print
                         </a>
-                        <a href="<?php echo $report['printUrl'] . ($queryString ? $queryString . '&format=pdf' : '?format=pdf'); ?>" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition text-center text-sm font-medium">
+                        <a href="<?php echo $report['printUrl'] . ($queryString ? $queryString . '&format=pdf' : '?format=pdf'); ?>" class="flex items-center justify-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition text-center text-sm font-medium">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/8/87/PDF_file_icon.svg" class="w-4 h-4" alt="PDF Icon">
                             Export PDF
                         </a>
-                        <a href="<?php echo $report['printUrl'] . ($queryString ? $queryString . '&format=excel' : '?format=excel'); ?>" class="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition text-center text-sm font-medium">
+                        <a href="<?php echo $report['printUrl'] . ($queryString ? $queryString . '&format=excel' : '?format=excel'); ?>" class="flex items-center justify-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition text-center text-sm font-medium">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/7/73/Microsoft_Excel_2013-2019_logo.svg" class="w-4 h-4" alt="Excel Icon">
                             Export Excel
                         </a>
                     </div>

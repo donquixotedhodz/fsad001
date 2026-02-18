@@ -145,17 +145,31 @@ endif; ?>
 endif; ?>
     </div>
 
-    <!-- Success/Error Messages -->
+    <!-- SweetAlert2 Notifications -->
     <?php if (isset($successMessage)): ?>
-        <div class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
-            <?php echo $successMessage; ?>
-        </div>
+        <script>
+            window.addEventListener('load', function() {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success!',
+                    text: '<?php echo $successMessage; ?>',
+                    confirmButtonColor: '#3b82f6'
+                });
+            });
+        </script>
     <?php
 endif; ?>
     <?php if (isset($errorMessage)): ?>
-        <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-            <?php echo $errorMessage; ?>
-        </div>
+        <script>
+            window.addEventListener('load', function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: '<?php echo $errorMessage; ?>',
+                    confirmButtonColor: '#ef4444'
+                });
+            });
+        </script>
     <?php
 endif; ?>
 
@@ -389,7 +403,23 @@ function editEC(id) {
             document.getElementById('editCode').value = data.record.code;
             document.getElementById('editDescription').value = data.record.description || '';
             document.getElementById('editECModal').showModal();
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: data.message || 'Record not found',
+                confirmButtonColor: '#ef4444'
+            });
         }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Failed to load EC data',
+            confirmButtonColor: '#ef4444'
+        });
     });
 }
 

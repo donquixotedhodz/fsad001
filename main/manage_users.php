@@ -184,26 +184,39 @@ endif; ?>
 endif; ?>
     </div>
 
-    <!-- Success/Error Messages -->
+    <!-- SweetAlert2 Notifications -->
     <?php
 $displaySuccess = isset($_SESSION['successMessage']) ? $_SESSION['successMessage'] : (isset($successMessage) ? $successMessage : null);
 if ($displaySuccess):
 ?>
-        <div id="successMessage" class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded flex justify-between items-center">
-            <span><?php echo $displaySuccess; ?></span>
-            <button onclick="document.getElementById('successMessage').style.display = 'none'" class="text-green-700 hover:text-green-900 font-bold ml-4">✕</button>
-        </div>
+        <script>
+            window.addEventListener('load', function() {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success!',
+                    text: '<?php echo $displaySuccess; ?>',
+                    confirmButtonColor: '#3b82f6'
+                });
+            });
+        </script>
         <?php unset($_SESSION['successMessage']); ?>
     <?php
 endif; ?>
+
     <?php
 $displayError = isset($_SESSION['errorMessage']) ? $_SESSION['errorMessage'] : (isset($errorMessage) ? $errorMessage : null);
 if ($displayError):
 ?>
-        <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded flex justify-between items-center">
-            <span><?php echo $displayError; ?></span>
-            <button onclick="this.parentElement.style.display = 'none'" class="text-red-700 hover:text-red-900 font-bold ml-4">✕</button>
-        </div>
+        <script>
+            window.addEventListener('load', function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: '<?php echo $displayError; ?>',
+                    confirmButtonColor: '#ef4444'
+                });
+            });
+        </script>
         <?php unset($_SESSION['errorMessage']); ?>
     <?php
 endif; ?>
@@ -453,12 +466,22 @@ function editUser(id) {
             // Open the modal
             document.getElementById('editUserModal').showModal();
         } else {
-            alert('Error loading user data: ' + data.message);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: data.message || 'User not found',
+                confirmButtonColor: '#ef4444'
+            });
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Failed to load user data');
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Failed to load user data',
+            confirmButtonColor: '#ef4444'
+        });
     });
 }
 

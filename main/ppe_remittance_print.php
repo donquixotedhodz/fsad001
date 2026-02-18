@@ -64,13 +64,26 @@ if ($format === 'excel') {
     // Title and Header
     $sheet->setCellValue('A1', 'PPE PROVIDENT FUND INC.');
     $sheet->setCellValue('A2', 'Remittance');
-    $sheet->setCellValue('A3', strtoupper(date('F d, Y')));
+    $dateFilter = $_GET['date_filter'] ?? '';
+    $yearNum = $_GET['selected_year'] ?? date('Y');
+    $monthNum = $_GET['selected_month'] ?? date('m');
+
+    if ($dateFilter === 'annual') {
+        $dateText = "AS OF " . $yearNum;
+    }
+    elseif ($dateFilter === 'monthly') {
+        $dateText = "FOR THE MONTH OF " . strtoupper(date('F Y', mktime(0, 0, 0, $monthNum, 1, $yearNum)));
+    }
+    else {
+        $dateText = strtoupper(date('F d, Y'));
+    }
+    $sheet->setCellValue('A3', $dateText);
 
     $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
     $sheet->getStyle('A2')->getFont()->setSize(12);
 
     // Header row
-    $headers = ['CHECK NO.', 'DV NO.', 'DESCRIPTION', 'AMOUNT', 'DATE'];
+    $headers = ['DATE', 'DESCRIPTION', 'CHECK NO.', 'DV NO.', 'AMOUNT'];
     $sheet->fromArray($headers, NULL, 'A5');
 
     // Style the header
@@ -88,32 +101,32 @@ if ($format === 'excel') {
         $totalAmount += $record['amount'];
         $formattedDate = date('m/d/Y', strtotime($record['date']));
 
-        $sheet->setCellValue('A' . $currentRow, $record['check_no'] ?? '');
-        $sheet->setCellValue('B' . $currentRow, $record['dv_or_no'] ?? '');
-        $sheet->setCellValue('C' . $currentRow, strtoupper($record['particulars']));
-        $sheet->setCellValue('D' . $currentRow, $record['amount']);
-        $sheet->setCellValue('E' . $currentRow, $formattedDate);
+        $sheet->setCellValue('A' . $currentRow, $formattedDate);
+        $sheet->setCellValue('B' . $currentRow, strtoupper($record['particulars']));
+        $sheet->setCellValue('C' . $currentRow, $record['check_no'] ?? '');
+        $sheet->setCellValue('D' . $currentRow, $record['dv_or_no'] ?? '');
+        $sheet->setCellValue('E' . $currentRow, $record['amount']);
 
         $currentRow++;
     }
 
     // Total row
-    $sheet->setCellValue('C' . $currentRow, 'TOTAL');
-    $sheet->setCellValue('D' . $currentRow, $totalAmount);
+    $sheet->setCellValue('B' . $currentRow, 'TOTAL');
+    $sheet->setCellValue('E' . $currentRow, $totalAmount);
 
     $totalStyle = [
         'font' => ['bold' => true],
         'borders' => ['top' => ['borderStyle' => Border::BORDER_THIN]]
     ];
     $sheet->getStyle('A' . $currentRow . ':E' . $currentRow)->applyFromArray($totalStyle);
-    $sheet->getStyle('C' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+    $sheet->getStyle('B' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
 
     // Formatting
     $lastRow = $currentRow;
-    $sheet->getStyle('A6:B' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-    $sheet->getStyle('E6:E' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-    $sheet->getStyle('D6:D' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-    $sheet->getStyle('D6:D' . $lastRow)->getNumberFormat()->setFormatCode('#,##0.00');
+    $sheet->getStyle('A6:A' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+    $sheet->getStyle('C6:D' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+    $sheet->getStyle('E6:E' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+    $sheet->getStyle('E6:E' . $lastRow)->getNumberFormat()->setFormatCode('#,##0.00');
 
     // Auto-size columns
     foreach (range('A', 'E') as $col) {
@@ -292,7 +305,21 @@ if ($format === 'pdf') {
             <h1 style="font-size: 16px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase;">PPE PROVIDENT FUND INC.</h1>
             <h2 style="font-size: 14px; margin-bottom: 5px; text-transform: uppercase;">Remittance</h2>
             <div style="font-size: 14px; color: black; text-transform: uppercase;">
-                <div><?php echo strtoupper(date('F d, Y')); ?></div>
+                <div><?php
+$dateFilter = $_GET['date_filter'] ?? '';
+$yearNum = $_GET['selected_year'] ?? date('Y');
+$monthNum = $_GET['selected_month'] ?? date('m');
+
+if ($dateFilter === 'annual') {
+    echo "AS OF " . $yearNum;
+}
+elseif ($dateFilter === 'monthly') {
+    echo "FOR THE MONTH OF " . strtoupper(date('F Y', mktime(0, 0, 0, $monthNum, 1, $yearNum)));
+}
+else {
+    echo strtoupper(date('F d, Y'));
+}
+?></div>
             </div>
         </div>
 
@@ -300,11 +327,11 @@ if ($format === 'pdf') {
         <table>
             <thead>
                 <tr>
-                    <th style="width: 12%;">CHECK NO.</th>
-                    <th style="width: 12%;">DV NO.</th>
+                    <th style="width: 12%;">DATE</th>
                     <th style="width: 40%;">DESCRIPTION</th>
+                    <th style="width: 15%;">CHECK NO.</th>
+                    <th style="width: 15%;">DV NO.</th>
                     <th style="width: 18%; text-align: right;">AMOUNT</th>
-                    <th style="width: 18%; text-align: right;">DATE</th>
                 </tr>
             </thead>
             <tbody>
@@ -317,19 +344,19 @@ if (count($ppeRecords) > 0) {
 
         $formattedDate = date('m/d/Y', strtotime($record['date']));
         echo '<tr>';
-        echo '<td>' . strtoupper(htmlspecialchars($record['check_no'] ?? '')) . '</td>';
-        echo '<td>' . strtoupper(htmlspecialchars($record['dv_or_no'] ?? '')) . '</td>';
+        echo '<td class="text-center">' . strtoupper(htmlspecialchars($formattedDate)) . '</td>';
         echo '<td>' . strtoupper(htmlspecialchars($record['particulars'])) . '</td>';
+        echo '<td class="text-center">' . strtoupper(htmlspecialchars($record['check_no'] ?? '')) . '</td>';
+        echo '<td class="text-center">' . strtoupper(htmlspecialchars($record['dv_or_no'] ?? '')) . '</td>';
         echo '<td class="text-right">' . number_format($record['amount'], 2) . '</td>';
-        echo '<td class="text-right">' . strtoupper(htmlspecialchars($formattedDate)) . '</td>';
         echo '</tr>';
     }
 
     // Add total row
     echo '<tr style="font-weight: bold;">';
-    echo '<td colspan="3" style="text-align: right; border: none;">TOTAL</td>';
+    echo '<td colspan="2" style="text-align: right; border: none;">TOTAL</td>';
+    echo '<td colspan="2" style="border: none;"></td>';
     echo '<td style="text-align: right; border: none;">' . number_format($totalAmount, 2) . '</td>';
-    echo '<td style="text-align: right; border: none;"></td>';
     echo '</tr>';
 }
 else {

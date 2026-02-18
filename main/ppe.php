@@ -689,7 +689,7 @@ endif; ?>
             <a href="ppe_print.php" target="_blank" class="block w-full px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition text-center font-medium dark:bg-blue-600 dark:hover:bg-blue-700">
                 📋 Check Issued
             </a>
-            <a href="ppe_table_print.php" target="_blank" class="block w-full px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition text-center font-medium dark:bg-green-600 dark:hover:bg-green-700">
+            <a href="ppe_table_print.php" target="_blank" class="block w-full px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition text-center font-medium dark:bg-blue-600 dark:hover:bg-blue-700">
                 📊 Cash Balance
             </a>
         </div>
@@ -783,7 +783,7 @@ try {
         foreach ($ppeRecords as $record) {
             $formattedDate = date('m/d/Y', strtotime($record['date']));
             echo '<tr class="hover:bg-gray-50 dark:hover:bg-gray-700 align-top">';
-            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($formattedDate) . '</td>';
+            echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-gray-700 dark:text-gray-300">' . htmlspecialchars($formattedDate) . '</td>';
             echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['particulars']) . '</td>';
             echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-gray-700 dark:text-gray-300 hidden sm:table-cell">' . htmlspecialchars($record['check_no'] ?? '') . '</td>';
             echo '<td class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-gray-700 dark:text-gray-300 hidden md:table-cell">' . htmlspecialchars($record['dv_or_no'] ?? '') . '</td>';

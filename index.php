@@ -72,76 +72,55 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
-        /* Electric Loading Animation */
-        .electric-bolt {
-            animation: electric-heartbeat 1.5s ease-in-out infinite;
+        /* NEA Logo Loading Animation */
+        .loader-container {
+            position: relative;
+            width: 160px;
+            height: 160px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
         }
-        
-        @keyframes electric-heartbeat {
-            0%, 100% { 
-                transform: scale(1); 
-                filter: drop-shadow(0 0 5px #fbbf24) drop-shadow(0 0 10px #fbbf24);
-            }
-            50% { 
-                transform: scale(1.2); 
-                filter: drop-shadow(0 0 15px #f59e0b) drop-shadow(0 0 25px #f59e0b) drop-shadow(0 0 35px #f59e0b);
-            }
+
+        .loader-logo {
+            width: 80px;
+            height: 80px;
+            z-index: 10;
+            animation: logo-pulsate 2s ease-in-out infinite;
         }
-        
-        .sparks .spark {
+
+        .loader-ring {
             position: absolute;
-            width: 4px;
-            height: 4px;
-            background: #fbbf24;
+            width: 140px;
+            height: 140px;
             border-radius: 50%;
-            animation: spark-fly 3s infinite linear;
+            border: 4px solid #f3f4f6; /* Light gray base */
+            border-top: 4px solid #10b981; /* Emerald-500 Green */
+            animation: ring-spin 1.5s linear infinite;
+            filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.3));
         }
-        
-        .sparks .spark-1 {
-            top: 20px;
-            left: 20px;
-            animation-delay: 0s;
+
+        /* Removed inner after-ring */
+
+        @keyframes ring-spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         }
-        
-        .sparks .spark-2 {
-            top: 20px;
-            right: 20px;
-            animation-delay: 0.7s;
+
+        @keyframes logo-pulsate {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 5px rgba(16, 185, 129, 0.2)); }
+            50% { transform: scale(1.08); filter: drop-shadow(0 0 15px rgba(16, 185, 129, 0.5)); }
         }
-        
-        .sparks .spark-3 {
-            bottom: 20px;
-            left: 20px;
-            animation-delay: 1.4s;
-        }
-        
-        .sparks .spark-4 {
-            bottom: 20px;
-            right: 20px;
-            animation-delay: 2.1s;
-        }
-        
-        @keyframes spark-fly {
-            0% {
-                transform: scale(0) rotate(0deg);
-                opacity: 1;
-            }
-            50% {
-                transform: scale(1) rotate(180deg);
-                opacity: 0.8;
-            }
-            100% {
-                transform: scale(0) rotate(360deg);
-                opacity: 0;
-            }
-        }
-        
-        .electric-progress {
+
+        .loading-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981, #34d399); /* Green Gradient */
             width: 0%;
-            animation: electric-fill 3s ease-out forwards;
+            animation: fill-progress 3s ease-out forwards;
         }
-        
-        @keyframes electric-fill {
+
+        @keyframes fill-progress {
             0% { width: 0%; }
             100% { width: 100%; }
         }
@@ -265,22 +244,10 @@ endif; ?>
                         <!-- Loading Screen -->
                         <div id="loading-screen" class="hidden fixed inset-0 bg-white dark:bg-gray-900 flex items-center justify-center z-50">
                             <div class="text-center">
-                                <!-- Electric Loading Animation -->
-                                <div class="relative mb-8 flex justify-center">
-                                    <!-- Central Electric Bolt -->
-                                    <div class="electric-bolt">
-                                        <svg class="w-16 h-16 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
-                                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-                                        </svg>
-                                    </div>
-                                    
-                                    <!-- Spark Particles -->
-                                    <div class="sparks">
-                                        <div class="spark spark-1"></div>
-                                        <div class="spark spark-2"></div>
-                                        <div class="spark spark-3"></div>
-                                        <div class="spark spark-4"></div>
-                                    </div>
+                                <!-- NEA Logo Loading Animation -->
+                                <div class="loader-container">
+                                    <div class="loader-ring"></div>
+                                    <img src="https://upload.wikimedia.org/wikipedia/commons/5/59/National_Electrification_Administration_%28NEA%29.svg" alt="NEA Logo" class="loader-logo">
                                 </div>
                                 
                                 <h3 class="text-xl font-semibold text-gray-800 dark:text-white mb-2">Loading Dashboard</h3>
@@ -288,7 +255,7 @@ endif; ?>
                                 <!-- Progress Bar -->
                                 <div class="mt-6 w-64 mx-auto">
                                     <div class="bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                                        <div class="electric-progress bg-gradient-to-r from-yellow-400 to-blue-500 h-2 rounded-full transition-all duration-3000 ease-out"></div>
+                                        <div class="loading-progress-fill h-2 rounded-full transition-all duration-3000 ease-out"></div>
                                     </div>
                                 </div>
                             </div>
@@ -303,7 +270,7 @@ endif; ?>
                 <div class="text-center">
                     <div class="mb-8">
                         <div class="inline-flex items-center justify-center">
-                            <img src="SOMANAP/app/views/partials/nealogo.png" alt="NEAS Logo" class="w-20 h-20 object-contain">
+                            <img src="main/app/views/partials/nealogo.png" alt="NEAS Logo" class="w-20 h-20 object-contain">
                         </div>
                     </div>
                     <h2 class="text-3xl font-bold text-gray-800 dark:text-white mb-4">National Electrification Administration</h2>
@@ -340,7 +307,7 @@ endif; ?>
         
         // Redirect after animation completes
         setTimeout(function() {
-            window.location.href = 'SOMANAP/dashboard.php';
+            window.location.href = 'main/dashboard.php';
         }, 3000);
     });
     <?php

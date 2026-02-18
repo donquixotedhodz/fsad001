@@ -165,7 +165,7 @@ catch (Exception $e) {
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/apexcharts@latest/dist/apexcharts.min.js"></script>
-<script src="../SOMANAP/app/js/ChartColorHelper.js"></script>
+<script src="../main/app/js/ChartColorHelper.js"></script>
 <script>
 function refreshBalance() {
     const refreshIcon = document.getElementById('refreshIcon');

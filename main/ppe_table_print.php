@@ -126,13 +126,26 @@ if ($format === 'excel') {
     // Title and Header
     $sheet->setCellValue('A1', 'PPE PROVIDENT FUND INC.');
     $sheet->setCellValue('A2', 'Cash Balance');
-    $sheet->setCellValue('A3', strtoupper(date('F d, Y')));
+    $dateFilter = $_GET['date_filter'] ?? '';
+    $yearNum = $_GET['selected_year'] ?? date('Y');
+    $monthNum = $_GET['selected_month'] ?? date('m');
+
+    if ($dateFilter === 'annual') {
+        $dateText = "AS OF " . $yearNum;
+    }
+    elseif ($dateFilter === 'monthly') {
+        $dateText = "FOR THE MONTH OF " . strtoupper(date('F Y', mktime(0, 0, 0, $monthNum, 1, $yearNum)));
+    }
+    else {
+        $dateText = strtoupper(date('F d, Y'));
+    }
+    $sheet->setCellValue('A3', $dateText);
 
     $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
     $sheet->getStyle('A2')->getFont()->setSize(12);
 
     // Header row
-    $headers = ['DATE', 'CHECK NO.', 'DV NO.', 'PARTICULARS', 'DEBIT', 'CREDIT', 'BALANCE'];
+    $headers = ['DATE', 'PARTICULARS', 'CHECK NO.', 'DV/OR NO.', 'DEBIT', 'CREDIT', 'BALANCE'];
     $sheet->fromArray($headers, NULL, 'A5');
 
     // Style the header
@@ -151,7 +164,7 @@ if ($format === 'excel') {
     // Add Balance Forwarded row if needed
     if ($dateFilter === 'monthly' && $balanceForwardDate) {
         $sheet->setCellValue('A' . $currentRow, $balanceForwardDate);
-        $sheet->setCellValue('D' . $currentRow, 'BALANCE FORWARDED');
+        $sheet->setCellValue('B' . $currentRow, 'BALANCE FORWARDED');
         $sheet->setCellValue('G' . $currentRow, $balanceForward);
 
         $sheet->getStyle('A' . $currentRow . ':G' . $currentRow)->getFont()->setBold(true);
@@ -164,9 +177,9 @@ if ($format === 'excel') {
         $formattedDate = date('m/d/Y', strtotime($record['date']));
 
         $sheet->setCellValue('A' . $currentRow, $formattedDate);
-        $sheet->setCellValue('B' . $currentRow, $record['check_no'] ?? '');
-        $sheet->setCellValue('C' . $currentRow, $record['dv_or_no'] ?? '');
-        $sheet->setCellValue('D' . $currentRow, strtoupper($record['particulars']));
+        $sheet->setCellValue('B' . $currentRow, strtoupper($record['particulars']));
+        $sheet->setCellValue('C' . $currentRow, $record['check_no'] ?? '');
+        $sheet->setCellValue('D' . $currentRow, $record['dv_or_no'] ?? '');
         $sheet->setCellValue('E' . $currentRow, $record['debit']);
         $sheet->setCellValue('F' . $currentRow, $record['credit']);
         $sheet->setCellValue('G' . $currentRow, $record['balance']);
@@ -175,7 +188,7 @@ if ($format === 'excel') {
     }
 
     // Total row
-    $sheet->setCellValue('D' . $currentRow, 'TOTAL');
+    $sheet->setCellValue('B' . $currentRow, 'TOTAL');
     $sheet->setCellValue('E' . $currentRow, $totalDebit);
     $sheet->setCellValue('F' . $currentRow, $totalCredit);
     $sheet->setCellValue('G' . $currentRow, !empty($ppeRecords) ? end($ppeRecords)['balance'] : $balanceForward);
@@ -185,11 +198,12 @@ if ($format === 'excel') {
         'borders' => ['top' => ['borderStyle' => Border::BORDER_THIN]]
     ];
     $sheet->getStyle('A' . $currentRow . ':G' . $currentRow)->applyFromArray($totalStyle);
-    $sheet->getStyle('D' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+    $sheet->getStyle('B' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
 
     // Formatting
     $lastRow = $currentRow;
-    $sheet->getStyle('A6:C' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+    $sheet->getStyle('A6:A' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+    $sheet->getStyle('C6:D' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
     $sheet->getStyle('E6:G' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
     $sheet->getStyle('E6:G' . $lastRow)->getNumberFormat()->setFormatCode('#,##0.00');
 
@@ -197,7 +211,7 @@ if ($format === 'excel') {
     foreach (range('A', 'G') as $col) {
         $sheet->getColumnDimension($col)->setAutoSize(true);
     }
-    $sheet->getColumnDimension('D')->setAutoSize(false)->setWidth(50);
+    $sheet->getColumnDimension('B')->setAutoSize(false)->setWidth(50);
 
     $filename = $reportName . '_' . date('Y-m-d_His') . '.xlsx';
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -370,7 +384,21 @@ if ($format === 'pdf') {
             <h1 style="font-size: 16px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase;">PPE PROVIDENT FUND INC.</h1>
             <h2 style="font-size: 14px; margin-bottom: 5px; text-transform: uppercase;">Cash Balance</h2>
             <div style="font-size: 14px; color: black; text-transform: uppercase;">
-                <div><?php echo strtoupper(date('F d, Y')); ?></div>
+                <div><?php
+$dateFilter = $_GET['date_filter'] ?? '';
+$yearNum = $_GET['selected_year'] ?? date('Y');
+$monthNum = $_GET['selected_month'] ?? date('m');
+
+if ($dateFilter === 'annual') {
+    echo "AS OF " . $yearNum;
+}
+elseif ($dateFilter === 'monthly') {
+    echo "FOR THE MONTH OF " . strtoupper(date('F Y', mktime(0, 0, 0, $monthNum, 1, $yearNum)));
+}
+else {
+    echo strtoupper(date('F d, Y'));
+}
+?></div>
             </div>
         </div>
 
@@ -379,9 +407,9 @@ if ($format === 'pdf') {
             <thead>
                 <tr>
                     <th style="width: 8%;">DATE</th>
-                    <th style="width: 8%;">CHECK NO.</th>
-                    <th style="width: 8%;">DV NO.</th>
                     <th style="width: 22%;">PARTICULARS</th>
+                    <th style="width: 8%;">CHECK NO.</th>
+                    <th style="width: 8%;">DV/OR NO.</th>
                     <th style="width: 11%;">DEBIT</th>
                     <th style="width: 11%;">CREDIT</th>
                     <th style="width: 12%;">BALANCE</th>
@@ -396,10 +424,10 @@ if (count($ppeRecords) > 0) {
     // Add Balance Forwarded row first if filtered by month
     if ($dateFilter === 'monthly') {
         echo '<tr style="font-weight: bold;">';
-        echo '<td>' . strtoupper(htmlspecialchars($balanceForwardDate)) . '</td>';
-        echo '<td>&nbsp;</td>';
-        echo '<td>&nbsp;</td>';
+        echo '<td class="text-center">' . strtoupper(htmlspecialchars($balanceForwardDate)) . '</td>';
         echo '<td>' . strtoupper('BALANCE FORWARDED') . '</td>';
+        echo '<td class="text-center">&nbsp;</td>';
+        echo '<td class="text-center">&nbsp;</td>';
         echo '<td class="text-right">&nbsp;</td>';
         echo '<td class="text-right">&nbsp;</td>';
         echo '<td class="text-right">' . number_format($balanceForward, 2) . '</td>';
@@ -412,10 +440,10 @@ if (count($ppeRecords) > 0) {
 
         $formattedDate = date('m/d/Y', strtotime($record['date']));
         echo '<tr>';
-        echo '<td>' . strtoupper(htmlspecialchars($formattedDate)) . '</td>';
-        echo '<td>' . strtoupper(htmlspecialchars($record['check_no'] ?? '')) . '</td>';
-        echo '<td>' . strtoupper(htmlspecialchars($record['dv_or_no'] ?? '')) . '</td>';
+        echo '<td class="text-center">' . strtoupper(htmlspecialchars($formattedDate)) . '</td>';
         echo '<td>' . strtoupper(htmlspecialchars($record['particulars'])) . '</td>';
+        echo '<td class="text-center">' . strtoupper(htmlspecialchars($record['check_no'] ?? '')) . '</td>';
+        echo '<td class="text-center">' . strtoupper(htmlspecialchars($record['dv_or_no'] ?? '')) . '</td>';
         echo '<td class="text-right">' . number_format($record['debit'], 2) . '</td>';
         echo '<td class="text-right">' . number_format($record['credit'], 2) . '</td>';
         echo '<td class="text-right">' . number_format($record['balance'], 2) . '</td>';

@@ -16,7 +16,7 @@ $reportName = 'Check_Issued_Receiving';
 $format = $_GET['format'] ?? 'html';
 
 // Build filter conditions
-$whereConditions = ["check_no != 'ONLINE'"];
+$whereConditions = ["check_no != 'ONLINE'", "check_no IS NOT NULL", "check_no != ''"];
 $params = [];
 
 if (!empty($_GET['date_from'])) {
@@ -64,15 +64,26 @@ if ($format === 'excel') {
     $sheet->setTitle('Check Issued (Receiving)');
 
     // Title and Header
-    $sheet->setCellValue('A1', 'PPE PROVIDENT FUND INC.');
-    $sheet->setCellValue('A2', 'Checks Issued-Receiving');
-    $sheet->setCellValue('A3', strtoupper(date('F d, Y')));
+    $dateFilter = $_GET['date_filter'] ?? '';
+    $yearNum = $_GET['selected_year'] ?? date('Y');
+    $monthNum = $_GET['selected_month'] ?? date('m');
+
+    if ($dateFilter === 'annual') {
+        $dateText = "AS OF " . $yearNum;
+    }
+    elseif ($dateFilter === 'monthly') {
+        $dateText = "FOR THE MONTH OF " . strtoupper(date('F Y', mktime(0, 0, 0, $monthNum, 1, $yearNum)));
+    }
+    else {
+        $dateText = strtoupper(date('F d, Y'));
+    }
+    $sheet->setCellValue('A3', $dateText);
 
     $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
     $sheet->getStyle('A2')->getFont()->setSize(12);
 
     // Header row
-    $headers = ['CHECK NO.', 'DV NO.', 'NAME', 'AMOUNT', 'DATE', 'DATE RELEASED', 'NAME', 'SIGNATURE'];
+    $headers = ['CHECK NO.', 'DV NO.', 'PARTICULARS', 'AMOUNT', 'DATE ISSUED', 'DATE RELEASED', 'PRINTED NAME', 'SIGNATURE'];
     $sheet->fromArray($headers, NULL, 'A5');
 
     // Style the header
@@ -116,7 +127,7 @@ if ($format === 'excel') {
     // Formatting
     $lastRow = $currentRow;
     $sheet->getStyle('A6:B' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-    $sheet->getStyle('E6:F' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+    $sheet->getStyle('E6:H' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
     $sheet->getStyle('D6:D' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
     $sheet->getStyle('D6:D' . $lastRow)->getNumberFormat()->setFormatCode('#,##0.00');
 
@@ -280,7 +291,21 @@ $dateGenerated = date('F d, Y');
             <h1 style="font-size: 16px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase;">PPE PROVIDENT FUND INC.</h1>
             <h2 style="font-size: 14px; margin-bottom: 5px; text-transform: uppercase;">CHECKS ISSUED-Receiving</h2>
             <div style="font-size: 14px; color: black; text-transform: uppercase;">
-                <div><?php echo strtoupper(date('F d, Y')); ?></div>
+                <div><?php
+$dateFilter = $_GET['date_filter'] ?? '';
+$yearNum = $_GET['selected_year'] ?? date('Y');
+$monthNum = $_GET['selected_month'] ?? date('m');
+
+if ($dateFilter === 'annual') {
+    echo "AS OF " . $yearNum;
+}
+elseif ($dateFilter === 'monthly') {
+    echo "FOR THE MONTH OF " . strtoupper(date('F Y', mktime(0, 0, 0, $monthNum, 1, $yearNum)));
+}
+else {
+    echo strtoupper(date('F d, Y'));
+}
+?></div>
             </div>
         </div>
 
@@ -288,13 +313,13 @@ $dateGenerated = date('F d, Y');
         <table>
             <thead>
                 <tr>
-                    <th style="width: 8%;">CHECK NO.</th>
-                    <th style="width: 8%;">DV NO.</th>
-                    <th style="width: 16%;">NAME</th>
+                    <th style="width: 10%;">CHECK NO.</th>
+                    <th style="width: 10%;">DV NO.</th>
+                    <th style="width: 18%;">PARTICULARS</th>
                     <th style="width: 12%; text-align: right;">AMOUNT</th>
-                    <th style="width: 10%;">DATE</th>
-                    <th style="width: 12%;">DATE RELEASED</th>
-                    <th style="width: 21%;">NAME</th>
+                    <th style="width: 10%;">DATE ISSUED</th>
+                    <th style="width: 10%;">DATE RELEASED</th>
+                    <th style="width: 17%;">PRINTED NAME</th>
                     <th style="width: 13%;">SIGNATURE</th>
                 </tr>
             </thead>
@@ -306,11 +331,11 @@ if (count($ppeRecords) > 0) {
         $totalAmount += $record['amount'];
         $formattedDate = date('m/d/Y', strtotime($record['date']));
         echo '<tr>';
-        echo '<td>' . htmlspecialchars(strtoupper($record['check_no'] ?? '')) . '</td>';
-        echo '<td>' . htmlspecialchars(strtoupper($record['dv_or_no'] ?? '')) . '</td>';
+        echo '<td class="text-center">' . htmlspecialchars(strtoupper($record['check_no'] ?? '')) . '</td>';
+        echo '<td class="text-center">' . htmlspecialchars(strtoupper($record['dv_or_no'] ?? '')) . '</td>';
         echo '<td>' . htmlspecialchars(strtoupper($record['particulars'])) . '</td>';
         echo '<td class="text-right">' . number_format($record['amount'], 2) . '</td>';
-        echo '<td>' . htmlspecialchars(strtoupper($formattedDate)) . '</td>';
+        echo '<td class="text-center">' . htmlspecialchars(strtoupper($formattedDate)) . '</td>';
         echo '<td></td>';
         echo '<td></td>';
         echo '<td></td>';
@@ -320,10 +345,7 @@ if (count($ppeRecords) > 0) {
     echo '<tr style="font-weight: bold; border: none;">';
     echo '<td colspan="3" style="text-align: right; border: none;">TOTAL</td>';
     echo '<td class="text-right" style="border: none;">' . number_format($totalAmount, 2) . '</td>';
-    echo '<td style="border: none;"></td>';
-    echo '<td style="border: none;"></td>';
-    echo '<td style="border: none;"></td>';
-    echo '<td style="border: none;"></td>';
+    echo '<td colspan="4" style="border: none;"></td>';
     echo '</tr>';
 }
 else {

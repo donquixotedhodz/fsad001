@@ -26,18 +26,18 @@
 
             <!-- MANAP Dropdown -->
             <div x-data="{ manap_open: <?php echo($currentPage === 'documents' || $currentPage === 'favorites' || $currentPage === 'manap_reports') ? 'true' : 'false'; ?> }">
-                <button @click="if (document.getElementById('sidebar').style.width === '5rem') { toggleSidebar(); setTimeout(() => { manap_open = !manap_open }, 300); } else { manap_open = !manap_open }" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo($currentPage === 'documents' || $currentPage === 'favorites' || $currentPage === 'manap_reports') ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
+                <button @click="if (sidebarCollapsed) { sidebarCollapsed = false; localStorage.setItem('sidebarCollapsed', false); setTimeout(() => { manap_open = !manap_open }, 300); } else { manap_open = !manap_open }" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo($currentPage === 'documents' || $currentPage === 'favorites' || $currentPage === 'manap_reports') ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
                     <span class="font-medium flex-1 text-left">MANAP</span>
-                    <svg class="w-5 h-5 transition-transform" :class="{ 'rotate-180': manap_open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg x-show="!sidebarCollapsed" class="w-5 h-5 transition-transform" :class="{ 'rotate-180': manap_open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
                     </svg>
                 </button>
 
                 <!-- MANAP Submenu -->
-                <div x-show="manap_open" class="pl-6 space-y-1 mt-2">
+                <div x-show="manap_open && !sidebarCollapsed" x-collapse class="pl-6 space-y-1 mt-2">
                     <!-- Documents -->
                     <a href="documents.php" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo $currentPage === 'documents' ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -65,18 +65,18 @@
             <!-- PPE Provident Fund Dropdown - Only for Administrator and Superadmin -->
             <?php if (isset($_SESSION['role']) && ($_SESSION['role'] === 'administrator' || $_SESSION['role'] === 'superadmin')): ?>
             <div x-data="{ ppe_open: <?php echo($currentPage === 'ppe' || $currentPage === 'ppe_reports' || $currentPage === 'ppe_balance') ? 'true' : 'false'; ?> }">
-                <button @click="if (document.getElementById('sidebar').style.width === '5rem') { toggleSidebar(); setTimeout(() => { ppe_open = !ppe_open }, 300); } else { ppe_open = !ppe_open }" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo($currentPage === 'ppe' || $currentPage === 'ppe_reports' || $currentPage === 'ppe_balance') ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
+                <button @click="if (sidebarCollapsed) { sidebarCollapsed = false; localStorage.setItem('sidebarCollapsed', false); setTimeout(() => { ppe_open = !ppe_open }, 300); } else { ppe_open = !ppe_open }" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo($currentPage === 'ppe' || $currentPage === 'ppe_reports' || $currentPage === 'ppe_balance') ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" />
                     </svg>
                     <span class="font-medium flex-1 text-left">PPE Provident Fund</span>
-                    <svg class="w-5 h-5 transition-transform" :class="{ 'rotate-180': ppe_open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg x-show="!sidebarCollapsed" class="w-5 h-5 transition-transform" :class="{ 'rotate-180': ppe_open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
                     </svg>
                 </button>
 
                 <!-- PPE Submenu -->
-                <div x-show="ppe_open" class="pl-6 space-y-1 mt-2">
+                <div x-show="ppe_open && !sidebarCollapsed" x-collapse class="pl-6 space-y-1 mt-2">
                     <!-- Remaining Balance -->
                     <a href="ppe_balance.php" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo $currentPage === 'ppe_balance' ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -105,18 +105,18 @@ endif; ?>
 
             <!-- AD Scorecard Dropdown -->
             <div x-data="{ ads_open: <?php echo($currentPage === 'ads' || $currentPage === 'ad_scorecard_reports') ? 'true' : 'false'; ?> }">
-                <button @click="if (document.getElementById('sidebar').style.width === '5rem') { toggleSidebar(); setTimeout(() => { ads_open = !ads_open }, 300); } else { ads_open = !ads_open }" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo($currentPage === 'ads' || $currentPage === 'ad_scorecard_reports') ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
+                <button @click="if (sidebarCollapsed) { sidebarCollapsed = false; localStorage.setItem('sidebarCollapsed', false); setTimeout(() => { ads_open = !ads_open }, 300); } else { ads_open = !ads_open }" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo($currentPage === 'ads' || $currentPage === 'ad_scorecard_reports') ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                     </svg>
                     <span class="font-medium flex-1 text-left">AD Scorecard</span>
-                    <svg class="w-5 h-5 transition-transform" :class="{ 'rotate-180': ads_open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg x-show="!sidebarCollapsed" class="w-5 h-5 transition-transform" :class="{ 'rotate-180': ads_open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
                     </svg>
                 </button>
 
                 <!-- AD Scorecard Submenu -->
-                <div x-show="ads_open" class="pl-6 space-y-1 mt-2">
+                <div x-show="ads_open && !sidebarCollapsed" x-collapse class="pl-6 space-y-1 mt-2">
                     <!-- Documents -->
                     <a href="ad_scorecard.php" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo $currentPage === 'ads' ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -136,18 +136,18 @@ endif; ?>
 
             <!-- AOM Dropdown -->
             <div x-data="{ aom_open: <?php echo($currentPage === 'aom' || $currentPage === 'aom_reports') ? 'true' : 'false'; ?> }">
-                <button @click="if (document.getElementById('sidebar').style.width === '5rem') { toggleSidebar(); setTimeout(() => { aom_open = !aom_open }, 300); } else { aom_open = !aom_open }" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo($currentPage === 'aom' || $currentPage === 'aom_reports') ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
+                <button @click="if (sidebarCollapsed) { sidebarCollapsed = false; localStorage.setItem('sidebarCollapsed', false); setTimeout(() => { aom_open = !aom_open }, 300); } else { aom_open = !aom_open }" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo($currentPage === 'aom' || $currentPage === 'aom_reports') ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" />
                     </svg>
                     <span class="font-medium flex-1 text-left">AOM</span>
-                    <svg class="w-5 h-5 transition-transform" :class="{ 'rotate-180': aom_open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg x-show="!sidebarCollapsed" class="w-5 h-5 transition-transform" :class="{ 'rotate-180': aom_open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
                     </svg>
                 </button>
 
                 <!-- AOM Submenu -->
-                <div x-show="aom_open" class="pl-6 space-y-1 mt-2">
+                <div x-show="aom_open && !sidebarCollapsed" x-collapse class="pl-6 space-y-1 mt-2">
                     <!-- Documents -->
                     <a href="aom.php" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo $currentPage === 'aom' ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

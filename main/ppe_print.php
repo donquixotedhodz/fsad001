@@ -19,6 +19,30 @@ $format = $_GET['format'] ?? 'html';
 $whereConditions = ["check_no != 'ONLINE'", "check_no IS NOT NULL", "check_no != ''"];
 $params = [];
 
+// Handle date filters if explicit dates are not set
+$dateFilter = $_GET['date_filter'] ?? '';
+$selectedYear = $_GET['selected_year'] ?? date('Y');
+$selectedMonth = $_GET['selected_month'] ?? date('m');
+
+if (empty($_GET['date_from']) && empty($_GET['date_to']) && !empty($dateFilter)) {
+    if ($dateFilter === 'today') {
+        $_GET['date_from'] = date('Y-m-d');
+        $_GET['date_to'] = date('Y-m-d');
+    }
+    elseif ($dateFilter === 'this_week') {
+        $_GET['date_from'] = date('Y-m-d', strtotime('monday this week'));
+        $_GET['date_to'] = date('Y-m-d', strtotime('sunday this week'));
+    }
+    elseif ($dateFilter === 'monthly') {
+        $_GET['date_from'] = date('Y-m-d', strtotime("$selectedYear-$selectedMonth-01"));
+        $_GET['date_to'] = date('Y-m-t', strtotime("$selectedYear-$selectedMonth-01"));
+    }
+    elseif ($dateFilter === 'annual') {
+        $_GET['date_from'] = "$selectedYear-01-01";
+        $_GET['date_to'] = "$selectedYear-12-31";
+    }
+}
+
 if (!empty($_GET['date_from'])) {
     $whereConditions[] = "date >= ?";
     $params[] = $_GET['date_from'];
@@ -210,7 +234,8 @@ $dateGenerated = date('F d, Y');
             .page {
                 margin: 0;
                 padding: 0;
-                page-break-after: always;
+                page-break-after: auto;
+                height: auto;
             }
         }
         
@@ -227,7 +252,7 @@ $dateGenerated = date('F d, Y');
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 10px;
+            font-size: 14px;
             margin-bottom: 15px;
         }
         
@@ -240,7 +265,7 @@ $dateGenerated = date('F d, Y');
         th {
             background-color: #f0f0f0;
             font-weight: bold;
-            font-size: 9px;
+            font-size: 14px;
             text-align: center;
         }
         
@@ -288,8 +313,8 @@ $dateGenerated = date('F d, Y');
     <div class="page">
         <!-- Header -->
         <div style="text-align: left; margin-bottom: 15px;">
-            <h1 style="font-size: 16px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase;">PPE PROVIDENT FUND INC.</h1>
-            <h2 style="font-size: 14px; margin-bottom: 5px; text-transform: uppercase;">CHECKS ISSUED-Receiving</h2>
+            <h1 style="font-size: 20px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase;">PPE PROVIDENT FUND INC.</h1>
+            <h2 style="font-size: 18px; margin-bottom: 5px; text-transform: uppercase;">CHECKS ISSUED-Receiving</h2>
             <div style="font-size: 14px; color: black; text-transform: uppercase;">
                 <div><?php
 $dateFilter = $_GET['date_filter'] ?? '';
@@ -313,10 +338,10 @@ else {
         <table>
             <thead>
                 <tr>
-                    <th style="width: 10%;">CHECK NO.</th>
+                    <th style="width: 8%;">CHECK NO.</th>
                     <th style="width: 10%;">DV NO.</th>
-                    <th style="width: 18%;">PARTICULARS</th>
-                    <th style="width: 12%; text-align: right;">AMOUNT</th>
+                    <th style="width: 20%;">PARTICULARS</th>
+                    <th style="width: 10%;">AMOUNT</th>
                     <th style="width: 10%;">DATE ISSUED</th>
                     <th style="width: 10%;">DATE RELEASED</th>
                     <th style="width: 17%;">PRINTED NAME</th>

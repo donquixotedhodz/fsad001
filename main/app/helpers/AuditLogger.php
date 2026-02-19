@@ -130,9 +130,6 @@ class AuditLogger
         return filter_var($ip, FILTER_VALIDATE_IP) ? $ip : '';
     }
 
-    /**
-     * Get audit logs with filters
-     */
     public function getLogs($filters = [])
     {
         $query = "SELECT * FROM audit_logs WHERE 1=1";
@@ -176,18 +173,64 @@ class AuditLogger
         $query .= " ORDER BY created_at DESC";
 
         if (isset($filters['limit']) && !empty($filters['limit'])) {
-            $query .= " LIMIT ?";
-            $params[] = (int)$filters['limit'];
+            $query .= " LIMIT " . (int)$filters['limit'];
 
             if (isset($filters['offset']) && $filters['offset'] > 0) {
-                $query .= " OFFSET ?";
-                $params[] = (int)$filters['offset'];
+                $query .= " OFFSET " . (int)$filters['offset'];
             }
         }
 
         $stmt = $this->conn->prepare($query);
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Get count of audit logs with filters
+     */
+    public function getLogCount($filters = [])
+    {
+        $query = "SELECT COUNT(*) as count FROM audit_logs WHERE 1=1";
+        $params = [];
+
+        if (isset($filters['action']) && !empty($filters['action'])) {
+            $query .= " AND action = ?";
+            $params[] = $filters['action'];
+        }
+
+        if (isset($filters['table_name']) && !empty($filters['table_name'])) {
+            $query .= " AND table_name = ?";
+            $params[] = $filters['table_name'];
+        }
+
+        if (isset($filters['user_id']) && !empty($filters['user_id'])) {
+            $query .= " AND user_id = ?";
+            $params[] = $filters['user_id'];
+        }
+
+        if (isset($filters['username']) && !empty($filters['username'])) {
+            $query .= " AND username = ?";
+            $params[] = $filters['username'];
+        }
+
+        if (isset($filters['record_id']) && !empty($filters['record_id'])) {
+            $query .= " AND record_id = ?";
+            $params[] = $filters['record_id'];
+        }
+
+        if (isset($filters['date_from']) && !empty($filters['date_from'])) {
+            $query .= " AND DATE(created_at) >= ?";
+            $params[] = $filters['date_from'];
+        }
+
+        if (isset($filters['date_to']) && !empty($filters['date_to'])) {
+            $query .= " AND DATE(created_at) <= ?";
+            $params[] = $filters['date_to'];
+        }
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute($params);
+        return $stmt->fetch(PDO::FETCH_ASSOC)['count'];
     }
 
     /**

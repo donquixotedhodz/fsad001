@@ -32,7 +32,7 @@
                     </svg>
                     <span class="font-medium flex-1 text-left">MANAP</span>
                     <svg x-show="!sidebarCollapsed" class="w-5 h-5 transition-transform" :class="{ 'rotate-180': manap_open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
                     </svg>
                 </button>
 
@@ -71,7 +71,7 @@
                     </svg>
                     <span class="font-medium flex-1 text-left">PPE Provident Fund</span>
                     <svg x-show="!sidebarCollapsed" class="w-5 h-5 transition-transform" :class="{ 'rotate-180': ppe_open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
                     </svg>
                 </button>
 
@@ -111,7 +111,7 @@ endif; ?>
                     </svg>
                     <span class="font-medium flex-1 text-left">AD Scorecard</span>
                     <svg x-show="!sidebarCollapsed" class="w-5 h-5 transition-transform" :class="{ 'rotate-180': ads_open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
                     </svg>
                 </button>
 
@@ -142,7 +142,7 @@ endif; ?>
                     </svg>
                     <span class="font-medium flex-1 text-left">AOM</span>
                     <svg x-show="!sidebarCollapsed" class="w-5 h-5 transition-transform" :class="{ 'rotate-180': aom_open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
                     </svg>
                 </button>
 

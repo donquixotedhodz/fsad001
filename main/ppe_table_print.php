@@ -282,7 +282,8 @@ if ($format === 'pdf') {
             .page {
                 margin: 0;
                 padding: 0;
-                page-break-after: always;
+                page-break-after: auto;
+                height: auto;
             }
         }
         
@@ -299,7 +300,7 @@ if ($format === 'pdf') {
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 10px;
+            font-size: 14px;
             margin-bottom: 15px;
         }
         
@@ -312,12 +313,13 @@ if ($format === 'pdf') {
         th {
             background-color: #f0f0f0;
             font-weight: bold;
-            font-size: 9px;
+            font-size: 14px;
             text-align: center;
         }
         
         td {
-            height: 20px;
+            height: auto;
+            padding: 8px;
         }
         
         .text-right {
@@ -372,6 +374,11 @@ if ($format === 'pdf') {
             background-color: #1d4ed8;
         }
     </style>
+    <script>
+        window.onload = function() {
+            window.print();
+        };
+    </script>
 </head>
 <body>
     <div class="no-print print-button">
@@ -381,8 +388,8 @@ if ($format === 'pdf') {
     <div class="page">
         <!-- Header -->
         <div style="text-align: left; margin-bottom: 15px;">
-            <h1 style="font-size: 16px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase;">PPE PROVIDENT FUND INC.</h1>
-            <h2 style="font-size: 14px; margin-bottom: 5px; text-transform: uppercase;">Cash Balance</h2>
+            <h1 style="font-size: 20px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase;">PPE PROVIDENT FUND INC.</h1>
+            <h2 style="font-size: 18px; margin-bottom: 5px; text-transform: uppercase;">Cash Balance</h2>
             <div style="font-size: 14px; color: black; text-transform: uppercase;">
                 <div><?php
 $dateFilter = $_GET['date_filter'] ?? '';
@@ -467,9 +474,9 @@ else {
 
         <!-- Prepared By Section -->
         <div style="margin-top: 20px; width: 30%; font-family: Arial, sans-serif;">
-            <p style="font-size: 12px; margin: 0;">Prepared by:</p>
-            <p style="margin-top: 30px; font-size: 12px; margin-bottom: 0; font-weight: bold;">MARIA LAARNI B. CO</p>
-            <p style="font-size: 12px; margin: 0;">Treasurer</p>
+            <p style="font-size: 14px; margin: 0;">Prepared by:</p>
+            <p style="margin-top: 30px; font-size: 14px; margin-bottom: 0; font-weight: bold;">MARIA LAARNI B. CO</p>
+            <p style="font-size: 14px; margin: 0;">Treasurer</p>
         </div>
     </div>
 </body>

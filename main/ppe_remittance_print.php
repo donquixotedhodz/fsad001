@@ -12,6 +12,7 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Font;
 
 // Handle export formats
 $format = $_GET['format'] ?? 'html';
@@ -19,6 +20,30 @@ $format = $_GET['format'] ?? 'html';
 // Build filter conditions - only show remittances
 $whereConditions = ["particulars LIKE '%REMITTANCE%'"];
 $params = [];
+
+// Handle date filters if explicit dates are not set
+$dateFilter = $_GET['date_filter'] ?? '';
+$selectedYear = $_GET['selected_year'] ?? date('Y');
+$selectedMonth = $_GET['selected_month'] ?? date('m');
+
+if (empty($_GET['date_from']) && empty($_GET['date_to']) && !empty($dateFilter)) {
+    if ($dateFilter === 'today') {
+        $_GET['date_from'] = date('Y-m-d');
+        $_GET['date_to'] = date('Y-m-d');
+    }
+    elseif ($dateFilter === 'this_week') {
+        $_GET['date_from'] = date('Y-m-d', strtotime('monday this week'));
+        $_GET['date_to'] = date('Y-m-d', strtotime('sunday this week'));
+    }
+    elseif ($dateFilter === 'monthly') {
+        $_GET['date_from'] = date('Y-m-d', strtotime("$selectedYear-$selectedMonth-01"));
+        $_GET['date_to'] = date('Y-m-t', strtotime("$selectedYear-$selectedMonth-01"));
+    }
+    elseif ($dateFilter === 'annual') {
+        $_GET['date_from'] = "$selectedYear-01-01";
+        $_GET['date_to'] = "$selectedYear-12-31";
+    }
+}
 
 if (!empty($_GET['date_from'])) {
     $whereConditions[] = "date >= ?";
@@ -111,7 +136,7 @@ if ($format === 'excel') {
     }
 
     // Total row
-    $sheet->setCellValue('B' . $currentRow, 'TOTAL');
+    $sheet->setCellValue('D' . $currentRow, 'TOTAL');
     $sheet->setCellValue('E' . $currentRow, $totalAmount);
 
     $totalStyle = [
@@ -119,7 +144,8 @@ if ($format === 'excel') {
         'borders' => ['top' => ['borderStyle' => Border::BORDER_THIN]]
     ];
     $sheet->getStyle('A' . $currentRow . ':E' . $currentRow)->applyFromArray($totalStyle);
-    $sheet->getStyle('B' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+    $sheet->getStyle('D' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+    $sheet->getStyle('E' . $currentRow)->getFont()->setUnderline(Font::UNDERLINE_SINGLE);
 
     // Formatting
     $lastRow = $currentRow;
@@ -203,7 +229,8 @@ if ($format === 'pdf') {
             .page {
                 margin: 0;
                 padding: 0;
-                page-break-after: always;
+                page-break-after: auto;
+                height: auto;
             }
         }
         
@@ -220,7 +247,7 @@ if ($format === 'pdf') {
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 10px;
+            font-size: 14px;
             margin-bottom: 15px;
         }
         
@@ -233,7 +260,7 @@ if ($format === 'pdf') {
         th {
             background-color: #f0f0f0;
             font-weight: bold;
-            font-size: 9px;
+            font-size: 14px;
             text-align: center;
         }
         
@@ -296,14 +323,14 @@ if ($format === 'pdf') {
 </head>
 <body>
     <div class="no-print print-button">
-        <button onclick="window.print()">🖨️ Print</button>
+        <button onclick="window.print()">Print</button>
     </div>
 
     <div class="page">
         <!-- Header -->
         <div style="text-align: left; margin-bottom: 15px;">
-            <h1 style="font-size: 16px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase;">PPE PROVIDENT FUND INC.</h1>
-            <h2 style="font-size: 14px; margin-bottom: 5px; text-transform: uppercase;">Remittance</h2>
+            <h1 style="font-size: 20px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase;">PPE PROVIDENT FUND INC.</h1>
+            <h2 style="font-size: 18px; margin-bottom: 5px; text-transform: uppercase;">Remittance</h2>
             <div style="font-size: 14px; color: black; text-transform: uppercase;">
                 <div><?php
 $dateFilter = $_GET['date_filter'] ?? '';
@@ -354,9 +381,8 @@ if (count($ppeRecords) > 0) {
 
     // Add total row
     echo '<tr style="font-weight: bold;">';
-    echo '<td colspan="2" style="text-align: right; border: none;">TOTAL</td>';
-    echo '<td colspan="2" style="border: none;"></td>';
-    echo '<td style="text-align: right; border: none;">' . number_format($totalAmount, 2) . '</td>';
+    echo '<td colspan="4" style="text-align: right; border: none;"></td>';
+    echo '<td style="text-align: right; border: none;">TOTAL&nbsp;&nbsp;&nbsp;<span style="text-decoration: underline;">' . number_format($totalAmount, 2) . '</span></td>';
     echo '</tr>';
 }
 else {

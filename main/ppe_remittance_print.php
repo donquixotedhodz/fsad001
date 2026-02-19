@@ -358,7 +358,7 @@ else {
                     <th style="width: 40%;">DESCRIPTION</th>
                     <th style="width: 15%;">CHECK NO.</th>
                     <th style="width: 15%;">DV NO.</th>
-                    <th style="width: 18%; text-align: right;">AMOUNT</th>
+                    <th style="width: 18%;">AMOUNT</th>
                 </tr>
             </thead>
             <tbody>

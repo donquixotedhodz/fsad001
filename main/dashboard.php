@@ -474,14 +474,7 @@ endif; ?>
         const teamValues = teamData.map(item => item.count);
 
         const teamCtx = document.getElementById('teamChart').getContext('2d');
-        const teamConfig = getChartConfig('line', teamLabels, teamValues, 'Number of Documents');
-        teamConfig.data.datasets[0].fill = false;
-        teamConfig.data.datasets[0].tension = 0.35;
-        teamConfig.data.datasets[0].pointRadius = 4;
-        teamConfig.data.datasets[0].pointHoverRadius = 6;
-        teamConfig.data.datasets[0].borderWidth = 2;
-        teamConfig.data.datasets[0].backgroundColor = teamConfig.data.datasets[0].borderColor;
-        new Chart(teamCtx, teamConfig);
+        new Chart(teamCtx, getChartConfig('bar', teamLabels, teamValues, 'Number of Documents'));
 
         // Listen for theme changes
         ChartColorHelper.onThemeChange(function(event) {

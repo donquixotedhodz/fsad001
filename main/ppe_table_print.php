@@ -37,7 +37,7 @@ elseif ($dateFilter === 'weekly') {
     $whereConditions[] = "date <= ?";
     $params[] = $today;
 }
-elseif ($dateFilter === 'monthly') {
+elseif ($dateFilter === 'monthly' || $dateFilter === 'monthly_period') {
     $selectedMonth = $_GET['selected_month'] ?? date('m');
     $selectedYear = $_GET['selected_year'] ?? date('Y');
     $monthStart = $selectedYear . '-' . $selectedMonth . '-01';
@@ -134,6 +134,10 @@ if ($format === 'excel') {
         $dateText = "AS OF " . $yearNum;
     }
     elseif ($dateFilter === 'monthly') {
+        $endOfMonth = strtoupper(date('F t, Y', strtotime($yearNum . '-' . $monthNum . '-01')));
+        $dateText = "AS OF " . $endOfMonth;
+    }
+    elseif ($dateFilter === 'monthly_period') {
         $dateText = "FOR THE MONTH OF " . strtoupper(date('F Y', mktime(0, 0, 0, $monthNum, 1, $yearNum)));
     }
     else {
@@ -400,6 +404,10 @@ if ($dateFilter === 'annual') {
     echo "AS OF " . $yearNum;
 }
 elseif ($dateFilter === 'monthly') {
+    $endOfMonth = strtoupper(date('F t, Y', strtotime($yearNum . '-' . $monthNum . '-01')));
+    echo "AS OF " . $endOfMonth;
+}
+elseif ($dateFilter === 'monthly_period') {
     echo "FOR THE MONTH OF " . strtoupper(date('F Y', mktime(0, 0, 0, $monthNum, 1, $yearNum)));
 }
 else {

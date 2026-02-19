@@ -400,7 +400,7 @@ $reports = [
     ],
     [
         'title' => 'Check Issued - Receiving',
-        'printUrl' => 'ppe_print.php'
+        'printUrl' => 'ppe_check_issued_receiving_print.php'
     ],
     [
         'title' => 'Cash Balance',

@@ -1,384 +1,375 @@
 <?php
 session_start();
 require_once __DIR__ . '/../config.php';
-require_once __DIR__ . '/vendor/autoload.php';
+require_once __DIR__ . '/app/controllers/MainController.php';
 
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use PhpOffice\PhpSpreadsheet\Style\Alignment;
-use PhpOffice\PhpSpreadsheet\Style\Border;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
+MainController::requireAuth();
+$controller = new MainController($conn);
+$controller->setCurrentPage('ppe_print');
 
-// Get report name for filename
-$reportName = 'Check_Issued_Receiving';
 
-// Handle export formats
-$format = $_GET['format'] ?? 'html';
+// Set current page for sidebar active state
+$currentPage = 'ppe_print';
+$username = $_SESSION['username'] ?? 'User';
 
-// Build filter conditions
-$whereConditions = ["check_no != 'ONLINE'", "check_no IS NOT NULL", "check_no != ''"];
-$params = [];
-
-// Handle date filters if explicit dates are not set
-$dateFilter = $_GET['date_filter'] ?? '';
-$selectedYear = $_GET['selected_year'] ?? date('Y');
-$selectedMonth = $_GET['selected_month'] ?? date('m');
-
-if (empty($_GET['date_from']) && empty($_GET['date_to']) && !empty($dateFilter)) {
-    if ($dateFilter === 'today') {
-        $_GET['date_from'] = date('Y-m-d');
-        $_GET['date_to'] = date('Y-m-d');
-    }
-    elseif ($dateFilter === 'this_week') {
-        $_GET['date_from'] = date('Y-m-d', strtotime('monday this week'));
-        $_GET['date_to'] = date('Y-m-d', strtotime('sunday this week'));
-    }
-    elseif ($dateFilter === 'monthly') {
-        $_GET['date_from'] = date('Y-m-d', strtotime("$selectedYear-$selectedMonth-01"));
-        $_GET['date_to'] = date('Y-m-t', strtotime("$selectedYear-$selectedMonth-01"));
-    }
-    elseif ($dateFilter === 'annual') {
-        $_GET['date_from'] = "$selectedYear-01-01";
-        $_GET['date_to'] = "$selectedYear-12-31";
-    }
-}
-
-if (!empty($_GET['date_from'])) {
-    $whereConditions[] = "date >= ?";
-    $params[] = $_GET['date_from'];
-}
-if (!empty($_GET['date_to'])) {
-    $whereConditions[] = "date <= ?";
-    $params[] = $_GET['date_to'];
-}
-if (!empty($_GET['check_no'])) {
-    $whereConditions[] = "check_no LIKE ?";
-    $params[] = '%' . $_GET['check_no'] . '%';
-}
-if (!empty($_GET['dv_or_no'])) {
-    $whereConditions[] = "dv_or_no LIKE ?";
-    $params[] = '%' . $_GET['dv_or_no'] . '%';
-}
-if (!empty($_GET['particulars'])) {
-    $whereConditions[] = "particulars LIKE ?";
-    $params[] = '%' . $_GET['particulars'] . '%';
-}
-
-$whereClause = '';
-if (!empty($whereConditions)) {
-    $whereClause = 'WHERE ' . implode(' AND ', $whereConditions);
-}
-
-// Fetch PPE data from database
-try {
-    $sql = "SELECT check_no, dv_or_no, particulars, (debit + credit) as amount, date FROM ppe $whereClause ORDER BY date ASC";
-    $stmt = $conn->prepare($sql);
-    $stmt->execute($params);
-    $ppeRecords = $stmt->fetchAll();
-}
-catch (Exception $e) {
-    $ppeRecords = [];
-    $error = htmlspecialchars($e->getMessage());
-}
-
-// Handle Excel export
-if ($format === 'excel') {
-    $spreadsheet = new Spreadsheet();
-    $sheet = $spreadsheet->getActiveSheet();
-    $sheet->setTitle('Check Issued (Receiving)');
-
-    // Title and Header
-    $dateFilter = $_GET['date_filter'] ?? '';
-    $yearNum = $_GET['selected_year'] ?? date('Y');
-    $monthNum = $_GET['selected_month'] ?? date('m');
-
-    if ($dateFilter === 'annual') {
-        $dateText = "AS OF " . $yearNum;
-    }
-    elseif ($dateFilter === 'monthly') {
-        $dateText = "FOR THE MONTH OF " . strtoupper(date('F Y', mktime(0, 0, 0, $monthNum, 1, $yearNum)));
-    }
-    else {
-        $dateText = strtoupper(date('F d, Y'));
-    }
-    $sheet->setCellValue('A3', $dateText);
-
-    $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
-    $sheet->getStyle('A2')->getFont()->setSize(12);
-
-    // Header row
-    $headers = ['CHECK NO.', 'DV NO.', 'PARTICULARS', 'AMOUNT', 'DATE ISSUED', 'DATE RELEASED', 'PRINTED NAME', 'SIGNATURE'];
-    $sheet->fromArray($headers, NULL, 'A5');
-
-    // Style the header
-    $headerStyle = [
-        'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
-        'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
-        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '9333EA']], // Purple-600
-        'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
-    ];
-    $sheet->getStyle('A5:H5')->applyFromArray($headerStyle);
-
-    $currentRow = 6;
-    $totalAmount = 0;
-    foreach ($ppeRecords as $record) {
-        $totalAmount += $record['amount'];
-        $formattedDate = date('m/d/Y', strtotime($record['date']));
-
-        $sheet->setCellValue('A' . $currentRow, $record['check_no'] ?? '');
-        $sheet->setCellValue('B' . $currentRow, $record['dv_or_no'] ?? '');
-        $sheet->setCellValue('C' . $currentRow, strtoupper($record['particulars']));
-        $sheet->setCellValue('D' . $currentRow, $record['amount']);
-        $sheet->setCellValue('E' . $currentRow, $formattedDate);
-        $sheet->setCellValue('F' . $currentRow, '');
-        $sheet->setCellValue('G' . $currentRow, '');
-        $sheet->setCellValue('H' . $currentRow, '');
-
-        $currentRow++;
-    }
-
-    // Total row
-    $sheet->setCellValue('C' . $currentRow, 'TOTAL');
-    $sheet->setCellValue('D' . $currentRow, $totalAmount);
-
-    $totalStyle = [
-        'font' => ['bold' => true],
-        'borders' => ['top' => ['borderStyle' => Border::BORDER_THIN]]
-    ];
-    $sheet->getStyle('A' . $currentRow . ':H' . $currentRow)->applyFromArray($totalStyle);
-    $sheet->getStyle('C' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-
-    // Formatting
-    $lastRow = $currentRow;
-    $sheet->getStyle('A6:B' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-    $sheet->getStyle('E6:H' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-    $sheet->getStyle('D6:D' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-    $sheet->getStyle('D6:D' . $lastRow)->getNumberFormat()->setFormatCode('#,##0.00');
-
-    // Auto-size columns
-    foreach (range('A', 'H') as $col) {
-        $sheet->getColumnDimension($col)->setAutoSize(true);
-    }
-    $sheet->getColumnDimension('C')->setAutoSize(false)->setWidth(35);
-    $sheet->getColumnDimension('G')->setAutoSize(false)->setWidth(25);
-    $sheet->getColumnDimension('H')->setAutoSize(false)->setWidth(20);
-
-    $filename = $reportName . '_' . date('Y-m-d_His') . '.xlsx';
-    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    header('Content-Disposition: attachment;filename="' . $filename . '"');
-    header('Cache-Control: max-age=0');
-
-    $writer = new Xlsx($spreadsheet);
-    $writer->save('php://output');
-    exit;
-}
-
-// Handle PDF export
-if ($format === 'pdf') {
-    // Include the controller
-    require_once __DIR__ . '/app/controllers/PPEReportController.php';
-
-    $controller = new PPEReportController($conn);
-
-    // Prepare filters
-    $filters = [
-        'date_from' => $_GET['date_from'] ?? null,
-        'date_to' => $_GET['date_to'] ?? null,
-        'check_no' => $_GET['check_no'] ?? null,
-        'dv_or_no' => $_GET['dv_or_no'] ?? null,
-        'particulars' => $_GET['particulars'] ?? null,
-    ];
-
-    try {
-        $controller->exportCheckIssuedReceivingPDF($filters);
-    }
-    catch (Exception $e) {
-        die('Error generating PDF: ' . htmlspecialchars($e->getMessage()));
-    }
-}
-
-$dateGenerated = date('F d, Y');
+// Start output buffering to capture content
+ob_start();
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PPE Provident Fund - Checks Issued</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f5f5f5;
-        }
-        
-        @media print {
-            body {
-                background-color: white;
-                margin: 0;
-                padding: 0;
-            }
-            @page {
-                size: 13in 8.5in landscape;
-                margin: 0;
-            }
-            .no-print {
-                display: none !important;
-            }
-            .page {
-                margin: 0;
-                padding: 0;
-                page-break-after: auto;
-                height: auto;
-            }
-        }
-        
-        .page {
-            width: 13in;
-            height: 8.5in;
-            margin: 20px auto;
-            padding: 20px;
-            background-color: white;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        
-        /* Table */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-            margin-bottom: 15px;
-        }
-        
-        th, td {
-            border: 1px solid #000;
-            padding: 6px;
-            text-align: left;
-        }
-        
-        th {
-            background-color: #f0f0f0;
-            font-weight: bold;
-            font-size: 14px;
-            text-align: center;
-        }
-        
-        td {
-            height: 25px;
-        }
-        
-        .text-right {
-            text-align: right;
-        }
-        
-        .text-center {
-            text-align: center;
-        }
-        
-        .print-button {
-            margin-bottom: 10px;
-        }
-        
-        .print-button button {
-            padding: 8px 20px;
-            background-color: #2563eb;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        
-        .print-button button:hover {
-            background-color: #1d4ed8;
-        }
-    </style>
-    <script>
-        window.onload = function() {
-            window.print();
-        };
-    </script>
-</head>
-<body>
-    <div class="no-print print-button">
-        <button onclick="window.print()">Print</button>
-    </div>
-
-    <div class="page">
-        <!-- Header -->
-        <div style="text-align: left; margin-bottom: 15px;">
-            <h1 style="font-size: 20px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase;">PPE PROVIDENT FUND INC.</h1>
-            <h2 style="font-size: 18px; margin-bottom: 5px; text-transform: uppercase;">CHECKS ISSUED-Receiving</h2>
-            <div style="font-size: 14px; color: black; text-transform: uppercase;">
-                <div><?php
-$dateFilter = $_GET['date_filter'] ?? '';
-$yearNum = $_GET['selected_year'] ?? date('Y');
-$monthNum = $_GET['selected_month'] ?? date('m');
-
-if ($dateFilter === 'annual') {
-    echo "AS OF " . $yearNum;
-}
-elseif ($dateFilter === 'monthly') {
-    echo "FOR THE MONTH OF " . strtoupper(date('F Y', mktime(0, 0, 0, $monthNum, 1, $yearNum)));
-}
-else {
-    echo strtoupper(date('F d, Y'));
-}
-?></div>
+<div class="w-full" style="font-family: 'Inter', sans-serif;">
+    <div class="mb-6">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h1 class="text-3xl font-extrabold text-gray-900 dark:text-white">Print PPE Reports</h1>
+                <p class="text-gray-500 dark:text-gray-400 mt-1">Generate and print reports for PPE Provident Fund.</p>
             </div>
         </div>
+        
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 w-full max-w-[1600px] mx-auto overflow-hidden">
+            <form id="printForm" action="ppe_check_issued_receiving_print.php" method="GET" target="_blank">
+                <div class="flex flex-col lg:flex-row min-h-[600px]">
+                    
+                    <!-- LEFT PANEL: Report Type Selection (Narrower) -->
+                    <div class="lg:w-[400px] p-6 lg:p-8 border-b lg:border-b-0 lg:border-r border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800">
+                        <h2 class="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-3 mb-6">
+                            <div class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                            </div>
+                            Select Report
+                        </h2>
+                        
+                        <div class="grid grid-cols-1 gap-4">
+                            <!-- Option 1: Checks Issued - Receiving -->
+                            <div class="relative group">
+                                <input class="sr-only peer" type="radio" value="ppe_check_issued_receiving_print.php" name="report_type_radio" id="rt_receiving" checked onchange="setReportType(this)">
+                                <label class="flex items-start p-4 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl cursor-pointer hover:border-blue-500 dark:hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50/50 dark:peer-checked:bg-blue-900/10 transition-all shadow-sm hover:shadow-md" for="rt_receiving">
+                                    <div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 shrink-0 mt-0.5">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    </div>
+                                    <div class="ml-3">
+                                        <span class="text-sm font-bold text-gray-900 dark:text-white block">Check Issued - Receiving</span>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400 block mt-1 leading-tight">Checks issued with receiving info.</span>
+                                    </div>
+                                    <div class="ml-auto">
+                                        <div class="w-5 h-5 rounded-full border-2 border-gray-300 peer-checked:bg-blue-600 peer-checked:border-blue-600 flex items-center justify-center text-white transition-colors">
+                                            <svg class="w-3 h-3 opacity-0 peer-checked:opacity-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"></path></svg>
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
 
-        <!-- Table -->
-        <table>
-            <thead>
-                <tr>
-                    <th style="width: 8%;">CHECK NO.</th>
-                    <th style="width: 10%;">DV NO.</th>
-                    <th style="width: 20%;">PARTICULARS</th>
-                    <th style="width: 10%;">AMOUNT</th>
-                    <th style="width: 10%;">DATE ISSUED</th>
-                    <th style="width: 10%;">DATE RELEASED</th>
-                    <th style="width: 17%;">PRINTED NAME</th>
-                    <th style="width: 13%;">SIGNATURE</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php
-if (count($ppeRecords) > 0) {
-    $totalAmount = 0;
-    foreach ($ppeRecords as $record) {
-        $totalAmount += $record['amount'];
-        $formattedDate = date('m/d/Y', strtotime($record['date']));
-        echo '<tr>';
-        echo '<td class="text-center">' . htmlspecialchars(strtoupper($record['check_no'] ?? '')) . '</td>';
-        echo '<td class="text-center">' . htmlspecialchars(strtoupper($record['dv_or_no'] ?? '')) . '</td>';
-        echo '<td>' . htmlspecialchars(strtoupper($record['particulars'])) . '</td>';
-        echo '<td class="text-right">' . number_format($record['amount'], 2) . '</td>';
-        echo '<td class="text-center">' . htmlspecialchars(strtoupper($formattedDate)) . '</td>';
-        echo '<td></td>';
-        echo '<td></td>';
-        echo '<td></td>';
-        echo '</tr>';
-    }
-    // Add total row
-    echo '<tr style="font-weight: bold; border: none;">';
-    echo '<td colspan="3" style="text-align: right; border: none;">TOTAL</td>';
-    echo '<td class="text-right" style="border: none;">' . number_format($totalAmount, 2) . '</td>';
-    echo '<td colspan="4" style="border: none;"></td>';
-    echo '</tr>';
-}
-else {
-    echo '<tr><td colspan="8" class="text-center">NO RECORDS FOUND</td></tr>';
+                             <!-- Option 2: Checks Issued -->
+                             <div class="relative group">
+                                <input class="sr-only peer" type="radio" value="ppe_check_issued_print.php" name="report_type_radio" id="rt_check_issued" onchange="setReportType(this)">
+                                <label class="flex items-start p-4 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl cursor-pointer hover:border-indigo-500 dark:hover:border-indigo-400 peer-checked:border-indigo-600 peer-checked:bg-indigo-50/50 dark:peer-checked:bg-indigo-900/10 transition-all shadow-sm hover:shadow-md" for="rt_check_issued">
+                                    <div class="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg text-indigo-600 shrink-0 mt-0.5">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                                    </div>
+                                    <div class="ml-3">
+                                        <span class="text-sm font-bold text-gray-900 dark:text-white block">Checks Issued</span>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400 block mt-1 leading-tight">Summary of issued checks.</span>
+                                    </div>
+                                    <div class="ml-auto">
+                                        <div class="w-5 h-5 rounded-full border-2 border-gray-300 peer-checked:bg-indigo-600 peer-checked:border-indigo-600 flex items-center justify-center text-white transition-colors">
+                                            <svg class="w-3 h-3 opacity-0 peer-checked:opacity-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"></path></svg>
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+
+                             <!-- Option 3: Cash Balance -->
+                             <div class="relative group">
+                                <input class="sr-only peer" type="radio" value="ppe_table_print.php" name="report_type_radio" id="rt_cash_balance" onchange="setReportType(this)">
+                                <label class="flex items-start p-4 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl cursor-pointer hover:border-green-500 dark:hover:border-green-400 peer-checked:border-green-600 peer-checked:bg-green-50/50 dark:peer-checked:bg-green-900/10 transition-all shadow-sm hover:shadow-md" for="rt_cash_balance">
+                                    <div class="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg text-green-600 shrink-0 mt-0.5">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    </div>
+                                    <div class="ml-3">
+                                        <span class="text-sm font-bold text-gray-900 dark:text-white block">Cash Balance</span>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400 block mt-1 leading-tight">Current balance overview.</span>
+                                    </div>
+                                    <div class="ml-auto">
+                                        <div class="w-5 h-5 rounded-full border-2 border-gray-300 peer-checked:bg-green-600 peer-checked:border-green-600 flex items-center justify-center text-white transition-colors">
+                                            <svg class="w-3 h-3 opacity-0 peer-checked:opacity-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"></path></svg>
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+
+                             <!-- Option 4: Remittance -->
+                             <div class="relative group">
+                                <input class="sr-only peer" type="radio" value="ppe_remittance_print.php" name="report_type_radio" id="rt_remittance" onchange="setReportType(this)">
+                                <label class="flex items-start p-4 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl cursor-pointer hover:border-purple-500 dark:hover:border-purple-400 peer-checked:border-purple-600 peer-checked:bg-purple-50/50 dark:peer-checked:bg-purple-900/10 transition-all shadow-sm hover:shadow-md" for="rt_remittance">
+                                    <div class="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg text-purple-600 shrink-0 mt-0.5">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                                    </div>
+                                    <div class="ml-3">
+                                        <span class="text-sm font-bold text-gray-900 dark:text-white block">Remittance</span>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400 block mt-1 leading-tight">Remittance transactions.</span>
+                                    </div>
+                                    <div class="ml-auto">
+                                        <div class="w-5 h-5 rounded-full border-2 border-gray-300 peer-checked:bg-purple-600 peer-checked:border-purple-600 flex items-center justify-center text-white transition-colors">
+                                            <svg class="w-3 h-3 opacity-0 peer-checked:opacity-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"></path></svg>
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT PANEL: Settings & Actions (Wider) -->
+                    <div class="flex-1 bg-gray-50 dark:bg-gray-800/50 p-8 lg:p-10 flex flex-col border-l border-gray-100 dark:border-gray-700">
+                        
+                        <div class="grid grid-cols-1 xl:grid-cols-2 gap-12 flex-1">
+                            
+                            <!-- Period Selection Column -->
+                            <div class="space-y-6" x-data="{
+                                filter: 'monthly',
+                                month: '<?php echo date('m'); ?>',
+                                year: '<?php echo date('Y'); ?>',
+                                dateFrom: '<?php echo date('Y-m-d'); ?>',
+                                months: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+                                get monthName() { return this.months[parseInt(this.month) - 1]; },
+                                get lastDay() { return new Date(this.year, this.month, 0).getDate(); },
+                                get asOfLabel() { return `As of ${this.monthName} ${this.lastDay}, ${this.year}`; },
+                                get periodLabel() { return `For the Month of ${this.monthName} ${this.year}`; }
+                            }">
+                                <h2 class="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-3 mb-6">
+                                    <div class="w-10 h-10 rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                    </div>
+                                    Report Period
+                                </h2>
+                                
+                                <!-- Hidden Inputs -->
+                                <input type="hidden" name="selected_month" :value="month">
+                                <input type="hidden" name="selected_year" :value="year">
+                                <!-- Date To Sync -->
+                                <input type="hidden" name="date_to" :value="dateFrom">
+                                
+                                <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Select Period</label>
+                                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 overflow-hidden shadow-sm">
+                                    
+                                    <!-- Option 1: End of the Month (As Of) -->
+                                    <div class="border-b border-gray-100 dark:border-gray-700">
+                                        <div class="flex items-center p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition cursor-pointer" @click="filter = 'monthly'">
+                                            <input type="radio" value="monthly" name="date_filter" x-model="filter" class="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500">
+                                            <label class="ml-3 block text-base font-medium text-gray-900 dark:text-white cursor-pointer flex-1" x-text="asOfLabel">
+                                                End of the Month
+                                            </label>
+                                        </div>
+                                        
+                                        <div x-show="filter == 'monthly'" x-collapse class="p-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-100 dark:border-gray-700 grid grid-cols-2 gap-3 transition-all">
+                                            <div>
+                                                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Month</label>
+                                                <select x-model="month" class="w-full text-sm px-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white">
+                                                    <?php
+$currentMonth = date('m');
+for ($m = 1; $m <= 12; $m++) {
+    $monthNum = str_pad($m, 2, '0', STR_PAD_LEFT);
+    $monthName = date('F', mktime(0, 0, 0, $m, 1));
+    echo '<option value="' . $monthNum . '">' . $monthName . '</option>';
 }
 ?>
-            </tbody>
-        </table>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Year</label>
+                                                <select x-model="year" class="w-full text-sm px-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white">
+                                                    <?php
+$currentYear = date('Y');
+for ($y = $currentYear; $y >= 2020; $y--) {
+    echo '<option value="' . $y . '">' . $y . '</option>';
+}
+?>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Option 2: For the Month (Period) -->
+                                    <div class="border-b border-gray-100 dark:border-gray-700">
+                                        <div class="flex items-center p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition cursor-pointer" @click="filter = 'monthly_period'">
+                                            <input type="radio" value="monthly_period" name="date_filter" x-model="filter" class="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500">
+                                            <label class="ml-3 block text-base font-medium text-gray-900 dark:text-white cursor-pointer flex-1" x-text="periodLabel">
+                                                For the Month
+                                            </label>
+                                        </div>
+                                        
+                                        <div x-show="filter == 'monthly_period'" x-collapse class="p-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-100 dark:border-gray-700 grid grid-cols-2 gap-3 transition-all">
+                                            <div>
+                                                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Month</label>
+                                                <select x-model="month" class="w-full text-sm px-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white">
+                                                    <?php
+for ($m = 1; $m <= 12; $m++) {
+    $monthNum = str_pad($m, 2, '0', STR_PAD_LEFT);
+    $monthName = date('F', mktime(0, 0, 0, $m, 1));
+    echo '<option value="' . $monthNum . '">' . $monthName . '</option>';
+}
+?>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Year</label>
+                                                <select x-model="year" class="w-full text-sm px-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white">
+                                                    <?php
+for ($y = $currentYear; $y >= 2020; $y--) {
+    echo '<option value="' . $y . '">' . $y . '</option>';
+}
+?>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Option 3: As Of Year -->
+                                    <div class="border-b border-gray-100 dark:border-gray-700">
+                                        <div class="flex items-center p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition cursor-pointer" @click="filter = 'annual'">
+                                            <input type="radio" value="annual" name="date_filter" x-model="filter" class="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500">
+                                            <label class="ml-3 block text-base font-medium text-gray-900 dark:text-white cursor-pointer flex-1">
+                                                As Of (Year)
+                                            </label>
+                                        </div>
+                                        <div x-show="filter == 'annual'" x-collapse class="p-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-100 dark:border-gray-700 transition-all">
+                                            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Select Year</label>
+                                            <select x-model="year" class="w-full text-sm px-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white">
+                                                <?php
+for ($y = $currentYear; $y >= 2020; $y--) {
+    echo '<option value="' . $y . '">' . $y . '</option>';
+}
+?>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <!-- Option 4: Date Printed -->
+                                    <div>
+                                        <div class="flex items-center p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition cursor-pointer" @click="filter = 'custom'">
+                                            <input type="radio" value="custom" name="date_filter" x-model="filter" class="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500">
+                                            <label class="ml-3 block text-base font-medium text-gray-900 dark:text-white cursor-pointer flex-1">
+                                                Date Printed
+                                            </label>
+                                        </div>
+                                        <div x-show="filter == 'custom'" x-collapse class="p-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-100 dark:border-gray-700 transition-all">
+                                            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Pick Date</label>
+                                            <input type="date" name="date_from" x-model="dateFrom" class="w-full text-sm px-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Output Format Column -->
+                            <div class="flex flex-col relative">
+                                <!-- Vertical Divider -->
+                                <div class="hidden xl:block absolute -left-6 top-0 bottom-0 w-px bg-gray-200 dark:bg-gray-700"></div>
+
+                                <div class="space-y-6">
+                                    <h2 class="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-3 mb-6">
+                                        <div class="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                            </svg>
+                                        </div>
+                                        Output Format
+                                    </h2>
+
+                                    <div class="grid grid-cols-1 gap-3">
+                                        <!-- Print -->
+                                        <div class="relative">
+                                            <input class="sr-only peer" type="radio" value="html" name="format" id="fmt_print" checked>
+                                            <label class="flex items-center p-4 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-600 rounded-xl cursor-pointer hover:border-blue-500 peer-checked:border-blue-600 peer-checked:bg-blue-50 dark:peer-checked:bg-blue-900/20 transition-all" for="fmt_print">
+                                                <div class="p-2 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                                    </svg>
+                                                </div>
+                                                <div class="ml-4">
+                                                    <span class="block text-base font-bold text-gray-800 dark:text-white">Print Preview</span>
+                                                    <span class="block text-xs text-gray-500 dark:text-gray-400">View in browser</span>
+                                                </div>
+                                                <div class="ml-auto">
+                                                    <div class="w-5 h-5 rounded-full border-2 border-gray-300 peer-checked:bg-blue-600 peer-checked:border-blue-600 flex items-center justify-center text-white transition-colors">
+                                                        <svg class="w-3 h-3 opacity-0 peer-checked:opacity-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"></path></svg>
+                                                    </div>
+                                                </div>
+                                            </label>
+                                        </div>
+                                        
+                                        <!-- PDF -->
+                                        <div class="relative">
+                                            <input class="sr-only peer" type="radio" value="pdf" name="format" id="fmt_pdf">
+                                            <label class="flex items-center p-4 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-600 rounded-xl cursor-pointer hover:border-red-500 peer-checked:border-red-600 peer-checked:bg-red-50 dark:peer-checked:bg-red-900/20 transition-all" for="fmt_pdf">
+                                                <div class="p-2 rounded-full bg-red-50 dark:bg-red-900/30 text-red-600">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                                    </svg>
+                                                </div>
+                                                <div class="ml-4">
+                                                    <span class="block text-base font-bold text-gray-800 dark:text-white">PDF Document</span>
+                                                    <span class="block text-xs text-gray-500 dark:text-gray-400">Download file</span>
+                                                </div>
+                                                <div class="ml-auto">
+                                                    <div class="w-5 h-5 rounded-full border-2 border-gray-300 peer-checked:bg-red-600 peer-checked:border-red-600 flex items-center justify-center text-white transition-colors">
+                                                        <svg class="w-3 h-3 opacity-0 peer-checked:opacity-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"></path></svg>
+                                                    </div>
+                                                </div>
+                                            </label>
+                                        </div>
+                                        
+                                        <!-- Excel -->
+                                        <div class="relative">
+                                            <input class="sr-only peer" type="radio" value="excel" name="format" id="fmt_excel">
+                                            <label class="flex items-center p-4 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-600 rounded-xl cursor-pointer hover:border-green-500 peer-checked:border-green-600 peer-checked:bg-green-50 dark:peer-checked:bg-green-900/20 transition-all" for="fmt_excel">
+                                                <div class="p-2 rounded-full bg-green-50 dark:bg-green-900/30 text-green-600">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                    </svg>
+                                                </div>
+                                                <div class="ml-4">
+                                                    <span class="block text-base font-bold text-gray-800 dark:text-white">Excel Spreadsheet</span>
+                                                    <span class="block text-xs text-gray-500 dark:text-gray-400">Download file</span>
+                                                </div>
+                                                <div class="ml-auto">
+                                                    <div class="w-5 h-5 rounded-full border-2 border-gray-300 peer-checked:bg-green-600 peer-checked:border-green-600 flex items-center justify-center text-white transition-colors">
+                                                        <svg class="w-3 h-3 opacity-0 peer-checked:opacity-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"></path></svg>
+                                                    </div>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mt-8 pt-6"> <!-- Pushed to bottom -->
+                                    <button type="submit" class="w-full group relative flex items-center justify-center gap-2 px-8 py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all shadow-lg hover:shadow-blue-500/30 active:scale-95 text-lg">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                        </svg>
+                                        GENERATE REPORT
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
     </div>
-</body>
-</html>
+
+    <script>
+        function setReportType(radio) {
+            const form = document.getElementById('printForm');
+            form.action = radio.value;
+        }
+    </script>
+</div>
+
+<?php
+// Capture content and include master layout
+$content = ob_get_clean();
+include 'app/views/layouts/master.php';
+?>

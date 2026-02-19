@@ -1,10 +1,6 @@
 <?php
 session_start();
 require_once __DIR__ . '/../config.php';
-
-// Get report name for filename
-$reportName = 'Remittance';
-
 require_once __DIR__ . '/vendor/autoload.php';
 
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -12,13 +8,15 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Style\Font;
+
+// Get report name for filename
+$reportName = 'Check_Issued_Receiving';
 
 // Handle export formats
 $format = $_GET['format'] ?? 'html';
 
-// Build filter conditions - only show remittances
-$whereConditions = ["particulars LIKE '%REMITTANCE%'"];
+// Build filter conditions
+$whereConditions = ["check_no != 'ONLINE'", "check_no IS NOT NULL", "check_no != ''"];
 $params = [];
 
 // Handle date filters if explicit dates are not set
@@ -66,11 +64,14 @@ if (!empty($_GET['particulars'])) {
     $params[] = '%' . $_GET['particulars'] . '%';
 }
 
-$whereClause = 'WHERE ' . implode(' AND ', $whereConditions);
+$whereClause = '';
+if (!empty($whereConditions)) {
+    $whereClause = 'WHERE ' . implode(' AND ', $whereConditions);
+}
 
 // Fetch PPE data from database
 try {
-    $sql = "SELECT date, check_no, dv_or_no, particulars, (debit + credit) as amount FROM ppe $whereClause ORDER BY date ASC";
+    $sql = "SELECT check_no, dv_or_no, particulars, (debit + credit) as amount, date FROM ppe $whereClause ORDER BY date ASC";
     $stmt = $conn->prepare($sql);
     $stmt->execute($params);
     $ppeRecords = $stmt->fetchAll();
@@ -84,11 +85,9 @@ catch (Exception $e) {
 if ($format === 'excel') {
     $spreadsheet = new Spreadsheet();
     $sheet = $spreadsheet->getActiveSheet();
-    $sheet->setTitle('Remittance Report');
+    $sheet->setTitle('Check Issued (Receiving)');
 
     // Title and Header
-    $sheet->setCellValue('A1', 'PPE PROVIDENT FUND INC.');
-    $sheet->setCellValue('A2', 'Remittance');
     $dateFilter = $_GET['date_filter'] ?? '';
     $yearNum = $_GET['selected_year'] ?? date('Y');
     $monthNum = $_GET['selected_month'] ?? date('m');
@@ -112,17 +111,17 @@ if ($format === 'excel') {
     $sheet->getStyle('A2')->getFont()->setSize(12);
 
     // Header row
-    $headers = ['DATE', 'DESCRIPTION', 'CHECK NO.', 'DV NO.', 'AMOUNT'];
+    $headers = ['CHECK NO.', 'DV NO.', 'PARTICULARS', 'AMOUNT', 'DATE ISSUED', 'DATE RELEASED', 'PRINTED NAME', 'SIGNATURE'];
     $sheet->fromArray($headers, NULL, 'A5');
 
     // Style the header
     $headerStyle = [
         'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
         'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
-        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '4F46E5']], // Indigo-600
+        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '9333EA']], // Purple-600
         'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
     ];
-    $sheet->getStyle('A5:E5')->applyFromArray($headerStyle);
+    $sheet->getStyle('A5:H5')->applyFromArray($headerStyle);
 
     $currentRow = 6;
     $totalAmount = 0;
@@ -130,39 +129,43 @@ if ($format === 'excel') {
         $totalAmount += $record['amount'];
         $formattedDate = date('m/d/Y', strtotime($record['date']));
 
-        $sheet->setCellValue('A' . $currentRow, $formattedDate);
-        $sheet->setCellValue('B' . $currentRow, strtoupper($record['particulars']));
-        $sheet->setCellValue('C' . $currentRow, $record['check_no'] ?? '');
-        $sheet->setCellValue('D' . $currentRow, $record['dv_or_no'] ?? '');
-        $sheet->setCellValue('E' . $currentRow, $record['amount']);
+        $sheet->setCellValue('A' . $currentRow, $record['check_no'] ?? '');
+        $sheet->setCellValue('B' . $currentRow, $record['dv_or_no'] ?? '');
+        $sheet->setCellValue('C' . $currentRow, strtoupper($record['particulars']));
+        $sheet->setCellValue('D' . $currentRow, $record['amount']);
+        $sheet->setCellValue('E' . $currentRow, $formattedDate);
+        $sheet->setCellValue('F' . $currentRow, '');
+        $sheet->setCellValue('G' . $currentRow, '');
+        $sheet->setCellValue('H' . $currentRow, '');
 
         $currentRow++;
     }
 
     // Total row
-    $sheet->setCellValue('D' . $currentRow, 'TOTAL');
-    $sheet->setCellValue('E' . $currentRow, $totalAmount);
+    $sheet->setCellValue('C' . $currentRow, 'TOTAL');
+    $sheet->setCellValue('D' . $currentRow, $totalAmount);
 
     $totalStyle = [
         'font' => ['bold' => true],
         'borders' => ['top' => ['borderStyle' => Border::BORDER_THIN]]
     ];
-    $sheet->getStyle('A' . $currentRow . ':E' . $currentRow)->applyFromArray($totalStyle);
-    $sheet->getStyle('D' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-    $sheet->getStyle('E' . $currentRow)->getFont()->setUnderline(Font::UNDERLINE_SINGLE);
+    $sheet->getStyle('A' . $currentRow . ':H' . $currentRow)->applyFromArray($totalStyle);
+    $sheet->getStyle('C' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
 
     // Formatting
     $lastRow = $currentRow;
-    $sheet->getStyle('A6:A' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-    $sheet->getStyle('C6:D' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-    $sheet->getStyle('E6:E' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-    $sheet->getStyle('E6:E' . $lastRow)->getNumberFormat()->setFormatCode('#,##0.00');
+    $sheet->getStyle('A6:B' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+    $sheet->getStyle('E6:H' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+    $sheet->getStyle('D6:D' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+    $sheet->getStyle('D6:D' . $lastRow)->getNumberFormat()->setFormatCode('#,##0.00');
 
     // Auto-size columns
-    foreach (range('A', 'E') as $col) {
+    foreach (range('A', 'H') as $col) {
         $sheet->getColumnDimension($col)->setAutoSize(true);
     }
-    $sheet->getColumnDimension('C')->setAutoSize(false)->setWidth(50);
+    $sheet->getColumnDimension('C')->setAutoSize(false)->setWidth(35);
+    $sheet->getColumnDimension('G')->setAutoSize(false)->setWidth(25);
+    $sheet->getColumnDimension('H')->setAutoSize(false)->setWidth(20);
 
     $filename = $reportName . '_' . date('Y-m-d_His') . '.xlsx';
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -191,12 +194,14 @@ if ($format === 'pdf') {
     ];
 
     try {
-        $controller->exportRemittancePDF($filters);
+        $controller->exportCheckIssuedReceivingPDF($filters);
     }
     catch (Exception $e) {
         die('Error generating PDF: ' . htmlspecialchars($e->getMessage()));
     }
 }
+
+$dateGenerated = date('F d, Y');
 ?>
 
 <!DOCTYPE html>
@@ -204,7 +209,7 @@ if ($format === 'pdf') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PPE Provident Fund - Remittance</title>
+    <title>PPE Provident Fund - Checks Issued</title>
     <style>
         * {
             margin: 0;
@@ -269,7 +274,7 @@ if ($format === 'pdf') {
         }
         
         td {
-            height: 20px;
+            height: 25px;
         }
         
         .text-right {
@@ -280,39 +285,13 @@ if ($format === 'pdf') {
             text-align: center;
         }
         
-        /* Header */
-        .header {
-            text-align: left;
-            margin-bottom: 15px;
-        }
-        
-        .header h1 {
-            font-size: 16px;
-            font-weight: bold;
-            margin-bottom: 5px;
-            text-transform: uppercase;
-        }
-        
-        .header h2 {
-            font-size: 14px;
-            font-weight: normal;
-            text-transform: uppercase;
-            margin-bottom: 5px;
-        }
-        
-        .header-date {
-            font-size: 10px;
-            color: #666;
-            text-transform: uppercase;
-        }
-        
         .print-button {
             margin-bottom: 10px;
         }
         
         .print-button button {
             padding: 8px 20px;
-            background-color: #4f46e5;
+            background-color: #2563eb;
             color: white;
             border: none;
             border-radius: 5px;
@@ -321,9 +300,14 @@ if ($format === 'pdf') {
         }
         
         .print-button button:hover {
-            background-color: #4338ca;
+            background-color: #1d4ed8;
         }
     </style>
+    <script>
+        window.onload = function() {
+            window.print();
+        };
+    </script>
 </head>
 <body>
     <div class="no-print print-button">
@@ -334,7 +318,7 @@ if ($format === 'pdf') {
         <!-- Header -->
         <div style="text-align: left; margin-bottom: 15px;">
             <h1 style="font-size: 20px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase;">PPE PROVIDENT FUND INC.</h1>
-            <h2 style="font-size: 18px; margin-bottom: 5px; text-transform: uppercase;">Remittance</h2>
+            <h2 style="font-size: 18px; margin-bottom: 5px; text-transform: uppercase;">CHECKS ISSUED-Receiving</h2>
             <div style="font-size: 14px; color: black; text-transform: uppercase;">
                 <div><?php
 $dateFilter = $_GET['date_filter'] ?? '';
@@ -362,49 +346,47 @@ else {
         <table>
             <thead>
                 <tr>
-                    <th style="width: 12%;">DATE</th>
-                    <th style="width: 40%;">DESCRIPTION</th>
-                    <th style="width: 15%;">CHECK NO.</th>
-                    <th style="width: 15%;">DV NO.</th>
-                    <th style="width: 18%;">AMOUNT</th>
+                    <th style="width: 8%;">CHECK NO.</th>
+                    <th style="width: 10%;">DV NO.</th>
+                    <th style="width: 20%;">PARTICULARS</th>
+                    <th style="width: 10%;">AMOUNT</th>
+                    <th style="width: 10%;">DATE ISSUED</th>
+                    <th style="width: 10%;">DATE RELEASED</th>
+                    <th style="width: 17%;">PRINTED NAME</th>
+                    <th style="width: 13%;">SIGNATURE</th>
                 </tr>
             </thead>
             <tbody>
                 <?php
 if (count($ppeRecords) > 0) {
     $totalAmount = 0;
-
     foreach ($ppeRecords as $record) {
         $totalAmount += $record['amount'];
-
         $formattedDate = date('m/d/Y', strtotime($record['date']));
         echo '<tr>';
-        echo '<td class="text-center">' . strtoupper(htmlspecialchars($formattedDate)) . '</td>';
-        echo '<td>' . strtoupper(htmlspecialchars($record['particulars'])) . '</td>';
-        echo '<td class="text-center">' . strtoupper(htmlspecialchars($record['check_no'] ?? '')) . '</td>';
-        echo '<td class="text-center">' . strtoupper(htmlspecialchars($record['dv_or_no'] ?? '')) . '</td>';
+        echo '<td class="text-center">' . htmlspecialchars(strtoupper($record['check_no'] ?? '')) . '</td>';
+        echo '<td class="text-center">' . htmlspecialchars(strtoupper($record['dv_or_no'] ?? '')) . '</td>';
+        echo '<td>' . htmlspecialchars(strtoupper($record['particulars'])) . '</td>';
         echo '<td class="text-right">' . number_format($record['amount'], 2) . '</td>';
+        echo '<td class="text-center">' . htmlspecialchars(strtoupper($formattedDate)) . '</td>';
+        echo '<td></td>';
+        echo '<td></td>';
+        echo '<td></td>';
         echo '</tr>';
     }
-
     // Add total row
-    echo '<tr style="font-weight: bold;">';
-    echo '<td colspan="4" style="text-align: right; border: none;"></td>';
-    echo '<td style="text-align: right; border: none;">TOTAL&nbsp;&nbsp;&nbsp;<span style="text-decoration: underline;">' . number_format($totalAmount, 2) . '</span></td>';
+    echo '<tr style="font-weight: bold; border: none;">';
+    echo '<td colspan="3" style="text-align: right; border: none;">TOTAL</td>';
+    echo '<td class="text-right" style="border: none;">' . number_format($totalAmount, 2) . '</td>';
+    echo '<td colspan="4" style="border: none;"></td>';
     echo '</tr>';
 }
 else {
-    echo '<tr><td colspan="5" class="text-center">NO REMITTANCE RECORDS FOUND</td></tr>';
+    echo '<tr><td colspan="8" class="text-center">NO RECORDS FOUND</td></tr>';
 }
 ?>
             </tbody>
         </table>
     </div>
-
-    <script>
-        window.onload = function() {
-            window.print();
-        };
-    </script>
 </body>
 </html>

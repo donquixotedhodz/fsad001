@@ -520,30 +520,39 @@ endif; ?>
                         </div>
                     </div>
 
-                    <!-- User Profile Section -->
-                    <div class="flex items-center gap-3 pl-6 border-l border-gray-200 dark:border-gray-700">
-                        <!-- Profile Image -->
-                        <a href="settings.php" class="block">
-                            <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center overflow-hidden hover:ring-2 hover:ring-blue-400 transition">
+                    <div class="relative flex items-center gap-4 pl-6 border-l border-gray-200 dark:border-gray-700" x-data="{ openUserMenu: false }" @click.outside="openUserMenu = false">
+                        <button type="button" class="flex items-center gap-4 focus:outline-none" @click="openUserMenu = !openUserMenu">
+                            <div class="w-11 h-11 bg-blue-500 rounded-full flex items-center justify-center overflow-hidden hover:ring-2 hover:ring-blue-400 transition">
                                 <?php if ($userProfileImage): ?>
                                     <img src="uploads/profile_images/<?php echo htmlspecialchars($userProfileImage); ?>" alt="<?php echo htmlspecialchars($userFullName); ?>" class="w-full h-full object-cover">
                                 <?php
 else: ?>
-                                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7 text-white">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
                                     </svg>
                                 <?php
 endif; ?>
                             </div>
-                        </a>
-                        
-                        <!-- User Info -->
-                        <a href="settings.php" class="hidden sm:block hover:text-blue-600 dark:hover:text-blue-400 transition">
-                            <div class="flex flex-col">
-                                <span class="text-sm font-semibold text-gray-900 dark:text-white"><?php echo htmlspecialchars($userFullName); ?></span>
-                                <span class="text-xs text-gray-500 dark:text-gray-400"><?php echo htmlspecialchars(ucfirst($userRole)); ?></span>
+                            <div class="hidden sm:flex flex-col text-left">
+                                <span class="text-base font-semibold text-gray-900 dark:text-white"><?php echo htmlspecialchars($userFullName); ?></span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400 tracking-wide"><?php echo htmlspecialchars(ucfirst($userRole)); ?></span>
                             </div>
-                        </a>
+                        </button>
+                        <div x-show="openUserMenu" x-transition class="absolute right-0 top-16 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 py-2 z-50">
+                            <a href="settings.php" class="flex items-center px-4 py-3 text-base text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-3 text-blue-500" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                                </svg>
+                                <span class="font-medium">Profile</span>
+                            </a>
+                            <button type="button" onclick="confirmLogout()" class="w-full flex items-center px-4 py-3 text-base text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 6a2 2 0 012-2h3.5A2.5 2.5 0 0117 6.5v11A2.5 2.5 0 0114.5 20H11a2 2 0 01-2-2" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M5 12h9m0 0l-3-3m3 3l-3 3" />
+                                </svg>
+                                <span class="font-medium">Logout</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

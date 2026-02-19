@@ -9,7 +9,7 @@ session_destroy();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Logging Out | FSAD</title>
-    <link rel="icon" type="image/x-icon" href="../SOMANAP/images/nealogo.ico">
+    <link rel="icon" type="image/x-icon" href="../main/images/nealogo.ico">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .loader-container {

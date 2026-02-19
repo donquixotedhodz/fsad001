@@ -266,12 +266,13 @@ if ($format === 'pdf') {
         }
         
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Inter', sans-serif;
             background-color: #f5f5f5;
         }
         
         @media print {
             body {
+                font-family: 'Century Gothic', 'CenturyGothic', system-ui, sans-serif;
                 background-color: white;
                 margin: 0;
                 padding: 0;
@@ -481,7 +482,7 @@ else {
         </table>
 
         <!-- Prepared By Section -->
-        <div style="margin-top: 20px; width: 30%; font-family: Arial, sans-serif;">
+        <div style="margin-top: 20px; width: 30%; font-family: 'Inter', sans-serif;">
             <p style="font-size: 14px; margin: 0;">Prepared by:</p>
             <p style="margin-top: 30px; font-size: 14px; margin-bottom: 0; font-weight: bold;">MARIA LAARNI B. CO</p>
             <p style="font-size: 14px; margin: 0;">Treasurer</p>

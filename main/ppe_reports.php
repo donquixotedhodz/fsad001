@@ -15,10 +15,10 @@ $username = $_SESSION['username'] ?? 'User';
 ob_start();
 ?>
 
-<div class="w-full" style="font-family: Arial, sans-serif;">
+<div class="w-full">
     <div class="mb-8">
         <div class="flex justify-between items-center mb-4">
-            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">PPE Provident Fund - Reports</h1>
+             <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-2">PPE Provident Fund Reports</h1>
             <div class="flex gap-3">
                 <button onclick="document.getElementById('printModal').showModal()" class="flex items-center gap-2 px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">

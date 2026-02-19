@@ -19,28 +19,26 @@ $format = $_GET['format'] ?? 'html';
 $whereConditions = ["(debit > 0 OR credit > 0)", "check_no != 'ONLINE'", "check_no IS NOT NULL", "check_no != ''"];
 $params = [];
 
-// Handle date filters if explicit dates are not set
+// Handle date filters
 $dateFilter = $_GET['date_filter'] ?? '';
 $selectedYear = $_GET['selected_year'] ?? date('Y');
 $selectedMonth = $_GET['selected_month'] ?? date('m');
 
-if (empty($_GET['date_from']) && empty($_GET['date_to']) && !empty($dateFilter)) {
-    if ($dateFilter === 'today') {
-        $_GET['date_from'] = date('Y-m-d');
-        $_GET['date_to'] = date('Y-m-d');
-    }
-    elseif ($dateFilter === 'this_week') {
-        $_GET['date_from'] = date('Y-m-d', strtotime('monday this week'));
-        $_GET['date_to'] = date('Y-m-d', strtotime('sunday this week'));
-    }
-    elseif ($dateFilter === 'monthly' || $dateFilter === 'monthly_period') {
-        $_GET['date_from'] = date('Y-m-d', strtotime("$selectedYear-$selectedMonth-01"));
-        $_GET['date_to'] = date('Y-m-t', strtotime("$selectedYear-$selectedMonth-01"));
-    }
-    elseif ($dateFilter === 'annual') {
-        $_GET['date_from'] = "$selectedYear-01-01";
-        $_GET['date_to'] = "$selectedYear-12-31";
-    }
+if ($dateFilter === 'today') {
+    $_GET['date_from'] = date('Y-m-d');
+    $_GET['date_to'] = date('Y-m-d');
+}
+elseif ($dateFilter === 'this_week') {
+    $_GET['date_from'] = date('Y-m-d', strtotime('monday this week'));
+    $_GET['date_to'] = date('Y-m-d', strtotime('sunday this week'));
+}
+elseif ($dateFilter === 'monthly' || $dateFilter === 'monthly_period') {
+    $_GET['date_from'] = date('Y-m-d', strtotime("$selectedYear-$selectedMonth-01"));
+    $_GET['date_to'] = date('Y-m-t', strtotime("$selectedYear-$selectedMonth-01"));
+}
+elseif ($dateFilter === 'annual') {
+    $_GET['date_from'] = "$selectedYear-01-01";
+    $_GET['date_to'] = "$selectedYear-12-31";
 }
 
 if (!empty($_GET['date_from'])) {
@@ -210,12 +208,13 @@ if ($format === 'pdf') {
         }
         
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Inter', sans-serif;
             background-color: #f5f5f5;
         }
         
         @media print {
             body {
+                font-family: 'Century Gothic', 'CenturyGothic', system-ui, sans-serif;
                 background-color: white;
                 margin: 0;
                 padding: 0;
@@ -386,9 +385,8 @@ if (count($ppeRecords) > 0) {
 
     // Add total row
     echo '<tr style="font-weight: bold;">';
-    echo '<td colspan="2" style="text-align: right; border: none;">TOTAL</td>';
-    echo '<td colspan="2" style="border: none;"></td>';
-    echo '<td style="text-align: right; border: none;">' . number_format($totalAmount, 2) . '</td>';
+    echo '<td colspan="4" style="text-align: right; border: none;"></td>';
+    echo '<td style="text-align: right; border: none;">TOTAL&nbsp;&nbsp;' . number_format($totalAmount, 2) . '</td>';
     echo '</tr>';
 }
 else {

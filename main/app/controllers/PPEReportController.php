@@ -329,7 +329,7 @@ class PPEReportController {
         }
         
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Inter', sans-serif;
             margin: 0;
             padding: 15px;
         }
@@ -479,7 +479,7 @@ HTML;
         }
         
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Inter', sans-serif;
             margin: 0;
             padding: 15px;
         }
@@ -632,7 +632,7 @@ HTML;
         }
         
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Inter', sans-serif;
             margin: 0;
             padding: 15px;
         }
@@ -783,7 +783,7 @@ HTML;
         }
         
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Inter', sans-serif;
             margin: 0;
             padding: 15px;
         }

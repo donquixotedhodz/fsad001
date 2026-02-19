@@ -16,15 +16,11 @@ $username = $_SESSION['username'] ?? 'User';
 ob_start();
 ?>
 
-<div class="w-full" style="font-family: 'Inter', sans-serif;">
-    <div class="mb-6">
-        <div class="flex items-center justify-between mb-6">
-            <div>
-                <h1 class="text-3xl font-extrabold text-gray-900 dark:text-white">Print PPE Reports</h1>
-                <p class="text-gray-500 dark:text-gray-400 mt-1">Generate and print reports for PPE Provident Fund.</p>
-            </div>
-        </div>
-        
+<div class="w-full">
+    <!-- Page Header -->
+    <div class="mb-8">
+        <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-2">Print PPE Reports</h1>
+    </div>
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 w-full max-w-[1600px] mx-auto overflow-hidden">
             <form id="printForm" action="ppe_check_issued_receiving_print.php" method="GET" target="_blank">
                 <div class="flex flex-col lg:flex-row min-h-[600px]">

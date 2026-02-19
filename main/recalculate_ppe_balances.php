@@ -15,7 +15,7 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'superadmin') {
 
 echo "<!DOCTYPE html>\n";
 echo "<html>\n<head>\n<title>PPE Balance Recalculation</title>\n";
-echo "<style>body { font-family: Arial, sans-serif; padding: 20px; } .success { color: green; } .error { color: red; } .info { color: blue; }</style>\n";
+echo "<style>body { font-family: 'Inter', sans-serif; padding: 20px; } .success { color: green; } .error { color: red; } .info { color: blue; }</style>\n";
 echo "</head>\n<body>\n";
 echo "<h1>PPE Balance Recalculation</h1>\n";
 

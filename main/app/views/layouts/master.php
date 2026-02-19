@@ -6,6 +6,9 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title><?php echo isset($pageTitle) ? htmlspecialchars($pageTitle) . ' | FSAD' : 'FSAD'; ?></title>
     <link rel="icon" type="image/x-icon" href="app/views/layouts/nealogo.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
@@ -29,6 +32,10 @@
             --theme-warning-rgb: 217, 119, 6;
             --theme-info: #3b82f6;
             --theme-info-rgb: 59, 130, 246;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         }
 
         /* Dynamic theme button styles using CSS classes */

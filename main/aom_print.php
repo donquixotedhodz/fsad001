@@ -93,7 +93,7 @@ $dateGenerated = date('F d, Y');
         }
         
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Inter', sans-serif;
             background-color: #f5f5f5;
         }
         

@@ -24,30 +24,32 @@ $dateFilter = $_GET['date_filter'] ?? '';
 $selectedYear = $_GET['selected_year'] ?? date('Y');
 $selectedMonth = $_GET['selected_month'] ?? date('m');
 
-if ($dateFilter === 'today') {
-    $_GET['date_from'] = date('Y-m-d');
-    $_GET['date_to'] = date('Y-m-d');
-}
-elseif ($dateFilter === 'this_week') {
-    $_GET['date_from'] = date('Y-m-d', strtotime('monday this week'));
-    $_GET['date_to'] = date('Y-m-d', strtotime('sunday this week'));
-}
-elseif ($dateFilter === 'monthly' || $dateFilter === 'monthly_period') {
-    $_GET['date_from'] = date('Y-m-d', strtotime("$selectedYear-$selectedMonth-01"));
-    $_GET['date_to'] = date('Y-m-t', strtotime("$selectedYear-$selectedMonth-01"));
-}
-elseif ($dateFilter === 'annual') {
-    $_GET['date_from'] = "$selectedYear-01-01";
-    $_GET['date_to'] = "$selectedYear-12-31";
-}
+if ($dateFilter !== 'all_time') {
+    if ($dateFilter === 'today') {
+        $_GET['date_from'] = date('Y-m-d');
+        $_GET['date_to'] = date('Y-m-d');
+    }
+    elseif ($dateFilter === 'weekly') {
+        $_GET['date_from'] = date('Y-m-d', strtotime('monday this week'));
+        $_GET['date_to'] = date('Y-m-d', strtotime('sunday this week'));
+    }
+    elseif ($dateFilter === 'monthly' || $dateFilter === 'monthly_period') {
+        $_GET['date_from'] = date('Y-m-d', strtotime("$selectedYear-$selectedMonth-01"));
+        $_GET['date_to'] = date('Y-m-t', strtotime("$selectedYear-$selectedMonth-01"));
+    }
+    elseif ($dateFilter === 'annual') {
+        $_GET['date_from'] = "$selectedYear-01-01";
+        $_GET['date_to'] = "$selectedYear-12-31";
+    }
 
-if (!empty($_GET['date_from'])) {
-    $whereConditions[] = "date >= ?";
-    $params[] = $_GET['date_from'];
-}
-if (!empty($_GET['date_to'])) {
-    $whereConditions[] = "date <= ?";
-    $params[] = $_GET['date_to'];
+    if (!empty($_GET['date_from'])) {
+        $whereConditions[] = "date >= ?";
+        $params[] = $_GET['date_from'];
+    }
+    if (!empty($_GET['date_to'])) {
+        $whereConditions[] = "date <= ?";
+        $params[] = $_GET['date_to'];
+    }
 }
 if (!empty($_GET['check_no'])) {
     $whereConditions[] = "check_no LIKE ?";
@@ -69,7 +71,7 @@ if (!empty($whereConditions)) {
 
 // Fetch PPE data from database
 try {
-    $sql = "SELECT check_no, dv_or_no, particulars, (debit + credit) as amount, date FROM ppe $whereClause ORDER BY date ASC";
+    $sql = "SELECT check_no, dv_or_no, particulars, CASE WHEN debit > 0 AND credit = 0 THEN debit WHEN credit > 0 AND debit = 0 THEN credit ELSE ABS(credit - debit) END as amount, date FROM ppe $whereClause ORDER BY date ASC";
     $stmt = $conn->prepare($sql);
     $stmt->execute($params);
     $ppeRecords = $stmt->fetchAll();
@@ -90,15 +92,24 @@ if ($format === 'excel') {
     $yearNum = $_GET['selected_year'] ?? date('Y');
     $monthNum = $_GET['selected_month'] ?? date('m');
 
-    if ($dateFilter === 'annual') {
-        $dateText = "AS OF " . $yearNum;
+    if ($dateFilter === 'all_time') {
+        $dateText = "ALL TIME";
+    }
+    elseif ($dateFilter === 'annual') {
+        $dateText = "AS OF DECEMBER 31, " . $yearNum;
     }
     elseif ($dateFilter === 'monthly') {
-        $endOfMonth = strtoupper(date('F t, Y', strtotime($yearNum . '-' . $monthNum . '-01')));
+        $selectedDay = $_GET['selected_day'] ?? date('t', strtotime($yearNum . '-' . $monthNum . '-01'));
+        $endOfMonth = strtoupper(date('F d, Y', strtotime($yearNum . '-' . $monthNum . '-' . $selectedDay)));
         $dateText = "AS OF " . $endOfMonth;
     }
     elseif ($dateFilter === 'monthly_period') {
         $dateText = "FOR THE MONTH OF " . strtoupper(date('F Y', mktime(0, 0, 0, $monthNum, 1, $yearNum)));
+    }
+    elseif ($dateFilter === 'custom' || (!empty($_GET['date_from']) && !empty($_GET['date_to']))) {
+        $dateFrom = date('F d, Y', strtotime($_GET['date_from']));
+        $dateTo = date('F d, Y', strtotime($_GET['date_to']));
+        $dateText = "FROM " . strtoupper($dateFrom) . " TO " . strtoupper($dateTo);
     }
     else {
         $dateText = strtoupper(date('F d, Y'));
@@ -229,14 +240,16 @@ $dateGenerated = date('F d, Y');
             }
             @page {
                 size: 13in 8.5in landscape;
-                margin: 0;
+                margin: 0.5in;
             }
             .no-print {
                 display: none !important;
             }
             .page {
-                margin: 0;
-                padding: 0;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                box-shadow: none !important;
                 page-break-after: auto;
                 height: auto;
             }
@@ -325,14 +338,25 @@ $yearNum = $_GET['selected_year'] ?? date('Y');
 $monthNum = $_GET['selected_month'] ?? date('m');
 
 if ($dateFilter === 'annual') {
-    echo "AS OF " . $yearNum;
+    echo "AS OF DECEMBER 31, " . $yearNum;
 }
 elseif ($dateFilter === 'monthly') {
-    $endOfMonth = strtoupper(date('F t, Y', strtotime($yearNum . '-' . $monthNum . '-01')));
+    $selectedDay = $_GET['selected_day'] ?? date('t', strtotime($yearNum . '-' . $monthNum . '-01'));
+    $endOfMonth = strtoupper(date('F d, Y', strtotime($yearNum . '-' . $monthNum . '-' . $selectedDay)));
     echo "AS OF " . $endOfMonth;
 }
 elseif ($dateFilter === 'monthly_period') {
     echo "FOR THE MONTH OF " . strtoupper(date('F Y', mktime(0, 0, 0, $monthNum, 1, $yearNum)));
+}
+elseif ($dateFilter === 'weekly') {
+    $weekStartText = strtoupper(date('F d, Y', strtotime('monday this week')));
+    $weekEndText = strtoupper(date('F d, Y', strtotime('sunday this week')));
+    echo "FOR THE WEEK OF " . $weekStartText . " - " . $weekEndText;
+}
+elseif ($dateFilter === 'custom' || (!empty($_GET['date_from']) && !empty($_GET['date_to']))) {
+    $dateFrom = date('F d, Y', strtotime($_GET['date_from']));
+    $dateTo = date('F d, Y', strtotime($_GET['date_to']));
+    echo "FROM " . strtoupper($dateFrom) . " TO " . strtoupper($dateTo);
 }
 else {
     echo strtoupper(date('F d, Y'));

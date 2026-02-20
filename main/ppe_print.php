@@ -103,14 +103,17 @@ ob_start();
                             <!-- Period Selection Column -->
                             <div class="space-y-6" x-data="{
                                 filter: 'monthly',
+                                day: <?php echo date('j'); ?>,
                                 month: '<?php echo date('m'); ?>',
                                 year: '<?php echo date('Y'); ?>',
                                 dateFrom: '<?php echo date('Y-m-d'); ?>',
+                                dateTo: '<?php echo date('Y-m-d'); ?>',
                                 months: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
                                 get monthName() { return this.months[parseInt(this.month) - 1]; },
                                 get lastDay() { return new Date(this.year, this.month, 0).getDate(); },
-                                get asOfLabel() { return `As of ${this.monthName} ${this.lastDay}, ${this.year}`; },
-                                get periodLabel() { return `For the Month of ${this.monthName} ${this.year}`; }
+                                get asOfLabel() { return `As of ${this.monthName} ${this.day}, ${this.year} (Balance Forward)`; },
+                                get periodLabel() { return `For the Month of ${this.monthName} ${this.year}`; },
+                                updateDay() { if (this.day > this.lastDay) this.day = this.lastDay; }
                             }">
                                 <h2 class="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-3 mb-6">
                                     <div class="w-10 h-10 rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300">
@@ -126,12 +129,14 @@ ob_start();
                                 <input type="hidden" name="selected_month" :value="month">
                                 <input type="hidden" name="selected_year" :value="year">
                                 <!-- Date To Sync -->
-                                <input type="hidden" name="date_to" :value="dateFrom">
+                                <input type="hidden" name="date_from" :value="dateFrom">
+                                <input type="hidden" name="date_to" :value="dateTo">
+                                <input type="hidden" name="selected_day" :value="day">
                                 
                                 <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Select Period</label>
                                 <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 overflow-hidden shadow-sm">
                                     
-                                    <!-- Option 1: End of the Month (As Of) -->
+                                    
                                     <div class="border-b border-gray-100 dark:border-gray-700">
                                         <div class="flex items-center p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition cursor-pointer" @click="filter = 'monthly'">
                                             <input type="radio" value="monthly" name="date_filter" x-model="filter" class="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500">
@@ -140,7 +145,7 @@ ob_start();
                                             </label>
                                         </div>
                                         
-                                        <div x-show="filter == 'monthly'" x-collapse class="p-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-100 dark:border-gray-700 grid grid-cols-2 gap-3 transition-all">
+                                        <div x-show="filter == 'monthly'" x-collapse class="p-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-100 dark:border-gray-700 grid grid-cols-3 gap-3 transition-all">
                                             <div>
                                                 <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Month</label>
                                                 <select x-model="month" class="w-full text-sm px-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white">
@@ -152,6 +157,14 @@ for ($m = 1; $m <= 12; $m++) {
     echo '<option value="' . $monthNum . '">' . $monthName . '</option>';
 }
 ?>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Day</label>
+                                                <select x-model="day" class="w-full text-sm px-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white">
+                                                    <template x-for="d in lastDay" :key="d">
+                                                        <option :value="d" x-text="d"></option>
+                                                    </template>
                                                 </select>
                                             </div>
                                             <div>
@@ -224,16 +237,36 @@ for ($y = $currentYear; $y >= 2020; $y--) {
                                     </div>
 
                                     <!-- Option 4: Date Printed -->
+                                    <div class="border-b border-gray-100 dark:border-gray-700">
+                                        <div class="flex items-center p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition cursor-pointer" @click="filter = 'date_printed'; dateTo = dateFrom">
+                                            <input type="radio" value="date_printed" name="date_filter" x-model="filter" class="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500">
+                                            <label class="ml-3 block text-base font-medium text-gray-900 dark:text-white cursor-pointer flex-1">
+                                                Today
+                                            </label>
+                                        </div>
+                                        <div x-show="filter == 'date_printed'" x-collapse class="p-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-100 dark:border-gray-700 transition-all">
+                                            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Pick Date</label>
+                                            <input type="date" x-model="dateFrom" @change="dateTo = dateFrom" class="w-full text-sm px-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white">
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Option 5: Custom Date -->
                                     <div>
                                         <div class="flex items-center p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition cursor-pointer" @click="filter = 'custom'">
                                             <input type="radio" value="custom" name="date_filter" x-model="filter" class="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500">
                                             <label class="ml-3 block text-base font-medium text-gray-900 dark:text-white cursor-pointer flex-1">
-                                                Date Printed
+                                                Custom Date
                                             </label>
                                         </div>
-                                        <div x-show="filter == 'custom'" x-collapse class="p-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-100 dark:border-gray-700 transition-all">
-                                            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Pick Date</label>
-                                            <input type="date" name="date_from" x-model="dateFrom" class="w-full text-sm px-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white">
+                                        <div x-show="filter == 'custom'" x-collapse class="p-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-100 dark:border-gray-700 grid grid-cols-2 gap-3 transition-all">
+                                            <div>
+                                                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">From</label>
+                                                <input type="date" x-model="dateFrom" class="w-full text-sm px-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white">
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">To</label>
+                                                <input type="date" x-model="dateTo" class="w-full text-sm px-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white">
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

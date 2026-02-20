@@ -41,7 +41,7 @@ class PPEReportController {
             $whereClause = 'WHERE ' . implode(' AND ', $whereConditions);
             
             // Fetch data
-            $sql = "SELECT date, check_no, dv_or_no, particulars, (debit + credit) as amount FROM ppe $whereClause ORDER BY date ASC";
+            $sql = "SELECT date, check_no, dv_or_no, particulars, CASE WHEN debit > 0 AND credit = 0 THEN debit WHEN credit > 0 AND debit = 0 THEN credit ELSE ABS(credit - debit) END as amount FROM ppe $whereClause ORDER BY date ASC";
             $stmt = $this->conn->prepare($sql);
             $stmt->execute($params);
             $records = $stmt->fetchAll();
@@ -90,7 +90,7 @@ class PPEReportController {
             }
             
             // Fetch data
-            $sql = "SELECT check_no, dv_or_no, particulars, (debit + credit) as amount, date FROM ppe $whereClause ORDER BY date ASC";
+            $sql = "SELECT check_no, dv_or_no, particulars, CASE WHEN debit > 0 AND credit = 0 THEN debit WHEN credit > 0 AND debit = 0 THEN credit ELSE ABS(credit - debit) END as amount, date FROM ppe $whereClause ORDER BY date ASC";
             $stmt = $this->conn->prepare($sql);
             $stmt->execute($params);
             $records = $stmt->fetchAll();
@@ -136,7 +136,7 @@ class PPEReportController {
             $whereClause = 'WHERE ' . implode(' AND ', $whereConditions);
             
             // Fetch data
-            $sql = "SELECT date, check_no, dv_or_no, particulars, (debit + credit) as amount FROM ppe $whereClause ORDER BY date ASC";
+            $sql = "SELECT date, check_no, dv_or_no, particulars, CASE WHEN debit > 0 AND credit = 0 THEN debit WHEN credit > 0 AND debit = 0 THEN credit ELSE ABS(credit - debit) END as amount FROM ppe $whereClause ORDER BY date ASC";
             $stmt = $this->conn->prepare($sql);
             $stmt->execute($params);
             $records = $stmt->fetchAll();
@@ -890,7 +890,13 @@ HTML;
         
         $html .= <<<HTML
                     </td>
-                    <td style="border: none;"></td>
+                    <td class="text-right" style="border: none;">
+HTML;
+        
+        $html .= number_format(abs($totalCredit - $totalDebit), 2);
+        
+        $html .= <<<HTML
+                    </td>
                 </tr>
             </tbody>
         </table>

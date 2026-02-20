@@ -25,45 +25,55 @@ $weekStart = date('Y-m-d', strtotime('monday this week'));
 $monthStart = date('Y-m-01');
 
 // Handle date filter
-if ($dateFilter === 'today') {
-    $whereConditions[] = "date >= ?";
-    $params[] = $today;
-    $whereConditions[] = "date <= ?";
-    $params[] = $today;
-}
-elseif ($dateFilter === 'weekly') {
-    $whereConditions[] = "date >= ?";
-    $params[] = $weekStart;
-    $whereConditions[] = "date <= ?";
-    $params[] = $today;
-}
-elseif ($dateFilter === 'monthly' || $dateFilter === 'monthly_period') {
-    $selectedMonth = $_GET['selected_month'] ?? date('m');
-    $selectedYear = $_GET['selected_year'] ?? date('Y');
-    $monthStart = $selectedYear . '-' . $selectedMonth . '-01';
-    $monthEnd = date('Y-m-t', strtotime($monthStart));
-    $whereConditions[] = "date >= ?";
-    $params[] = $monthStart;
-    $whereConditions[] = "date <= ?";
-    $params[] = $monthEnd;
-}
-elseif ($dateFilter === 'annual') {
-    $selectedYear = $_GET['selected_year'] ?? date('Y');
-    $yearStart = $selectedYear . '-01-01';
-    $yearEnd = $selectedYear . '-12-31';
-    $whereConditions[] = "date >= ?";
-    $params[] = $yearStart;
-    $whereConditions[] = "date <= ?";
-    $params[] = $yearEnd;
-}
-elseif ($dateFilter === 'custom' || (!empty($_GET['date_from']) && !empty($_GET['date_to']))) {
-    if (!empty($_GET['date_from'])) {
+if ($dateFilter !== 'all_time') {
+    if ($dateFilter === 'today') {
         $whereConditions[] = "date >= ?";
-        $params[] = $_GET['date_from'];
-    }
-    if (!empty($_GET['date_to'])) {
+        $params[] = $today;
         $whereConditions[] = "date <= ?";
-        $params[] = $_GET['date_to'];
+        $params[] = $today;
+    }
+    elseif ($dateFilter === 'weekly') {
+        $whereConditions[] = "date >= ?";
+        $params[] = $weekStart;
+        $whereConditions[] = "date <= ?";
+        $params[] = $today;
+    }
+    elseif ($dateFilter === 'monthly' || $dateFilter === 'monthly_period') {
+        $selectedMonth = $_GET['selected_month'] ?? date('m');
+        $selectedYear = $_GET['selected_year'] ?? date('Y');
+        $monthStart = $selectedYear . '-' . $selectedMonth . '-01';
+
+        if ($dateFilter === 'monthly') {
+            $selectedDay = $_GET['selected_day'] ?? date('t', strtotime($monthStart));
+            $monthEnd = date('Y-m-d', strtotime($selectedYear . '-' . $selectedMonth . '-' . $selectedDay));
+        }
+        else {
+            $monthEnd = date('Y-m-t', strtotime($monthStart));
+        }
+
+        $whereConditions[] = "date >= ?";
+        $params[] = $monthStart;
+        $whereConditions[] = "date <= ?";
+        $params[] = $monthEnd;
+    }
+    elseif ($dateFilter === 'annual') {
+        $selectedYear = $_GET['selected_year'] ?? date('Y');
+        $yearStart = $selectedYear . '-01-01';
+        $yearEnd = $selectedYear . '-12-31';
+        $whereConditions[] = "date >= ?";
+        $params[] = $yearStart;
+        $whereConditions[] = "date <= ?";
+        $params[] = $yearEnd;
+    }
+    elseif ($dateFilter === 'custom' || (!empty($_GET['date_from']) && !empty($_GET['date_to']))) {
+        if (!empty($_GET['date_from'])) {
+            $whereConditions[] = "date >= ?";
+            $params[] = $_GET['date_from'];
+        }
+        if (!empty($_GET['date_to'])) {
+            $whereConditions[] = "date <= ?";
+            $params[] = $_GET['date_to'];
+        }
     }
 }
 
@@ -82,7 +92,7 @@ if (!empty($whereConditions)) {
 
 // Fetch PPE data from database
 try {
-    $sql = "SELECT date, check_no, dv_or_no, particulars, debit, credit, balance FROM ppe $whereClause ORDER BY date ASC";
+    $sql = "SELECT id, date, check_no, dv_or_no, particulars, debit, credit, balance FROM ppe $whereClause ORDER BY date ASC, id ASC";
     $stmt = $conn->prepare($sql);
     $stmt->execute($params);
     $ppeRecords = $stmt->fetchAll();
@@ -102,7 +112,7 @@ if ($dateFilter === 'monthly') {
 
     // Get the last transaction before the filtered month starts
     try {
-        $forwardSql = "SELECT date, balance FROM ppe WHERE date < ? ORDER BY date DESC LIMIT 1";
+        $forwardSql = "SELECT date, balance FROM ppe WHERE date < ? ORDER BY date DESC, id DESC LIMIT 1";
         $forwardStmt = $conn->prepare($forwardSql);
         $forwardStmt->execute([$monthStart]);
         $forwardRecord = $forwardStmt->fetch();
@@ -115,6 +125,52 @@ if ($dateFilter === 'monthly') {
     catch (Exception $e) {
         $balanceForward = 0;
     }
+}
+
+// Starting balance used to recalculate running balances in the report
+$startingBalance = 0.00;
+
+try {
+    $beforeParams = [];
+    $beforeFilterSql = '';
+
+    if ($dateFilter === 'today') {
+        $beforeFilterSql = "SELECT balance FROM ppe WHERE date < ? ORDER BY date DESC, id DESC LIMIT 1";
+        $beforeParams = [$today];
+    }
+    elseif ($dateFilter === 'weekly') {
+        $beforeFilterSql = "SELECT balance FROM ppe WHERE date < ? ORDER BY date DESC, id DESC LIMIT 1";
+        $beforeParams = [$weekStart];
+    }
+    elseif ($dateFilter === 'monthly' || $dateFilter === 'monthly_period') {
+        $selectedMonth = $_GET['selected_month'] ?? date('m');
+        $selectedYear = $_GET['selected_year'] ?? date('Y');
+        $monthStart = $selectedYear . '-' . $selectedMonth . '-01';
+        $beforeFilterSql = "SELECT balance FROM ppe WHERE date < ? ORDER BY date DESC, id DESC LIMIT 1";
+        $beforeParams = [$monthStart];
+    }
+    elseif ($dateFilter === 'annual') {
+        $selectedYear = $_GET['selected_year'] ?? date('Y');
+        $yearStart = $selectedYear . '-01-01';
+        $beforeFilterSql = "SELECT balance FROM ppe WHERE date < ? ORDER BY date DESC, id DESC LIMIT 1";
+        $beforeParams = [$yearStart];
+    }
+    elseif ($dateFilter === 'custom' || (!empty($_GET['date_from']) && !empty($_GET['date_to']))) {
+        if (!empty($_GET['date_from'])) {
+            $beforeFilterSql = "SELECT balance FROM ppe WHERE date < ? ORDER BY date DESC, id DESC LIMIT 1";
+            $beforeParams = [$_GET['date_from']];
+        }
+    }
+
+    if (!empty($beforeFilterSql) && !empty($beforeParams)) {
+        $beforeStmt = $conn->prepare($beforeFilterSql);
+        $beforeStmt->execute($beforeParams);
+        $beforeRecord = $beforeStmt->fetch();
+        $startingBalance = $beforeRecord ? floatval($beforeRecord['balance']) : 0.00;
+    }
+}
+catch (Exception $e) {
+    $startingBalance = 0.00;
 }
 
 // Handle Excel export
@@ -130,15 +186,24 @@ if ($format === 'excel') {
     $yearNum = $_GET['selected_year'] ?? date('Y');
     $monthNum = $_GET['selected_month'] ?? date('m');
 
-    if ($dateFilter === 'annual') {
-        $dateText = "AS OF " . $yearNum;
+    if ($dateFilter === 'all_time') {
+        $dateText = "ALL TIME";
+    }
+    elseif ($dateFilter === 'annual') {
+        $dateText = "AS OF DECEMBER 31, " . $yearNum;
     }
     elseif ($dateFilter === 'monthly') {
-        $endOfMonth = strtoupper(date('F t, Y', strtotime($yearNum . '-' . $monthNum . '-01')));
+        $selectedDay = $_GET['selected_day'] ?? date('t', strtotime($yearNum . '-' . $monthNum . '-01'));
+        $endOfMonth = strtoupper(date('F d, Y', strtotime($yearNum . '-' . $monthNum . '-' . $selectedDay)));
         $dateText = "AS OF " . $endOfMonth;
     }
     elseif ($dateFilter === 'monthly_period') {
         $dateText = "FOR THE MONTH OF " . strtoupper(date('F Y', mktime(0, 0, 0, $monthNum, 1, $yearNum)));
+    }
+    elseif ($dateFilter === 'custom' || (!empty($_GET['date_from']) && !empty($_GET['date_to']))) {
+        $dateFrom = date('F d, Y', strtotime($_GET['date_from']));
+        $dateTo = date('F d, Y', strtotime($_GET['date_to']));
+        $dateText = "FROM " . strtoupper($dateFrom) . " TO " . strtoupper($dateTo);
     }
     else {
         $dateText = strtoupper(date('F d, Y'));
@@ -164,12 +229,12 @@ if ($format === 'excel') {
     $currentRow = 6;
     $totalDebit = 0;
     $totalCredit = 0;
+    $currentBalance = $startingBalance;
 
-    // Add Balance Forwarded row if needed
     if ($dateFilter === 'monthly' && $balanceForwardDate) {
         $sheet->setCellValue('A' . $currentRow, $balanceForwardDate);
         $sheet->setCellValue('B' . $currentRow, 'BALANCE FORWARDED');
-        $sheet->setCellValue('G' . $currentRow, $balanceForward);
+        $sheet->setCellValue('G' . $currentRow, $currentBalance);
 
         $sheet->getStyle('A' . $currentRow . ':G' . $currentRow)->getFont()->setBold(true);
         $currentRow++;
@@ -180,22 +245,23 @@ if ($format === 'excel') {
         $totalCredit += $record['credit'];
         $formattedDate = date('m/d/Y', strtotime($record['date']));
 
+        $currentBalance = $currentBalance + $record['credit'] - $record['debit'];
+
         $sheet->setCellValue('A' . $currentRow, $formattedDate);
         $sheet->setCellValue('B' . $currentRow, strtoupper($record['particulars']));
         $sheet->setCellValue('C' . $currentRow, $record['check_no'] ?? '');
         $sheet->setCellValue('D' . $currentRow, $record['dv_or_no'] ?? '');
         $sheet->setCellValue('E' . $currentRow, $record['debit']);
         $sheet->setCellValue('F' . $currentRow, $record['credit']);
-        $sheet->setCellValue('G' . $currentRow, $record['balance']);
+        $sheet->setCellValue('G' . $currentRow, $currentBalance);
 
         $currentRow++;
     }
 
-    // Total row
     $sheet->setCellValue('B' . $currentRow, 'TOTAL');
     $sheet->setCellValue('E' . $currentRow, $totalDebit);
     $sheet->setCellValue('F' . $currentRow, $totalCredit);
-    $sheet->setCellValue('G' . $currentRow, !empty($ppeRecords) ? end($ppeRecords)['balance'] : $balanceForward);
+    $sheet->setCellValue('G' . $currentRow, $currentBalance);
 
     $totalStyle = [
         'font' => ['bold' => true],
@@ -279,14 +345,16 @@ if ($format === 'pdf') {
             }
             @page {
                 size: 13in 8.5in landscape;
-                margin: 0;
+                margin: 0.5in;
             }
             .no-print {
                 display: none !important;
             }
             .page {
-                margin: 0;
-                padding: 0;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                box-shadow: none !important;
                 page-break-after: auto;
                 height: auto;
             }
@@ -401,15 +469,24 @@ $dateFilter = $_GET['date_filter'] ?? '';
 $yearNum = $_GET['selected_year'] ?? date('Y');
 $monthNum = $_GET['selected_month'] ?? date('m');
 
-if ($dateFilter === 'annual') {
-    echo "AS OF " . $yearNum;
+if ($dateFilter === 'all_time') {
+    echo "ALL TIME";
+}
+elseif ($dateFilter === 'annual') {
+    echo "AS OF DECEMBER 31, " . $yearNum;
 }
 elseif ($dateFilter === 'monthly') {
-    $endOfMonth = strtoupper(date('F t, Y', strtotime($yearNum . '-' . $monthNum . '-01')));
+    $selectedDay = $_GET['selected_day'] ?? date('t', strtotime($yearNum . '-' . $monthNum . '-01'));
+    $endOfMonth = strtoupper(date('F d, Y', strtotime($yearNum . '-' . $monthNum . '-' . $selectedDay)));
     echo "AS OF " . $endOfMonth;
 }
 elseif ($dateFilter === 'monthly_period') {
     echo "FOR THE MONTH OF " . strtoupper(date('F Y', mktime(0, 0, 0, $monthNum, 1, $yearNum)));
+}
+elseif ($dateFilter === 'custom' || (!empty($_GET['date_from']) && !empty($_GET['date_to']))) {
+    $dateFrom = date('F d, Y', strtotime($_GET['date_from']));
+    $dateTo = date('F d, Y', strtotime($_GET['date_to']));
+    echo "FROM " . strtoupper($dateFrom) . " TO " . strtoupper($dateTo);
 }
 else {
     echo strtoupper(date('F d, Y'));
@@ -433,26 +510,31 @@ else {
             </thead>
             <tbody>
                 <?php
+$totalDebit = 0;
+$totalCredit = 0;
+$currentBalance = $startingBalance;
+$hasRecords = false;
+
+// Display Balance Forwarded Row if applicable
+if ($dateFilter === 'monthly' && $balanceForwardDate) {
+    $hasRecords = true;
+    echo '<tr style="font-weight: bold;">';
+    echo '<td class="text-center">' . strtoupper(htmlspecialchars($balanceForwardDate)) . '</td>';
+    echo '<td>' . strtoupper('BALANCE FORWARDED') . '</td>';
+    echo '<td class="text-center">&nbsp;</td>';
+    echo '<td class="text-center">&nbsp;</td>';
+    echo '<td class="text-right">&nbsp;</td>';
+    echo '<td class="text-right">&nbsp;</td>';
+    echo '<td class="text-right">' . number_format($currentBalance, 2) . '</td>';
+    echo '</tr>';
+}
+
 if (count($ppeRecords) > 0) {
-    $totalDebit = 0;
-    $totalCredit = 0;
-
-    // Add Balance Forwarded row first if filtered by month
-    if ($dateFilter === 'monthly') {
-        echo '<tr style="font-weight: bold;">';
-        echo '<td class="text-center">' . strtoupper(htmlspecialchars($balanceForwardDate)) . '</td>';
-        echo '<td>' . strtoupper('BALANCE FORWARDED') . '</td>';
-        echo '<td class="text-center">&nbsp;</td>';
-        echo '<td class="text-center">&nbsp;</td>';
-        echo '<td class="text-right">&nbsp;</td>';
-        echo '<td class="text-right">&nbsp;</td>';
-        echo '<td class="text-right">' . number_format($balanceForward, 2) . '</td>';
-        echo '</tr>';
-    }
-
+    $hasRecords = true;
     foreach ($ppeRecords as $record) {
         $totalDebit += $record['debit'];
         $totalCredit += $record['credit'];
+        $currentBalance = $currentBalance + $record['credit'] - $record['debit'];
 
         $formattedDate = date('m/d/Y', strtotime($record['date']));
         echo '<tr>';
@@ -462,16 +544,17 @@ if (count($ppeRecords) > 0) {
         echo '<td class="text-center">' . strtoupper(htmlspecialchars($record['dv_or_no'] ?? '')) . '</td>';
         echo '<td class="text-right">' . number_format($record['debit'], 2) . '</td>';
         echo '<td class="text-right">' . number_format($record['credit'], 2) . '</td>';
-        echo '<td class="text-right">' . number_format($record['balance'], 2) . '</td>';
+        echo '<td class="text-right">' . number_format($currentBalance, 2) . '</td>';
         echo '</tr>';
     }
+}
 
-    // Add total row
+if ($hasRecords) {
     echo '<tr style="font-weight: bold;">';
     echo '<td colspan="4" style="text-align: right; border: none;">TOTAL</td>';
     echo '<td style="text-align: right; border: none;">' . number_format($totalDebit, 2) . '</td>';
     echo '<td style="text-align: right; border: none;">' . number_format($totalCredit, 2) . '</td>';
-    echo '<td style="text-align: right; border: none;">' . number_format(!empty($ppeRecords) ? end($ppeRecords)['balance'] : 0, 2) . '</td>';
+    echo '<td style="text-align: right; border: none;">' . number_format($currentBalance, 2) . '</td>';
     echo '</tr>';
 }
 else {

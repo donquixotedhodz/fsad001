@@ -1,5 +1,8 @@
 <?php
 session_start();
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'superadmin') {
+    die("Access Denied: Only Super Admin can print reports.");
+}
 require_once __DIR__ . '/../config.php';
 
 // Get report name for filename

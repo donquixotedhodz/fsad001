@@ -4,6 +4,9 @@ require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/app/controllers/MainController.php';
 
 MainController::requireAuth();
+if ($_SESSION['role'] !== 'superadmin') {
+    die("Access Denied: Only Super Admin can print reports.");
+}
 $controller = new MainController($conn);
 $controller->setCurrentPage('ppe_print');
 

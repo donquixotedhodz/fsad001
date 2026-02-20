@@ -142,6 +142,7 @@ endif; ?>
             </div>
 
             <!-- AOM Dropdown -->
+            <?php if (isset($_SESSION['role']) && ($_SESSION['role'] === 'administrator' || $_SESSION['role'] === 'superadmin')): ?>
             <div x-data="{ aom_open: <?php echo($currentPage === 'aom' || $currentPage === 'aom_reports') ? 'true' : 'false'; ?> }">
                 <button @click="if (sidebarCollapsed) { sidebarCollapsed = false; localStorage.setItem('sidebarCollapsed', false); setTimeout(() => { aom_open = !aom_open }, 300); } else { aom_open = !aom_open }" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo($currentPage === 'aom' || $currentPage === 'aom_reports') ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
@@ -171,17 +172,26 @@ endif; ?>
                     </a>
                 </div>
             </div>
+            <?php
+endif; ?>
 
             <!-- Divider -->
+            <!-- Divider -->
+            <?php if (isset($_SESSION['role']) && ($_SESSION['role'] === 'administrator' || $_SESSION['role'] === 'superadmin')): ?>
             <div class="my-4 border-t border-gray-200 dark:border-gray-700"></div>
+            <?php
+endif; ?>
 
             <!-- Manage EC -->
+            <?php if (isset($_SESSION['role']) && ($_SESSION['role'] === 'administrator' || $_SESSION['role'] === 'superadmin')): ?>
             <a href="manage_ec.php" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo $currentPage === 'manage_ec' ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                 </svg>
                 <span class="font-medium">Manage EC</span>
             </a>
+            <?php
+endif; ?>
 
             <!-- Manage Users - Only for Administrator and Superadmin -->
             <?php if (isset($_SESSION['role']) && ($_SESSION['role'] === 'administrator' || $_SESSION['role'] === 'superadmin')): ?>
@@ -206,7 +216,11 @@ endif; ?>
 endif; ?>
 
             <!-- Divider -->
+            <!-- Divider -->
+            <?php if (isset($_SESSION['role']) && ($_SESSION['role'] === 'administrator' || $_SESSION['role'] === 'superadmin')): ?>
             <div class="my-4 border-t border-gray-200 dark:border-gray-700"></div>
+            <?php
+endif; ?>
 
             <!-- Audit Log - Only for Administrator and Superadmin -->
             <?php if (isset($_SESSION['role']) && ($_SESSION['role'] === 'administrator' || $_SESSION['role'] === 'superadmin')): ?>
@@ -232,7 +246,11 @@ endif; ?>
 endif; ?>
 
             <!-- Divider -->
+            <!-- Divider -->
+            <?php if (isset($_SESSION['role']) && ($_SESSION['role'] === 'administrator' || $_SESSION['role'] === 'superadmin')): ?>
             <div class="my-4 border-t border-gray-200 dark:border-gray-700"></div>
+            <?php
+endif; ?>
 
             <!-- Maintenance - Only for Superadmin -->
             <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'superadmin'): ?>

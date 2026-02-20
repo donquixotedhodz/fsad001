@@ -231,7 +231,7 @@ if ($format === 'pdf') {
                 padding: 0;
             }
             @page {
-                size: 13in 8.5in landscape;
+                size: 13in 8.5in;
                 margin: 0.5in;
             }
             .no-print {
@@ -243,7 +243,8 @@ if ($format === 'pdf') {
                 padding: 0 !important;
                 box-shadow: none !important;
                 page-break-after: auto;
-                height: auto;
+                height: auto !important;
+                min-height: 0 !important;
             }
         }
         

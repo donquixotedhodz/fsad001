@@ -37,7 +37,7 @@
                 </button>
 
                 <!-- MANAP Submenu -->
-                <div x-show="manap_open && !sidebarCollapsed" x-collapse class="pl-6 space-y-1 mt-2">
+                <div x-cloak x-show="manap_open && !sidebarCollapsed" x-collapse class="pl-6 space-y-1 mt-2">
                     <!-- Documents -->
                     <a href="documents.php" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo $currentPage === 'documents' ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -76,7 +76,7 @@
                 </button>
 
                 <!-- PPE Submenu -->
-                <div x-show="ppe_open && !sidebarCollapsed" x-collapse class="pl-6 space-y-1 mt-2">
+                <div x-cloak x-show="ppe_open && !sidebarCollapsed" x-collapse class="pl-6 space-y-1 mt-2">
                     <!-- Remaining Balance -->
                     <a href="ppe_balance.php" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo $currentPage === 'ppe_balance' ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -123,7 +123,7 @@ endif; ?>
                 </button>
 
                 <!-- AD Scorecard Submenu -->
-                <div x-show="ads_open && !sidebarCollapsed" x-collapse class="pl-6 space-y-1 mt-2">
+                <div x-cloak x-show="ads_open && !sidebarCollapsed" x-collapse class="pl-6 space-y-1 mt-2">
                     <!-- Documents -->
                     <a href="ad_scorecard.php" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo $currentPage === 'ads' ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -155,7 +155,7 @@ endif; ?>
                 </button>
 
                 <!-- AOM Submenu -->
-                <div x-show="aom_open && !sidebarCollapsed" x-collapse class="pl-6 space-y-1 mt-2">
+                <div x-cloak x-show="aom_open && !sidebarCollapsed" x-collapse class="pl-6 space-y-1 mt-2">
                     <!-- Documents -->
                     <a href="aom.php" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo $currentPage === 'aom' ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

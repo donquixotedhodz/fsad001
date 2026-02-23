@@ -129,6 +129,25 @@ if ($dateFilter === 'monthly') {
         $balanceForward = 0;
     }
 }
+elseif ($dateFilter === 'custom' && !empty($_GET['date_from'])) {
+    $dateFrom = $_GET['date_from'];
+
+    // Get the last transaction before the custom start date
+    try {
+        $forwardSql = "SELECT date, balance FROM ppe WHERE date < ? ORDER BY date DESC, id DESC LIMIT 1";
+        $forwardStmt = $conn->prepare($forwardSql);
+        $forwardStmt->execute([$dateFrom]);
+        $forwardRecord = $forwardStmt->fetch();
+
+        if ($forwardRecord) {
+            $balanceForward = $forwardRecord['balance'];
+            $balanceForwardDate = date('m/d/Y', strtotime($forwardRecord['date']));
+        }
+    }
+    catch (Exception $e) {
+        $balanceForward = 0;
+    }
+}
 
 // Starting balance used to recalculate running balances in the report
 $startingBalance = 0.00;
@@ -520,7 +539,7 @@ $currentBalance = $startingBalance;
 $hasRecords = false;
 
 // Display Balance Forwarded Row if applicable
-if ($dateFilter === 'monthly' && $balanceForwardDate) {
+if (($dateFilter === 'monthly' || ($dateFilter === 'custom' && !empty($_GET['date_from']))) && $balanceForwardDate) {
     $hasRecords = true;
     echo '<tr style="font-weight: bold;">';
     echo '<td class="text-center">' . strtoupper(htmlspecialchars($balanceForwardDate)) . '</td>';

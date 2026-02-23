@@ -16,6 +16,8 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <style>
+        [x-cloak] { display: none !important; }
+        
         /* Color theme CSS variables */
         :root {
             --theme-primary: #ea580c;
@@ -538,7 +540,7 @@ endif; ?>
                                 <span class="text-xs text-gray-500 dark:text-gray-400 tracking-wide"><?php echo htmlspecialchars(ucfirst($userRole)); ?></span>
                             </div>
                         </button>
-                        <div x-show="openUserMenu" x-transition class="absolute right-0 top-16 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 py-2 z-50">
+                        <div x-cloak x-show="openUserMenu" x-transition class="absolute right-0 top-16 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 py-2 z-50">
                             <a href="settings.php" class="flex items-center px-4 py-3 text-base text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-3 text-blue-500" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />

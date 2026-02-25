@@ -13,6 +13,12 @@ class PPEReportController {
      */
     public function exportCheckIssuedPDF($filters = []) {
         try {
+            if (isset($filters['records']) && is_array($filters['records'])) {
+                $records = $filters['records'];
+                $this->generateCheckIssuedPDF($records);
+                return;
+            }
+
             // Build filter conditions
             $whereConditions = ["(debit > 0 OR credit > 0)", "check_no != 'ONLINE'"];
             $params = [];
@@ -59,6 +65,12 @@ class PPEReportController {
      */
     public function exportCheckIssuedReceivingPDF($filters = []) {
         try {
+            if (isset($filters['records']) && is_array($filters['records'])) {
+                $records = $filters['records'];
+                $this->generateCheckIssuedReceivingPDF($records);
+                return;
+            }
+
             // Build filter conditions
             $whereConditions = ["check_no != 'ONLINE'"];
             $params = [];
@@ -108,6 +120,12 @@ class PPEReportController {
      */
     public function exportRemittancePDF($filters = []) {
         try {
+            if (isset($filters['records']) && is_array($filters['records'])) {
+                $records = $filters['records'];
+                $this->generateRemittancePDF($records);
+                return;
+            }
+
             // Build filter conditions
             $whereConditions = ["particulars LIKE '%REMITTANCE%'"];
             $params = [];
@@ -154,6 +172,12 @@ class PPEReportController {
      */
     public function exportCashBalancePDF($filters = []) {
         try {
+            if (isset($filters['records']) && is_array($filters['records'])) {
+                $records = $filters['records'];
+                $this->generateCashBalancePDF($records);
+                return;
+            }
+
             // Build filter conditions
             $whereConditions = [];
             $params = [];
@@ -208,6 +232,7 @@ class PPEReportController {
             $html = $this->getCheckIssuedHTML($records);
             
             $dompdf = new Dompdf();
+                $dompdf->set_option('defaultFont', 'Century Gothic');
             $dompdf->loadHtml($html);
             $dompdf->setPaper('A4', 'landscape');
             $dompdf->render();
@@ -232,6 +257,7 @@ class PPEReportController {
             $html = $this->getCheckIssuedReceivingHTML($records);
             
             $dompdf = new Dompdf();
+                $dompdf->set_option('defaultFont', 'Century Gothic');
             $dompdf->loadHtml($html);
             $dompdf->setPaper('A4', 'landscape');
             $dompdf->render();
@@ -256,6 +282,7 @@ class PPEReportController {
             $html = $this->getRemittanceHTML($records);
             
             $dompdf = new Dompdf();
+                $dompdf->set_option('defaultFont', 'Century Gothic');
             $dompdf->loadHtml($html);
             $dompdf->setPaper('A4', 'landscape');
             $dompdf->render();
@@ -280,6 +307,7 @@ class PPEReportController {
             $html = $this->getCashBalanceHTML($records);
             
             $dompdf = new Dompdf();
+                $dompdf->set_option('defaultFont', 'Century Gothic');
             $dompdf->loadHtml($html);
             $dompdf->setPaper('A4', 'landscape');
             $dompdf->render();
@@ -300,17 +328,19 @@ class PPEReportController {
     private function getCheckIssuedHTML($records) {
         $totalAmount = 0;
         $tableRows = '';
+        $commonPdfCss = $this->getCommonPdfCss();
+        $preparedByHtml = $this->getPreparedByHtml();
         
         foreach ($records as $record) {
             $totalAmount += $record['amount'];
             $formattedDate = date('m/d/Y', strtotime($record['date']));
             
             $tableRows .= '<tr>';
-            $tableRows .= '<td>' . strtoupper(htmlspecialchars($record['check_no'] ?? '')) . '</td>';
-            $tableRows .= '<td>' . strtoupper(htmlspecialchars($record['dv_or_no'] ?? '')) . '</td>';
+            $tableRows .= '<td class="text-center">' . strtoupper(htmlspecialchars($record['check_no'] ?? '')) . '</td>';
+            $tableRows .= '<td class="text-center">' . strtoupper(htmlspecialchars($record['dv_or_no'] ?? '')) . '</td>';
             $tableRows .= '<td>' . strtoupper(htmlspecialchars($record['particulars'])) . '</td>';
             $tableRows .= '<td class="text-right">' . number_format($record['amount'], 2) . '</td>';
-            $tableRows .= '<td class="text-right">' . strtoupper(htmlspecialchars($formattedDate)) . '</td>';
+            $tableRows .= '<td class="text-center">' . strtoupper(htmlspecialchars($formattedDate)) . '</td>';
             $tableRows .= '</tr>';
         }
         
@@ -322,78 +352,7 @@ class PPEReportController {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PPE Provident Fund - Check Issued</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            padding: 15px;
-        }
-        
-        .page {
-            width: 100%;
-            margin: 0;
-            padding: 0;
-            background-color: white;
-        }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 9px;
-            margin-bottom: 10px;
-        }
-        
-        th, td {
-            border: 1px solid #000;
-            padding: 4px;
-            text-align: left;
-        }
-        
-        th {
-            background-color: #e0e0e0;
-            font-weight: bold;
-            font-size: 8px;
-            text-align: center;
-        }
-        
-        td {
-            height: auto;
-            padding: 3px 4px;
-        }
-        
-        .text-right {
-            text-align: right;
-        }
-        
-        .text-center {
-            text-align: center;
-        }
-        
-        h1 {
-            font-size: 14px;
-            font-weight: bold;
-            margin: 0 0 2px 0;
-            text-transform: uppercase;
-        }
-        
-        h2 {
-            font-size: 12px;
-            font-weight: normal;
-            text-transform: uppercase;
-            margin: 0 0 2px 0;
-        }
-        
-        .header-date {
-            font-size: 9px;
-            color: #333;
-            text-transform: uppercase;
-            margin-bottom: 10px;
-        }
+        {$commonPdfCss}
     </style>
 </head>
 <body>
@@ -403,7 +362,7 @@ class PPEReportController {
         <div class="header-date">
 HTML;
         
-        $html .= strtoupper(date('F d, Y'));
+        $html .= $this->getAsOfDateText();
         
         $html .= <<<HTML
         </div>
@@ -414,8 +373,8 @@ HTML;
                     <th style="width: 12%;">CHECK NO.</th>
                     <th style="width: 12%;">DV NO.</th>
                     <th style="width: 40%;">NAME</th>
-                    <th style="width: 18%; text-align: right;">AMOUNT</th>
-                    <th style="width: 18%; text-align: right;">DATE ISSUED</th>
+                    <th style="width: 18%;">AMOUNT</th>
+                    <th style="width: 18%;">DATE ISSUED</th>
                 </tr>
             </thead>
             <tbody>
@@ -433,6 +392,7 @@ HTML;
                 </tr>
             </tbody>
         </table>
+        {$preparedByHtml}
     </div>
 </body>
 </html>
@@ -447,17 +407,19 @@ HTML;
     private function getCheckIssuedReceivingHTML($records) {
         $totalAmount = 0;
         $tableRows = '';
+        $commonPdfCss = $this->getCommonPdfCss();
+        $preparedByHtml = $this->getPreparedByHtml();
         
         foreach ($records as $record) {
             $totalAmount += $record['amount'];
             $formattedDate = date('m/d/Y', strtotime($record['date']));
             
             $tableRows .= '<tr>';
-            $tableRows .= '<td>' . htmlspecialchars(strtoupper($record['check_no'] ?? '')) . '</td>';
-            $tableRows .= '<td>' . htmlspecialchars(strtoupper($record['dv_or_no'] ?? '')) . '</td>';
+            $tableRows .= '<td class="text-center">' . htmlspecialchars(strtoupper($record['check_no'] ?? '')) . '</td>';
+            $tableRows .= '<td class="text-center">' . htmlspecialchars(strtoupper($record['dv_or_no'] ?? '')) . '</td>';
             $tableRows .= '<td>' . htmlspecialchars(strtoupper($record['particulars'])) . '</td>';
             $tableRows .= '<td class="text-right">' . number_format($record['amount'], 2) . '</td>';
-            $tableRows .= '<td>' . htmlspecialchars(strtoupper($formattedDate)) . '</td>';
+            $tableRows .= '<td class="text-center">' . htmlspecialchars(strtoupper($formattedDate)) . '</td>';
             $tableRows .= '<td></td>';
             $tableRows .= '<td></td>';
             $tableRows .= '<td></td>';
@@ -472,78 +434,7 @@ HTML;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PPE Provident Fund - Checks Issued-Receiving</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            padding: 15px;
-        }
-        
-        .page {
-            width: 100%;
-            margin: 0;
-            padding: 0;
-            background-color: white;
-        }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 8px;
-            margin-bottom: 10px;
-        }
-        
-        th, td {
-            border: 1px solid #000;
-            padding: 2px 3px;
-            text-align: left;
-        }
-        
-        th {
-            background-color: #e0e0e0;
-            font-weight: bold;
-            font-size: 7px;
-            text-align: center;
-        }
-        
-        td {
-            height: auto;
-            padding: 2px 3px;
-        }
-        
-        .text-right {
-            text-align: right;
-        }
-        
-        .text-center {
-            text-align: center;
-        }
-        
-        h1 {
-            font-size: 13px;
-            font-weight: bold;
-            margin: 0 0 2px 0;
-            text-transform: uppercase;
-        }
-        
-        h2 {
-            font-size: 11px;
-            font-weight: normal;
-            text-transform: uppercase;
-            margin: 0 0 2px 0;
-        }
-        
-        .header-date {
-            font-size: 8px;
-            color: #333;
-            text-transform: uppercase;
-            margin-bottom: 10px;
-        }
+        {$commonPdfCss}
     </style>
 </head>
 <body>
@@ -553,7 +444,7 @@ HTML;
         <div class="header-date">
 HTML;
         
-        $html .= strtoupper(date('F d, Y'));
+        $html .= $this->getAsOfDateText();
         
         $html .= <<<HTML
         </div>
@@ -564,7 +455,7 @@ HTML;
                     <th style="width: 8%;">CHECK NO.</th>
                     <th style="width: 8%;">DV NO.</th>
                     <th style="width: 16%;">NAME</th>
-                    <th style="width: 12%; text-align: right;">AMOUNT</th>
+                    <th style="width: 12%;">AMOUNT</th>
                     <th style="width: 10%;">DATE</th>
                     <th style="width: 12%;">DATE RELEASED</th>
                     <th style="width: 21%;">NAME</th>
@@ -589,6 +480,7 @@ HTML;
                 </tr>
             </tbody>
         </table>
+        {$preparedByHtml}
     </div>
 </body>
 </html>
@@ -603,17 +495,19 @@ HTML;
     private function getRemittanceHTML($records) {
         $totalAmount = 0;
         $tableRows = '';
+        $commonPdfCss = $this->getCommonPdfCss();
+        $preparedByHtml = $this->getPreparedByHtml();
         
         foreach ($records as $record) {
             $totalAmount += $record['amount'];
             $formattedDate = date('m/d/Y', strtotime($record['date']));
             
             $tableRows .= '<tr>';
-            $tableRows .= '<td>' . strtoupper(htmlspecialchars($record['check_no'] ?? '')) . '</td>';
-            $tableRows .= '<td>' . strtoupper(htmlspecialchars($record['dv_or_no'] ?? '')) . '</td>';
+            $tableRows .= '<td class="text-center">' . strtoupper(htmlspecialchars($record['check_no'] ?? '')) . '</td>';
+            $tableRows .= '<td class="text-center">' . strtoupper(htmlspecialchars($record['dv_or_no'] ?? '')) . '</td>';
             $tableRows .= '<td>' . strtoupper(htmlspecialchars($record['particulars'])) . '</td>';
             $tableRows .= '<td class="text-right">' . number_format($record['amount'], 2) . '</td>';
-            $tableRows .= '<td class="text-right">' . strtoupper(htmlspecialchars($formattedDate)) . '</td>';
+            $tableRows .= '<td class="text-center">' . strtoupper(htmlspecialchars($formattedDate)) . '</td>';
             $tableRows .= '</tr>';
         }
         
@@ -625,77 +519,7 @@ HTML;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PPE Provident Fund - Remittance</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            padding: 15px;
-        }
-        
-        .page {
-            width: 100%;
-            padding: 0;
-            background-color: white;
-        }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 9px;
-            margin-bottom: 10px;
-        }
-        
-        th, td {
-            border: 1px solid #000;
-            padding: 4px;
-            text-align: left;
-        }
-        
-        th {
-            background-color: #e0e0e0;
-            font-weight: bold;
-            font-size: 8px;
-            text-align: center;
-        }
-        
-        td {
-            height: auto;
-            padding: 3px 4px;
-        }
-        
-        .text-right {
-            text-align: right;
-        }
-        
-        .text-center {
-            text-align: center;
-        }
-        
-        h1 {
-            font-size: 14px;
-            font-weight: bold;
-            margin: 0 0 2px 0;
-            text-transform: uppercase;
-        }
-        
-        h2 {
-            font-size: 12px;
-            font-weight: normal;
-            text-transform: uppercase;
-            margin: 0 0 2px 0;
-        }
-        
-        .header-date {
-            font-size: 9px;
-            color: #333;
-            text-transform: uppercase;
-            margin-bottom: 10px;
-        }
+        {$commonPdfCss}
     </style>
 </head>
 <body>
@@ -705,7 +529,7 @@ HTML;
         <div class="header-date">
 HTML;
         
-        $html .= strtoupper(date('F d, Y'));
+        $html .= $this->getAsOfDateText();
         
         $html .= <<<HTML
         </div>
@@ -716,8 +540,8 @@ HTML;
                     <th style="width: 12%;">CHECK NO.</th>
                     <th style="width: 12%;">DV NO.</th>
                     <th style="width: 40%;">NAME</th>
-                    <th style="width: 18%; text-align: right;">AMOUNT</th>
-                    <th style="width: 18%; text-align: right;">DATE</th>
+                    <th style="width: 18%;">AMOUNT</th>
+                    <th style="width: 18%;">DATE</th>
                 </tr>
             </thead>
             <tbody>
@@ -735,6 +559,7 @@ HTML;
                 </tr>
             </tbody>
         </table>
+        {$preparedByHtml}
     </div>
 </body>
 </html>
@@ -750,6 +575,8 @@ HTML;
         $totalDebit = 0;
         $totalCredit = 0;
         $tableRows = '';
+        $commonPdfCss = $this->getCommonPdfCss();
+        $preparedByHtml = $this->getPreparedByHtml();
         
         foreach ($records as $record) {
             $totalDebit += $record['debit'];
@@ -758,10 +585,10 @@ HTML;
             $formattedDate = date('m/d/Y', strtotime($record['date']));
             
             $tableRows .= '<tr>';
-            $tableRows .= '<td>' . htmlspecialchars(strtoupper($formattedDate)) . '</td>';
-            $tableRows .= '<td>' . strtoupper(htmlspecialchars($record['check_no'] ?? '')) . '</td>';
-            $tableRows .= '<td>' . strtoupper(htmlspecialchars($record['dv_or_no'] ?? '')) . '</td>';
+            $tableRows .= '<td class="text-center">' . htmlspecialchars(strtoupper($formattedDate)) . '</td>';
             $tableRows .= '<td>' . strtoupper(htmlspecialchars($record['particulars'])) . '</td>';
+            $tableRows .= '<td class="text-center">' . strtoupper(htmlspecialchars($record['check_no'] ?? '')) . '</td>';
+            $tableRows .= '<td class="text-center">' . strtoupper(htmlspecialchars($record['dv_or_no'] ?? '')) . '</td>';
             $tableRows .= '<td class="text-right">' . number_format($record['debit'], 2) . '</td>';
             $tableRows .= '<td class="text-right">' . number_format($record['credit'], 2) . '</td>';
             $tableRows .= '<td class="text-right">' . number_format($record['balance'], 2) . '</td>';
@@ -776,86 +603,16 @@ HTML;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PPE Provident Fund - Cash Balance</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            padding: 15px;
-        }
-        
-        .page {
-            width: 100%;
-            padding: 0;
-            background-color: white;
-        }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 8px;
-            margin-bottom: 10px;
-        }
-        
-        th, td {
-            border: 1px solid #000;
-            padding: 2px 3px;
-            text-align: left;
-        }
-        
-        th {
-            background-color: #e0e0e0;
-            font-weight: bold;
-            font-size: 7px;
-            text-align: center;
-        }
-        
-        td {
-            height: auto;
-            padding: 2px 3px;
-        }
-        
-        .text-right {
-            text-align: right;
-        }
-        
-        .text-center {
-            text-align: center;
-        }
-        
-        h1 {
-            font-size: 13px;
-            font-weight: bold;
-            margin: 0 0 2px 0;
-            text-transform: uppercase;
-        }
-        
-        h2 {
-            font-size: 11px;
-            font-weight: normal;
-            text-transform: uppercase;
-            margin: 0 0 2px 0;
-        }
-        
-        .header-date {
-            font-size: 8px;
-            color: #333;
-            text-transform: uppercase;
-            margin-bottom: 10px;
-        }
+        {$commonPdfCss}
     </style>
 </head>
 <body>
     <div class="page">
-        <h1>PPE PROVIDENT FUND INC.</h1>
-        <h2>Cash Balance</h2>
-        <div class="header-date">
+    <h1>PPE PROVIDENT FUND INC.</h1>
+    <h2>Cash Balance</h2>
+    <div class="header-date">
 HTML;
-                $html .= strtoupper(date('F d, Y'));
+                $html .= $this->getAsOfDateText();
         
         $html .= <<<HTML
         </div>
@@ -863,13 +620,13 @@ HTML;
         <table>
             <thead>
                 <tr>
-                    <th style="width: 12%;">DATE</th>
-                    <th style="width: 12%;">CHECK NO.</th>
-                    <th style="width: 12%;">DV NO.</th>
-                    <th style="width: 30%;">NAME</th>
-                    <th style="width: 12%; text-align: right;">DEBIT</th>
-                    <th style="width: 12%; text-align: right;">CREDIT</th>
-                    <th style="width: 10%; text-align: right;">BALANCE</th>
+                    <th style="width: 10%;">DATE</th>
+                    <th style="width: 28%;">PARTICULARS</th>
+                    <th style="width: 10%;">CHECK NO.</th>
+                    <th style="width: 10%;">DV/OR NO.</th>
+                    <th style="width: 14%;">DEBIT</th>
+                    <th style="width: 14%;">CREDIT</th>
+                    <th style="width: 14%;">BALANCE</th>
                 </tr>
             </thead>
             <tbody>
@@ -900,11 +657,138 @@ HTML;
                 </tr>
             </tbody>
         </table>
+        {$preparedByHtml}
     </div>
 </body>
 </html>
 HTML;
         
         return $html;
+    }
+
+    private function getCommonPdfCss() {
+        return "
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Century Gothic', 'CenturyGothic', Arial, sans-serif;
+            font-size: 14px;
+        }
+
+        body {
+            font-family: 'Century Gothic', 'CenturyGothic', Arial, sans-serif;
+            margin: 0;
+            padding: 15px;
+            color: #000;
+        }
+
+        .page {
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: white;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        th, td {
+            border: 1px solid #000;
+            padding: 4px;
+            text-align: left;
+            vertical-align: middle;
+        }
+
+        th {
+            background-color: #e0e0e0;
+            font-weight: bold;
+            font-size: 15px;
+            text-align: center;
+        }
+
+        td {
+            height: auto;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 16px;
+            font-weight: bold;
+            margin: 0 0 2px 0;
+            text-transform: uppercase;
+        }
+
+        h2 {
+            font-size: 16px;
+            font-weight: normal;
+            text-transform: uppercase;
+            margin: 0 0 2px 0;
+        }
+
+        .header-date {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .prepared-by {
+            margin-top: 24px;
+            width: 320px;
+            font-size: 14px;
+        }
+
+        .prepared-by .label {
+            margin-bottom: 26px;
+        }
+
+        .prepared-by .name-line {
+            text-align: left;
+            padding-top: 0;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .prepared-by .title-line {
+            text-align: left;
+            margin-top: 2px;
+            font-size: 14px;
+            text-transform: none;
+        }
+        ";
+    }
+
+    private function getPreparedByHtml() {
+        $preparedBy = $_SESSION['full_name'] ?? $_SESSION['username'] ?? 'System User';
+        $preparedByTitle = $_SESSION['position'] ?? $_SESSION['designation'] ?? $_SESSION['job_title'] ?? 'Treasurer';
+        $preparedBy = strtoupper(htmlspecialchars($preparedBy));
+        $preparedByTitle = htmlspecialchars(ucwords(str_replace('_', ' ', (string) $preparedByTitle)));
+
+        $html = '<div class="prepared-by">'
+            . '<div class="label">Prepared by:</div>'
+            . '<div class="name-line">' . $preparedBy . '</div>';
+
+        if ($preparedByTitle !== '') {
+            $html .= '<div class="title-line">' . $preparedByTitle . '</div>';
+        }
+
+        $html .= '</div>';
+
+        return $html;
+    }
+
+    private function getAsOfDateText() {
+        return 'As of ' . date('F d, Y');
     }
 }

@@ -1023,8 +1023,8 @@ function editPPE(id) {
             }
             
             document.getElementById('editCheckNoInput').value = (data.record.check_no === 'ONLINE' || data.record.check_no === '') ? '' : data.record.check_no;
-            document.getElementById('editDebit').value = parseInt(data.record.debit);
-            document.getElementById('editCredit').value = parseInt(data.record.credit);
+            document.getElementById('editDebit').value = formatCurrency(data.record.debit || 0);
+            document.getElementById('editCredit').value = formatCurrency(data.record.credit || 0);
             
             // Parse the existing DV number
             if (data.record.dv_or_no) {

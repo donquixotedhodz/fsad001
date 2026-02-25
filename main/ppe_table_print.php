@@ -200,6 +200,7 @@ if ($format === 'excel') {
     $spreadsheet = new Spreadsheet();
     $sheet = $spreadsheet->getActiveSheet();
     $sheet->setTitle('Cash Balance Report');
+    $spreadsheet->getDefaultStyle()->getFont()->setName('Century Gothic')->setSize(14);
 
     // Title and Header
     $sheet->setCellValue('A1', 'PPE PROVIDENT FUND INC.');
@@ -212,28 +213,33 @@ if ($format === 'excel') {
         $dateText = "ALL TIME";
     }
     elseif ($dateFilter === 'annual') {
-        $dateText = "AS OF DECEMBER 31, " . $yearNum;
+        $dateText = "As of December 31, " . $yearNum;
     }
     elseif ($dateFilter === 'monthly') {
         $selectedDay = $_GET['selected_day'] ?? date('t', strtotime($yearNum . '-' . $monthNum . '-01'));
-        $endOfMonth = strtoupper(date('F d, Y', strtotime($yearNum . '-' . $monthNum . '-' . $selectedDay)));
-        $dateText = "AS OF " . $endOfMonth;
+        $endOfMonth = date('F d, Y', strtotime($yearNum . '-' . $monthNum . '-' . $selectedDay));
+        $dateText = "As of " . $endOfMonth;
     }
     elseif ($dateFilter === 'monthly_period') {
-        $dateText = "FOR THE MONTH OF " . strtoupper(date('F Y', mktime(0, 0, 0, $monthNum, 1, $yearNum)));
+        $dateText = "For the Month of " . date('F t, Y', mktime(0, 0, 0, $monthNum, 1, $yearNum));
     }
     elseif ($dateFilter === 'custom' || (!empty($_GET['date_from']) && !empty($_GET['date_to']))) {
         $dateFrom = date('F d, Y', strtotime($_GET['date_from']));
         $dateTo = date('F d, Y', strtotime($_GET['date_to']));
-        $dateText = "FROM " . strtoupper($dateFrom) . " TO " . strtoupper($dateTo);
+        $dateText = "From " . $dateFrom . " to " . $dateTo;
     }
     else {
-        $dateText = strtoupper(date('F d, Y'));
+        $dateText = 'As of ' . date('F d, Y');
     }
     $sheet->setCellValue('A3', $dateText);
 
+    $sheet->mergeCells('A1:G1');
+    $sheet->mergeCells('A2:G2');
+    $sheet->mergeCells('A3:G3');
     $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
-    $sheet->getStyle('A2')->getFont()->setSize(12);
+    $sheet->getStyle('A2')->getFont()->setBold(true)->setSize(14);
+    $sheet->getStyle('A3')->getFont()->setSize(14);
+    $sheet->getStyle('A1:A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
 
     // Header row
     $headers = ['DATE', 'PARTICULARS', 'CHECK NO.', 'DV/OR NO.', 'DEBIT', 'CREDIT', 'BALANCE'];
@@ -241,9 +247,9 @@ if ($format === 'excel') {
 
     // Style the header
     $headerStyle = [
-        'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+        'font' => ['bold' => true, 'color' => ['rgb' => '000000']],
         'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
-        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '10B981']], // Green-500
+        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'E5E7EB']],
         'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
     ];
     $sheet->getStyle('A5:G5')->applyFromArray($headerStyle);
@@ -294,10 +300,25 @@ if ($format === 'excel') {
 
     // Formatting
     $lastRow = $currentRow;
+    $sheet->getStyle('A5:G' . $lastRow)->applyFromArray([
+        'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
+    ]);
     $sheet->getStyle('A6:A' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
     $sheet->getStyle('C6:D' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
     $sheet->getStyle('E6:G' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
     $sheet->getStyle('E6:G' . $lastRow)->getNumberFormat()->setFormatCode('#,##0.00');
+
+    $preparedByName = strtoupper($_SESSION['full_name'] ?? $_SESSION['username'] ?? 'System User');
+    $preparedByTitle = $_SESSION['position'] ?? $_SESSION['designation'] ?? $_SESSION['job_title'] ?? 'Treasurer';
+    $preparedByRow = $currentRow + 3;
+
+    $sheet->mergeCells('A' . $preparedByRow . ':G' . $preparedByRow);
+    $sheet->mergeCells('A' . ($preparedByRow + 2) . ':G' . ($preparedByRow + 2));
+    $sheet->mergeCells('A' . ($preparedByRow + 3) . ':G' . ($preparedByRow + 3));
+    $sheet->setCellValue('A' . $preparedByRow, 'Prepared by:');
+    $sheet->setCellValue('A' . ($preparedByRow + 2), $preparedByName);
+    $sheet->setCellValue('A' . ($preparedByRow + 3), $preparedByTitle);
+    $sheet->getStyle('A' . ($preparedByRow + 2))->getFont()->setBold(true);
 
     // Auto-size columns
     foreach (range('A', 'G') as $col) {
@@ -329,6 +350,7 @@ if ($format === 'pdf') {
         'check_no' => $_GET['check_no'] ?? null,
         'dv_or_no' => $_GET['dv_or_no'] ?? null,
         'particulars' => $_GET['particulars'] ?? null,
+        'records' => $ppeRecords,
     ];
 
     try {
@@ -354,19 +376,24 @@ if ($format === 'pdf') {
         }
         
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Century Gothic', 'CenturyGothic', Arial, sans-serif;
+            font-size: 14px;
             background-color: #f5f5f5;
         }
         
         @media print {
             body {
-                font-family: 'Century Gothic', 'CenturyGothic', system-ui, sans-serif;
+                font-family: 'Century Gothic', 'CenturyGothic', Arial, sans-serif;
+                font-size:14px;
                 background-color: white;
                 margin: 0;
                 padding: 0;
             }
+            * {
+                font-family: 'Century Gothic', 'CenturyGothic', Arial, sans-serif !important;
+            }
             @page {
-                size: 13in 8.5in;
+                size: landscape;
                 margin: 0.5in;
             }
             .no-print {
@@ -433,7 +460,7 @@ if ($format === 'pdf') {
         }
         
         .header h1 {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: bold;
             margin-bottom: 5px;
             text-transform: uppercase;
@@ -447,7 +474,7 @@ if ($format === 'pdf') {
         }
         
         .header-date {
-            font-size: 10px;
+            font-size: 14px;
             color: #666;
             text-transform: uppercase;
         }
@@ -484,9 +511,9 @@ if ($format === 'pdf') {
     <div class="page">
         <!-- Header -->
         <div style="text-align: left; margin-bottom: 15px;">
-            <h1 style="font-size: 20px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase;">PPE PROVIDENT FUND INC.</h1>
-            <h2 style="font-size: 18px; margin-bottom: 5px; text-transform: uppercase;">Cash Balance</h2>
-            <div style="font-size: 14px; color: black; text-transform: uppercase;">
+            <h1 style="font-size: 14pt; font-weight: bold; margin-bottom: 5px; text-transform: uppercase;">PPE PROVIDENT FUND INC.</h1>
+            <h2 style="font-size: 14pt; margin-bottom: 5px; text-transform: uppercase;">Cash Balance</h2>
+            <div style="font-size: 14pt; color: black;">
                 <div><?php
 $dateFilter = $_GET['date_filter'] ?? '';
 $yearNum = $_GET['selected_year'] ?? date('Y');
@@ -496,15 +523,15 @@ if ($dateFilter === 'all_time') {
     echo "ALL TIME";
 }
 elseif ($dateFilter === 'annual') {
-    echo "AS OF DECEMBER 31, " . $yearNum;
+    echo "As of December 31, " . $yearNum;
 }
 elseif ($dateFilter === 'monthly') {
     $selectedDay = $_GET['selected_day'] ?? date('t', strtotime($yearNum . '-' . $monthNum . '-01'));
-    $endOfMonth = strtoupper(date('F d, Y', strtotime($yearNum . '-' . $monthNum . '-' . $selectedDay)));
-    echo "AS OF " . $endOfMonth;
+    $endOfMonth = date('F d, Y', strtotime($yearNum . '-' . $monthNum . '-' . $selectedDay));
+    echo "As of " . $endOfMonth;
 }
 elseif ($dateFilter === 'monthly_period') {
-    echo "FOR THE MONTH OF " . strtoupper(date('F Y', mktime(0, 0, 0, $monthNum, 1, $yearNum)));
+    echo "For the Month of " . date('F t, Y', mktime(0, 0, 0, $monthNum, 1, $yearNum));
 }
 elseif ($dateFilter === 'custom' || (!empty($_GET['date_from']) && !empty($_GET['date_to']))) {
     $dateFrom = date('F d, Y', strtotime($_GET['date_from']));

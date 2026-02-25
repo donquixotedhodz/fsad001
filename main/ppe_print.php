@@ -115,7 +115,7 @@ ob_start();
                                 get monthName() { return this.months[parseInt(this.month) - 1]; },
                                 get lastDay() { return new Date(this.year, this.month, 0).getDate(); },
                                 get asOfLabel() { return `As of ${this.monthName} ${this.day}, ${this.year} (Balance Forward)`; },
-                                get periodLabel() { return `For the Month of ${this.monthName} ${this.year}`; },
+                                get periodLabel() { return `For the Month of ${this.monthName} ${this.lastDay}, ${this.year}`; },
                                 updateDay() { if (this.day > this.lastDay) this.day = this.lastDay; }
                             }">
                                 <h2 class="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-3 mb-6">
@@ -224,7 +224,7 @@ for ($y = $currentYear; $y >= 2020; $y--) {
                                         <div class="flex items-center p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition cursor-pointer" @click="filter = 'annual'">
                                             <input type="radio" value="annual" name="date_filter" x-model="filter" class="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500">
                                             <label class="ml-3 block text-base font-medium text-gray-900 dark:text-white cursor-pointer flex-1">
-                                                As Of (Year)
+                                                As of (Year)
                                             </label>
                                         </div>
                                         <div x-show="filter == 'annual'" x-collapse class="p-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-100 dark:border-gray-700 transition-all">

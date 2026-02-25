@@ -4,6 +4,12 @@ require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/app/controllers/MainController.php';
 
 MainController::requireAuth();
+
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'superadmin') {
+    header("Location: dashboard.php");
+    exit();
+}
+
 $controller = new MainController($conn);
 $controller->setCurrentPage('ppe_reports');
 

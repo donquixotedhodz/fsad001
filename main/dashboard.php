@@ -9,9 +9,16 @@ $controller = new MainController($conn);
 $controller->setCurrentPage('dashboard');
 $auditLogger = new AuditLogger($conn);
 $username = $_SESSION['username'] ?? 'User';
+$isSuperadmin = isset($_SESSION['role']) && $_SESSION['role'] === 'superadmin';
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_ppe_balance' && !$isSuperadmin) {
+    $_SESSION['errorMessage'] = "Only Superadmin can update PPE balance.";
+    header('Location: ' . $_SERVER['REQUEST_URI']);
+    exit;
+}
 
 // Handle PPE Fund Balance Update
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_ppe_balance') {
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_ppe_balance' && $isSuperadmin) {
     $newBalance = isset($_POST['ppe_balance']) ? floatval($_POST['ppe_balance']) : 0;
 
     // Fetch old balance for audit log
@@ -215,11 +222,11 @@ ob_start();
                     <p class="text-sm font-medium text-gray-500 dark:text-gray-400">PPE Provident Fund</p>
                     <p class="text-3xl font-bold text-gray-900 dark:text-white mt-2">
                         <?php
-if (isset($_SESSION['role']) && $_SESSION['role'] === 'staff') {
-    echo '***';
+if ($isSuperadmin) {
+    echo '₱' . number_format($ppeBalance, 2);
 }
 else {
-    echo '₱' . number_format($ppeBalance, 2);
+    echo '***';
 }
 ?>
                     </p>

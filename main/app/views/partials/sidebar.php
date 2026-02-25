@@ -62,8 +62,8 @@
                 </div>
             </div>
 
-            <!-- PPE Provident Fund Dropdown - Only for Administrator and Superadmin -->
-            <?php if (isset($_SESSION['role']) && ($_SESSION['role'] === 'administrator' || $_SESSION['role'] === 'superadmin')): ?>
+            <!-- PPE Provident Fund Dropdown - Only for Superadmin -->
+            <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'superadmin'): ?>
             <div x-data="{ ppe_open: <?php echo($currentPage === 'ppe' || $currentPage === 'ppe_reports' || $currentPage === 'ppe_balance' || $currentPage === 'ppe_print') ? 'true' : 'false'; ?> }">
                 <button @click="if (sidebarCollapsed) { sidebarCollapsed = false; localStorage.setItem('sidebarCollapsed', false); setTimeout(() => { ppe_open = !ppe_open }, 300); } else { ppe_open = !ppe_open }" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo($currentPage === 'ppe' || $currentPage === 'ppe_reports' || $currentPage === 'ppe_balance' || $currentPage === 'ppe_print') ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">

@@ -6,8 +6,8 @@ require_once __DIR__ . '/app/helpers/AuditLogger.php';
 
 MainController::requireAuth();
 
-// Check if user is superadmin or administrator - both can view, only superadmin can edit
-if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], ['superadmin', 'administrator'])) {
+// Check if user is superadmin only
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'superadmin') {
     header("Location: dashboard.php");
     exit();
 }

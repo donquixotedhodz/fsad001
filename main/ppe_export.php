@@ -13,6 +13,11 @@ use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 
 MainController::requireAuth();
 
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'superadmin') {
+    header("Location: dashboard.php");
+    exit();
+}
+
 // Build filter conditions
 $whereConditions = [];
 $params = [];

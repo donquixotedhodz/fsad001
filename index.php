@@ -8,11 +8,33 @@ $username = 'root';
 $password = '';
 
 try {
-    $conn = new PDO("mysql:host=$host;dbname=$dbname", $username, $password);
+    $bootstrapConn = new PDO("mysql:host=$host;charset=utf8mb4", $username, $password);
+    $bootstrapConn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+    $dbCheckStmt = $bootstrapConn->prepare("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ? LIMIT 1");
+    $dbCheckStmt->execute([$dbname]);
+    $databaseExists = (bool) $dbCheckStmt->fetchColumn();
+
+    $requiredTablesExist = false;
+    if ($databaseExists) {
+        $tableCheckStmt = $bootstrapConn->prepare(
+            "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME IN ('users', 'staff')"
+        );
+        $tableCheckStmt->execute([$dbname]);
+        $requiredTablesExist = ((int) $tableCheckStmt->fetchColumn()) >= 1;
+    }
+
+    if (!$databaseExists || !$requiredTablesExist) {
+        header('Location: setup_import.php');
+        exit;
+    }
+
+    $conn = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 }
 catch (PDOException $e) {
-    die("Connection Error: " . $e->getMessage());
+    header('Location: setup_import.php');
+    exit;
 }
 
 $login_error = '';

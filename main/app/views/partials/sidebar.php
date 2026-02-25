@@ -252,16 +252,13 @@ endif; ?>
             <?php
 endif; ?>
 
-            <!-- Maintenance - Only for Superadmin -->
-            <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'superadmin'): ?>
+                        <!-- Support / Maintenance -->
             <a href="maintenance.php" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors <?php echo $currentPage === 'maintenance' ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'; ?>">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
                 </svg>
-                <span class="font-medium">Support</span>
+                <span class="font-medium">Backup &amp; Restore</span>
             </a>
-            <?php
-endif; ?>
 
             <!-- Logout -->
             <!-- <button onclick="confirmLogout()" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-gray-700 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20">

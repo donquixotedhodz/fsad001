@@ -8,12 +8,6 @@ MainController::requireAuth();
 $controller = new MainController($conn);
 $controller->setCurrentPage('maintenance');
 
-// Only superadmin can access maintenance
-if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'superadmin') {
-    header('Location: dashboard.php');
-    exit;
-}
-
 $auditLogger = new AuditLogger($conn);
 $username = $_SESSION['username'] ?? 'User';
 $message = '';
@@ -45,6 +39,152 @@ function getStatementTableName($statement) {
     }
 
     return null;
+}
+
+function convertInsertToUpsert($statement) {
+    if (!preg_match('/^\s*INSERT\s+INTO\s+`?[a-zA-Z0-9_]+`?\s*\(([^)]+)\)\s*VALUES\s+/is', $statement, $matches)) {
+        return $statement;
+    }
+
+    if (stripos($statement, 'ON DUPLICATE KEY UPDATE') !== false) {
+        return $statement;
+    }
+
+    $columns = array_filter(array_map('trim', explode(',', $matches[1])));
+    if (empty($columns)) {
+        return $statement;
+    }
+
+    $updateParts = [];
+    foreach ($columns as $column) {
+        $columnName = trim($column, "` \t\n\r\0\x0B");
+        if ($columnName === '') {
+            continue;
+        }
+        $safeColumn = '`' . str_replace('`', '``', $columnName) . '`';
+        $updateParts[] = "{$safeColumn} = VALUES({$safeColumn})";
+    }
+
+    if (empty($updateParts)) {
+        return $statement;
+    }
+
+    return rtrim($statement) . ' ON DUPLICATE KEY UPDATE ' . implode(', ', $updateParts);
+}
+
+function splitSqlStatements($sqlContent) {
+    $statements = [];
+    $buffer = '';
+    $length = strlen($sqlContent);
+    $delimiter = ';';
+    $inSingleQuote = false;
+    $inDoubleQuote = false;
+    $inBacktick = false;
+    $inLineComment = false;
+    $inBlockComment = false;
+
+    for ($index = 0; $index < $length; $index++) {
+        $char = $sqlContent[$index];
+        $nextChar = $index + 1 < $length ? $sqlContent[$index + 1] : '';
+
+        if ($inLineComment) {
+            $buffer .= $char;
+            if ($char === "\n") {
+                $inLineComment = false;
+            }
+            continue;
+        }
+
+        if ($inBlockComment) {
+            $buffer .= $char;
+            if ($char === '*' && $nextChar === '/') {
+                $buffer .= $nextChar;
+                $index++;
+                $inBlockComment = false;
+            }
+            continue;
+        }
+
+        if (!$inSingleQuote && !$inDoubleQuote && !$inBacktick) {
+            if ($char === '-' && $nextChar === '-') {
+                $charAfter = $index + 2 < $length ? $sqlContent[$index + 2] : '';
+                if ($charAfter === ' ' || $charAfter === "\t" || $charAfter === "\r" || $charAfter === "\n") {
+                    $buffer .= $char . $nextChar;
+                    $index++;
+                    $inLineComment = true;
+                    continue;
+                }
+            }
+
+            if ($char === '#') {
+                $buffer .= $char;
+                $inLineComment = true;
+                continue;
+            }
+
+            if ($char === '/' && $nextChar === '*') {
+                $buffer .= $char . $nextChar;
+                $index++;
+                $inBlockComment = true;
+                continue;
+            }
+        }
+
+        if ($char === "'" && !$inDoubleQuote && !$inBacktick) {
+            $isEscaped = $index > 0 && $sqlContent[$index - 1] === '\\';
+            if (!$isEscaped) {
+                $inSingleQuote = !$inSingleQuote;
+            }
+            $buffer .= $char;
+            continue;
+        }
+
+        if ($char === '"' && !$inSingleQuote && !$inBacktick) {
+            $isEscaped = $index > 0 && $sqlContent[$index - 1] === '\\';
+            if (!$isEscaped) {
+                $inDoubleQuote = !$inDoubleQuote;
+            }
+            $buffer .= $char;
+            continue;
+        }
+
+        if ($char === '`' && !$inSingleQuote && !$inDoubleQuote) {
+            $inBacktick = !$inBacktick;
+            $buffer .= $char;
+            continue;
+        }
+
+        if (!$inSingleQuote && !$inDoubleQuote && !$inBacktick) {
+            if ($char === "\n" || $char === "\r") {
+                $trimmedBuffer = trim($buffer);
+                if (preg_match('/^DELIMITER\s+(.+)$/i', $trimmedBuffer, $delimiterMatch)) {
+                    $delimiter = trim($delimiterMatch[1]);
+                    $buffer = '';
+                    continue;
+                }
+            }
+
+            $delimiterLength = strlen($delimiter);
+            if ($delimiterLength > 0 && substr($sqlContent, $index, $delimiterLength) === $delimiter) {
+                $statement = trim($buffer);
+                if ($statement !== '') {
+                    $statements[] = $statement;
+                }
+                $buffer = '';
+                $index += $delimiterLength - 1;
+                continue;
+            }
+        }
+
+        $buffer .= $char;
+    }
+
+    $remainingStatement = trim($buffer);
+    if ($remainingStatement !== '' && !preg_match('/^DELIMITER\s+/i', $remainingStatement)) {
+        $statements[] = $remainingStatement;
+    }
+
+    return $statements;
 }
 
 // Handle database export
@@ -229,13 +369,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             } else {
                 // Read the SQL file
                 $sqlContent = file_get_contents($file['tmp_name']);
-                
-                // Split SQL statements
-                $splitResult = preg_split('/;(?=([^\']*\'[^\']*\')*[^\']*$)/', $sqlContent);
-                if ($splitResult === false) {
-                    $splitResult = explode(';', $sqlContent);
-                }
-                $statements = array_filter(array_map('trim', $splitResult));
+
+                // Split SQL statements safely (handles comments, quotes, and DELIMITER)
+                $statements = splitSqlStatements($sqlContent);
                 
                 $successCount = 0;
                 $errorCount = 0;
@@ -252,12 +388,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                             continue;
                         }
 
+                        $statementToExecute = $statement;
+                        if (preg_match('/^\s*INSERT\s+INTO\s+/i', $statementToExecute)) {
+                            $statementToExecute = convertInsertToUpsert($statementToExecute);
+                        }
+
                         try {
-                            $conn->exec($statement);
+                            $conn->exec($statementToExecute);
                             $successCount++;
                         } catch (PDOException $e) {
                             $errorCount++;
-                            $errors[] = substr($statement, 0, 50) . '... - Error: ' . $e->getMessage();
+                            $errors[] = substr($statementToExecute, 0, 50) . '... - Error: ' . $e->getMessage();
                         }
                     }
                 }
@@ -278,7 +419,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     }
                     $messageType = 'success';
                 } else {
-                    $message = "Database import completed with {$errorCount} errors. {$successCount} statements executed, {$skippedCount} skipped.";
+                    $sampleErrors = array_slice($errors, 0, 3);
+                    $sampleText = empty($sampleErrors) ? '' : ' Sample errors: ' . implode(' | ', $sampleErrors);
+                    $message = "Database import completed with {$errorCount} errors. {$successCount} statements executed, {$skippedCount} skipped." . $sampleText;
                     $messageType = 'warning';
                 }
             }
@@ -306,7 +449,7 @@ ob_start();
                 </div>
                 <div class="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3">
                     <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Access</p>
-                    <p class="text-sm font-semibold text-gray-900 dark:text-white">Superadmin only</p>
+                    <p class="text-sm font-semibold text-gray-900 dark:text-white">All authenticated users</p>
                 </div>
             </div>
         </div>

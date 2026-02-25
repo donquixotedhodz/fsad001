@@ -95,7 +95,8 @@ if (!empty($whereConditions)) {
 
 // Fetch PPE data from database
 try {
-    $sql = "SELECT id, date, check_no, dv_or_no, particulars, debit, credit, balance FROM ppe $whereClause ORDER BY date ASC, id ASC";
+    $orderBy = $dateFilter === 'all_time' ? 'id ASC' : 'date ASC, id ASC';
+    $sql = "SELECT id, date, check_no, dv_or_no, particulars, debit, credit, balance FROM ppe $whereClause ORDER BY $orderBy";
     $stmt = $conn->prepare($sql);
     $stmt->execute($params);
     $ppeRecords = $stmt->fetchAll();
@@ -210,7 +211,7 @@ if ($format === 'excel') {
     $monthNum = $_GET['selected_month'] ?? date('m');
 
     if ($dateFilter === 'all_time') {
-        $dateText = "ALL TIME";
+        $dateText = 'As of ' . date('F d, Y') . ', ' . $yearNum;
     }
     elseif ($dateFilter === 'annual') {
         $dateText = "As of December 31, " . $yearNum;
@@ -273,7 +274,12 @@ if ($format === 'excel') {
         $totalCredit += $record['credit'];
         $formattedDate = date('m/d/Y', strtotime($record['date']));
 
-        $currentBalance = $currentBalance + $record['credit'] - $record['debit'];
+        if ($dateFilter === 'all_time') {
+            $currentBalance = floatval($record['balance']);
+        }
+        else {
+            $currentBalance = $currentBalance + $record['credit'] - $record['debit'];
+        }
 
         $sheet->setCellValue('A' . $currentRow, $formattedDate);
         $sheet->setCellValue('B' . $currentRow, strtoupper($record['particulars']));
@@ -520,7 +526,7 @@ $yearNum = $_GET['selected_year'] ?? date('Y');
 $monthNum = $_GET['selected_month'] ?? date('m');
 
 if ($dateFilter === 'all_time') {
-    echo "ALL TIME";
+    echo 'As of ' . date('F d, Y') . ', ' . $yearNum;
 }
 elseif ($dateFilter === 'annual') {
     echo "As of December 31, " . $yearNum;
@@ -584,7 +590,13 @@ if (count($ppeRecords) > 0) {
     foreach ($ppeRecords as $record) {
         $totalDebit += $record['debit'];
         $totalCredit += $record['credit'];
-        $currentBalance = $currentBalance + $record['credit'] - $record['debit'];
+
+        if ($dateFilter === 'all_time') {
+            $currentBalance = floatval($record['balance']);
+        }
+        else {
+            $currentBalance = $currentBalance + $record['credit'] - $record['debit'];
+        }
 
         $formattedDate = date('m/d/Y', strtotime($record['date']));
         echo '<tr>';

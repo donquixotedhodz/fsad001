@@ -239,7 +239,17 @@ for ($y = $currentYear; $y >= 2020; $y--) {
                                         </div>
                                     </div>
 
-                                    <!-- Option 4: Date Printed -->
+                                    <!-- Option 4: All Time -->
+                                    <div class="border-b border-gray-100 dark:border-gray-700">
+                                        <div class="flex items-center p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition cursor-pointer" @click="filter = 'all_time'">
+                                            <input type="radio" value="all_time" name="date_filter" x-model="filter" class="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500">
+                                            <label class="ml-3 block text-base font-medium text-gray-900 dark:text-white cursor-pointer flex-1">
+                                                All Time
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <!-- Option 5: Date Printed -->
                                     <div class="border-b border-gray-100 dark:border-gray-700">
                                         <div class="flex items-center p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition cursor-pointer" @click="filter = 'date_printed'; dateTo = dateFrom">
                                             <input type="radio" value="date_printed" name="date_filter" x-model="filter" class="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500">
@@ -253,7 +263,7 @@ for ($y = $currentYear; $y >= 2020; $y--) {
                                         </div>
                                     </div>
                                     
-                                    <!-- Option 5: Custom Date -->
+                                    <!-- Option 6: Custom Date -->
                                     <div>
                                         <div class="flex items-center p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition cursor-pointer" @click="filter = 'custom'">
                                             <input type="radio" value="custom" name="date_filter" x-model="filter" class="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500">

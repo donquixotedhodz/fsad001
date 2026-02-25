@@ -95,7 +95,7 @@ if (!empty($whereConditions)) {
 
 // Fetch PPE data from database
 try {
-    $orderBy = $dateFilter === 'all_time' ? 'id ASC' : 'date ASC, id ASC';
+    $orderBy = 'date ASC, id ASC';
     $sql = "SELECT id, date, check_no, dv_or_no, particulars, debit, credit, balance FROM ppe $whereClause ORDER BY $orderBy";
     $stmt = $conn->prepare($sql);
     $stmt->execute($params);

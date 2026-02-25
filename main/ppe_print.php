@@ -138,6 +138,15 @@ ob_start();
                                 
                                 <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Select Period</label>
                                 <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 overflow-hidden shadow-sm">
+                 <!-- Option 2: All time -->
+                                <div class="border-b border-gray-100 dark:border-gray-700">
+                                        <div class="flex items-center p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition cursor-pointer" @click="filter = 'all_time'">
+                                            <input type="radio" value="all_time" name="date_filter" x-model="filter" class="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500">
+                                            <label class="ml-3 block text-base font-medium text-gray-900 dark:text-white cursor-pointer flex-1">
+                                                All Time
+                                            </label>
+                                        </div>
+                                    </div>
                                     
                                     
                                     <div class="border-b border-gray-100 dark:border-gray-700">
@@ -183,6 +192,7 @@ for ($y = $currentYear; $y >= 2020; $y--) {
                                             </div>
                                         </div>
                                     </div>
+                                    
 
                                     <!-- Option 2: For the Month (Period) -->
                                     <div class="border-b border-gray-100 dark:border-gray-700">
@@ -240,14 +250,7 @@ for ($y = $currentYear; $y >= 2020; $y--) {
                                     </div>
 
                                     <!-- Option 4: All Time -->
-                                    <div class="border-b border-gray-100 dark:border-gray-700">
-                                        <div class="flex items-center p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition cursor-pointer" @click="filter = 'all_time'">
-                                            <input type="radio" value="all_time" name="date_filter" x-model="filter" class="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500">
-                                            <label class="ml-3 block text-base font-medium text-gray-900 dark:text-white cursor-pointer flex-1">
-                                                All Time
-                                            </label>
-                                        </div>
-                                    </div>
+                                    
 
                                     <!-- Option 5: Date Printed -->
                                     <div class="border-b border-gray-100 dark:border-gray-700">

@@ -211,7 +211,7 @@ if ($format === 'excel') {
     $monthNum = $_GET['selected_month'] ?? date('m');
 
     if ($dateFilter === 'all_time') {
-        $dateText = 'As of ' . date('F d, Y') . ', ' . $yearNum;
+        $dateText = 'As of ' . date('F d, Y');
     }
     elseif ($dateFilter === 'annual') {
         $dateText = "As of December 31, " . $yearNum;
@@ -526,7 +526,7 @@ $yearNum = $_GET['selected_year'] ?? date('Y');
 $monthNum = $_GET['selected_month'] ?? date('m');
 
 if ($dateFilter === 'all_time') {
-    echo 'As of ' . date('F d, Y') . ', ' . $yearNum;
+    echo 'As of ' . date('F d, Y');
 }
 elseif ($dateFilter === 'annual') {
     echo "As of December 31, " . $yearNum;

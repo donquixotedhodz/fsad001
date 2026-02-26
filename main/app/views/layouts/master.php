@@ -429,6 +429,19 @@ catch (PDOException $e) {
 // Silent fail if table doesn't exist yet
 }
 
+$chatbotEnabled = true;
+try {
+    $chatbotSettingStmt = $conn->prepare("SELECT setting_value FROM app_settings WHERE setting_key = 'chatbot_enabled' LIMIT 1");
+    $chatbotSettingStmt->execute();
+    $chatbotEnabledValue = $chatbotSettingStmt->fetchColumn();
+    if ($chatbotEnabledValue !== false) {
+        $chatbotEnabled = ((string) $chatbotEnabledValue === '1');
+    }
+}
+catch (PDOException $e) {
+// Use default enabled state if settings table doesn't exist
+}
+
 require_once __DIR__ . '/../partials/sidebar.php';
 ?>
 
@@ -566,6 +579,50 @@ endif; ?>
         </main>
     </div>
 
+    <?php if ($chatbotEnabled): ?>
+    <!-- FAQ Chatbot -->
+    <div id="faqChatbotContainer" class="fixed bottom-6 right-6 z-50">
+        <button id="faqChatbotToggle" type="button" class="w-14 h-14 rounded-full bg-blue-500 text-white shadow-lg hover:bg-blue-600 transition flex items-center justify-center" title="Open FAQ Chatbot">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3h6m-9.75 7.5h13.5A2.25 2.25 0 0 0 19.5 16.5V6.75A2.25 2.25 0 0 0 17.25 4.5H6.75A2.25 2.25 0 0 0 4.5 6.75V16.5A2.25 2.25 0 0 0 6.75 18.75Z" />
+            </svg>
+        </button>
+
+        <div id="faqChatbotWindow" class="hidden absolute bottom-16 right-0 w-[360px] max-w-[92vw] h-[520px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl overflow-hidden">
+            <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-blue-500 text-white flex items-center justify-between">
+                <div>
+                    <h3 class="font-semibold">FSAD FAQ Assistant</h3>
+                    <p class="text-xs opacity-90">Answers from system FAQ only</p>
+                </div>
+                <button id="faqChatbotClose" class="text-white hover:opacity-80">✕</button>
+            </div>
+
+            <div id="faqChatbotMessages" class="h-[360px] overflow-y-auto px-3 py-3 space-y-3 bg-gray-50 dark:bg-gray-900">
+                <div class="max-w-[90%] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-800 dark:text-gray-100">
+                    Hi! I can help answer questions using the system FAQ. Ask me anything about the available FAQ content.
+                </div>
+            </div>
+
+            <div class="px-3 py-2 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                <div id="faqRelatedWrap" class="mb-2 hidden">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Related questions:</p>
+                    <div id="faqRelatedList" class="flex flex-wrap gap-1"></div>
+                </div>
+
+                <div class="flex gap-2 mb-2">
+                    <button id="faqTopicsBtn" type="button" class="text-xs px-3 py-1 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 transition">Show FAQ Topics</button>
+                    <button id="faqClearBtn" type="button" class="text-xs px-3 py-1 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 transition">Clear</button>
+                </div>
+
+                <div class="flex gap-2">
+                    <input id="faqChatbotInput" type="text" placeholder="Type your question..." class="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button id="faqChatbotSend" type="button" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition text-sm">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <script>
     function initTheme() {
         const savedTheme = localStorage.getItem('theme') || 'system';
@@ -664,6 +721,259 @@ endif; ?>
                 }
                 return originalFire.apply(this, args);
             };
+        })();
+
+        // FAQ chatbot
+        (function() {
+            const toggleBtn = document.getElementById('faqChatbotToggle');
+            const closeBtn = document.getElementById('faqChatbotClose');
+            const clearBtn = document.getElementById('faqClearBtn');
+            const topicsBtn = document.getElementById('faqTopicsBtn');
+            const windowEl = document.getElementById('faqChatbotWindow');
+            const messagesEl = document.getElementById('faqChatbotMessages');
+            const inputEl = document.getElementById('faqChatbotInput');
+            const sendBtn = document.getElementById('faqChatbotSend');
+            const relatedWrap = document.getElementById('faqRelatedWrap');
+            const relatedList = document.getElementById('faqRelatedList');
+            const welcomeMessage = 'Hi! I can help answer questions using the system FAQ. Ask me anything about the available FAQ content.';
+            const chatbotStorageKey = 'faqChatbotState_<?php echo (int) ($userId ?? 0); ?>';
+            let chatState = {
+                messages: [],
+                relatedQuestions: [],
+                isOpen: false
+            };
+
+            if (!toggleBtn || !windowEl || !messagesEl || !inputEl || !sendBtn) {
+                return;
+            }
+
+            function saveState() {
+                try {
+                    localStorage.setItem(chatbotStorageKey, JSON.stringify(chatState));
+                } catch (error) {
+                }
+            }
+
+            function loadState() {
+                try {
+                    const rawState = localStorage.getItem(chatbotStorageKey);
+                    if (!rawState) {
+                        return;
+                    }
+
+                    const parsedState = JSON.parse(rawState);
+                    if (parsedState && typeof parsedState === 'object') {
+                        chatState.messages = Array.isArray(parsedState.messages) ? parsedState.messages : [];
+                        chatState.relatedQuestions = Array.isArray(parsedState.relatedQuestions) ? parsedState.relatedQuestions : [];
+                        chatState.isOpen = parsedState.isOpen === true;
+                    }
+                } catch (error) {
+                    chatState = {
+                        messages: [],
+                        relatedQuestions: [],
+                        isOpen: false
+                    };
+                }
+            }
+
+            function appendMessage(message, sender, persist = true) {
+                const wrapper = document.createElement('div');
+                wrapper.className = sender === 'user' ? 'flex justify-end' : 'flex justify-start';
+
+                const bubble = document.createElement('div');
+                bubble.className = sender === 'user'
+                    ? 'max-w-[90%] rounded-xl px-3 py-2 text-sm bg-blue-500 text-white'
+                    : 'max-w-[90%] rounded-xl px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100';
+
+                bubble.textContent = message;
+                wrapper.appendChild(bubble);
+                messagesEl.appendChild(wrapper);
+                messagesEl.scrollTop = messagesEl.scrollHeight;
+
+                if (persist) {
+                    chatState.messages.push({
+                        sender: sender,
+                        message: message
+                    });
+                    saveState();
+                }
+            }
+
+            function appendTopicButtons(topics) {
+                if (!topics || topics.length === 0) {
+                    appendMessage('This information is not available in the system FAQ.', 'bot');
+                    return;
+                }
+
+                appendMessage('Here are the available FAQ topics:', 'bot');
+                appendMessage('Available topics: ' + topics.join(', '), 'bot');
+                const wrapper = document.createElement('div');
+                wrapper.className = 'flex flex-wrap gap-2';
+
+                topics.forEach((topic) => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'text-xs px-3 py-1 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 transition';
+                    btn.textContent = topic;
+                    btn.addEventListener('click', () => {
+                        inputEl.value = `What FAQ items are under ${topic}?`;
+                        askQuestion();
+                    });
+                    wrapper.appendChild(btn);
+                });
+
+                messagesEl.appendChild(wrapper);
+                messagesEl.scrollTop = messagesEl.scrollHeight;
+            }
+
+            function renderRelatedQuestions(relatedQuestions) {
+                relatedList.innerHTML = '';
+                if (!relatedQuestions || relatedQuestions.length === 0) {
+                    relatedWrap.classList.add('hidden');
+                    chatState.relatedQuestions = [];
+                    saveState();
+                    return;
+                }
+
+                relatedQuestions.forEach((item) => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:hover:bg-blue-900/60 transition';
+                    btn.textContent = item.question;
+                    btn.addEventListener('click', () => {
+                        inputEl.value = item.question;
+                        askQuestion();
+                    });
+                    relatedList.appendChild(btn);
+                });
+
+                relatedWrap.classList.remove('hidden');
+                chatState.relatedQuestions = relatedQuestions;
+                saveState();
+            }
+
+            async function fetchChatbot(payload) {
+                const response = await fetch('faq_chatbot.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: new URLSearchParams(payload)
+                });
+
+                return response.json();
+            }
+
+            async function askQuestion() {
+                const question = inputEl.value.trim();
+                if (!question) {
+                    return;
+                }
+
+                appendMessage(question, 'user');
+                inputEl.value = '';
+
+                try {
+                    const result = await fetchChatbot({
+                        action: 'ask',
+                        question: question
+                    });
+
+                    if (!result.success) {
+                        appendMessage('This information is not available in the system FAQ.', 'bot');
+                        renderRelatedQuestions([]);
+                        return;
+                    }
+
+                    appendMessage(result.answer || 'This information is not available in the system FAQ.', 'bot');
+                    renderRelatedQuestions(result.related_questions || []);
+                } catch (error) {
+                    appendMessage('This information is not available in the system FAQ.', 'bot');
+                    renderRelatedQuestions([]);
+                }
+            }
+
+            async function showTopics() {
+                try {
+                    const result = await fetchChatbot({ action: 'topics' });
+                    if (!result.success) {
+                        appendMessage('This information is not available in the system FAQ.', 'bot');
+                        return;
+                    }
+                    appendTopicButtons(result.topics || []);
+                } catch (error) {
+                    appendMessage('This information is not available in the system FAQ.', 'bot');
+                }
+            }
+
+            function toggleWindow(show) {
+                if (show) {
+                    windowEl.classList.remove('hidden');
+                    inputEl.focus();
+                } else {
+                    windowEl.classList.add('hidden');
+                }
+
+                chatState.isOpen = show;
+                saveState();
+            }
+
+            function clearConversation() {
+                messagesEl.innerHTML = '';
+                chatState = {
+                    messages: [],
+                    relatedQuestions: [],
+                    isOpen: !windowEl.classList.contains('hidden')
+                };
+                appendMessage(welcomeMessage, 'bot');
+                renderRelatedQuestions([]);
+            }
+
+            function restoreConversation() {
+                loadState();
+
+                messagesEl.innerHTML = '';
+                if (chatState.messages.length === 0) {
+                    appendMessage(welcomeMessage, 'bot');
+                } else {
+                    chatState.messages.forEach((entry) => {
+                        appendMessage(entry.message || '', entry.sender === 'user' ? 'user' : 'bot', false);
+                    });
+                }
+
+                renderRelatedQuestions(chatState.relatedQuestions || []);
+
+                if (chatState.isOpen) {
+                    windowEl.classList.remove('hidden');
+                }
+            }
+
+            restoreConversation();
+
+            toggleBtn.addEventListener('click', () => {
+                const hidden = windowEl.classList.contains('hidden');
+                toggleWindow(hidden);
+            });
+
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => toggleWindow(false));
+            }
+
+            sendBtn.addEventListener('click', askQuestion);
+            inputEl.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    askQuestion();
+                }
+            });
+
+            if (topicsBtn) {
+                topicsBtn.addEventListener('click', showTopics);
+            }
+
+            if (clearBtn) {
+                clearBtn.addEventListener('click', clearConversation);
+            }
         })();
     </script>
 

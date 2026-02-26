@@ -40,6 +40,92 @@ if ($userId) {
     }
 }
 
+// Ensure app settings table exists for system-level preferences
+try {
+    $conn->exec("CREATE TABLE IF NOT EXISTS app_settings (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        setting_key VARCHAR(100) NOT NULL,
+        setting_value TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_setting_key (setting_key)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci");
+}
+catch (Exception $e) {
+}
+
+$isSuperadmin = isset($_SESSION['role']) && $_SESSION['role'] === 'superadmin';
+
+$chatbotSettings = [
+    'chatbot_enabled' => '1',
+    'chatbot_match_threshold' => '0.35',
+    'chatbot_related_limit' => '3'
+];
+
+try {
+    $defaultRows = [
+        ['chatbot_enabled', '1'],
+        ['chatbot_match_threshold', '0.35'],
+        ['chatbot_related_limit', '3']
+    ];
+
+    $seedStmt = $conn->prepare("INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = setting_value");
+    foreach ($defaultRows as $row) {
+        $seedStmt->execute($row);
+    }
+
+    $settingsStmt = $conn->prepare("SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN ('chatbot_enabled', 'chatbot_match_threshold', 'chatbot_related_limit')");
+    $settingsStmt->execute();
+    $fetchedSettings = $settingsStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    foreach ($fetchedSettings as $row) {
+        $chatbotSettings[$row['setting_key']] = $row['setting_value'];
+    }
+}
+catch (Exception $e) {
+}
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_chatbot_settings') {
+    if (!$isSuperadmin) {
+        $_SESSION['errorMessage'] = 'Only Superadmin can update chatbot settings.';
+        header('Location: ' . $_SERVER['REQUEST_URI']);
+        exit;
+    }
+
+    $chatbotEnabled = isset($_POST['chatbot_enabled']) && $_POST['chatbot_enabled'] === '1' ? '1' : '0';
+    $chatbotThreshold = isset($_POST['chatbot_match_threshold']) ? (float) $_POST['chatbot_match_threshold'] : 0.35;
+    $chatbotRelatedLimit = isset($_POST['chatbot_related_limit']) ? (int) $_POST['chatbot_related_limit'] : 3;
+
+    if ($chatbotThreshold < 0.10) {
+        $chatbotThreshold = 0.10;
+    }
+    if ($chatbotThreshold > 0.95) {
+        $chatbotThreshold = 0.95;
+    }
+
+    if ($chatbotRelatedLimit < 1) {
+        $chatbotRelatedLimit = 1;
+    }
+    if ($chatbotRelatedLimit > 10) {
+        $chatbotRelatedLimit = 10;
+    }
+
+    try {
+        $updateStmt = $conn->prepare("INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)");
+        $updateStmt->execute(['chatbot_enabled', $chatbotEnabled]);
+        $updateStmt->execute(['chatbot_match_threshold', number_format($chatbotThreshold, 2, '.', '')]);
+        $updateStmt->execute(['chatbot_related_limit', (string) $chatbotRelatedLimit]);
+
+        $_SESSION['successMessage'] = 'Chatbot settings updated successfully!';
+    }
+    catch (Exception $e) {
+        $_SESSION['errorMessage'] = 'Error updating chatbot settings: ' . $e->getMessage();
+    }
+
+    header('Location: ' . $_SERVER['REQUEST_URI']);
+    exit;
+}
+
 // Handle Update Profile Information
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_profile') {
     $newFullName = isset($_POST['full_name']) ? trim($_POST['full_name']) : '';
@@ -248,6 +334,59 @@ endif; ?>
                     <span class="text-gray-900 dark:text-white font-medium flex-1 text-sm"><?php echo !empty($createdAt) ? date('F d, Y', strtotime($createdAt)) : 'August 10, 2025'; ?></span>
                 </div> -->
             </div>
+        </div>
+    </div>
+
+    <!-- Chatbot Settings -->
+    <div class="mt-8 bg-white dark:bg-gray-800 rounded-xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] border border-gray-100 dark:border-gray-700 overflow-hidden">
+        <div class="px-8 py-6 border-b border-gray-50 dark:border-gray-700 flex items-center justify-between">
+            <div>
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white">FAQ Chatbot Settings</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Configure chatbot visibility and answer matching behavior.</p>
+            </div>
+            <?php if (!$isSuperadmin): ?>
+                <span class="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">Read-only</span>
+            <?php endif; ?>
+        </div>
+
+        <div class="p-8">
+            <form method="POST" class="space-y-6">
+                <input type="hidden" name="action" value="update_chatbot_settings">
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-2">Enable Chatbot</label>
+                        <select name="chatbot_enabled" <?php echo !$isSuperadmin ? 'disabled' : ''; ?> class="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="1" <?php echo ($chatbotSettings['chatbot_enabled'] ?? '1') === '1' ? 'selected' : ''; ?>>Enabled</option>
+                            <option value="0" <?php echo ($chatbotSettings['chatbot_enabled'] ?? '1') === '0' ? 'selected' : ''; ?>>Disabled</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-2">Match Threshold (0.10 - 0.95)</label>
+                        <input type="number" step="0.01" min="0.10" max="0.95" name="chatbot_match_threshold" value="<?php echo htmlspecialchars($chatbotSettings['chatbot_match_threshold'] ?? '0.35'); ?>" <?php echo !$isSuperadmin ? 'disabled' : ''; ?> class="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-2">Related Questions Limit (1 - 10)</label>
+                        <input type="number" min="1" max="10" name="chatbot_related_limit" value="<?php echo htmlspecialchars($chatbotSettings['chatbot_related_limit'] ?? '3'); ?>" <?php echo !$isSuperadmin ? 'disabled' : ''; ?> class="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <div class="rounded-xl bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-700 p-4">
+                    <p class="text-xs text-gray-600 dark:text-gray-300">
+                        <strong>Tip:</strong> Lower threshold gives more answers (broader match), higher threshold gives stricter answers.
+                    </p>
+                </div>
+
+                <?php if ($isSuperadmin): ?>
+                <div class="flex justify-end">
+                    <button type="submit" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition shadow-lg shadow-blue-500/20">
+                        Save Chatbot Settings
+                    </button>
+                </div>
+                <?php endif; ?>
+            </form>
         </div>
     </div>
 </div>

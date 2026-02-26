@@ -9,6 +9,7 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Color;
 
 MainController::requireAuth();
 
@@ -86,22 +87,64 @@ $spreadsheet = new Spreadsheet();
 $sheet = $spreadsheet->getActiveSheet();
 $sheet->setTitle('AOM Reports');
 
-// Header row
+// Main report title row (same as print layout)
+$sheet->mergeCells('A1:G1');
+$sheet->setCellValue('A1', 'Justification of the Absense of Management Response to Audit Observation Memoranda (AOM) Issued by the Commission on Audit (COA)');
+$sheet->getStyle('A1')->applyFromArray([
+    'font' => [
+        'bold' => true,
+        'size' => 12,
+        'color' => ['argb' => Color::COLOR_BLACK]
+    ],
+    'alignment' => [
+        'horizontal' => Alignment::HORIZONTAL_CENTER,
+        'vertical' => Alignment::VERTICAL_CENTER,
+        'wrapText' => true
+    ],
+    'fill' => [
+        'fillType' => Fill::FILL_SOLID,
+        'startColor' => ['argb' => Color::COLOR_WHITE]
+    ],
+    'borders' => [
+        'outline' => [
+            'borderStyle' => Border::BORDER_THIN,
+            'color' => ['argb' => Color::COLOR_BLACK]
+        ]
+    ]
+]);
+
+// Column headers row
 $headers = ['Item', 'Date', 'Department', 'Title', 'COA Observation', 'Recommendations', 'Comments / Justification'];
-$sheet->fromArray($headers, NULL, 'A1');
+$sheet->fromArray($headers, null, 'A2');
+$sheet->getStyle('A2:G2')->applyFromArray([
+    'font' => [
+        'bold' => true,
+        'size' => 11,
+        'color' => ['argb' => Color::COLOR_BLACK]
+    ],
+    'alignment' => [
+        'horizontal' => Alignment::HORIZONTAL_CENTER,
+        'vertical' => Alignment::VERTICAL_CENTER,
+        'wrapText' => true
+    ],
+    'fill' => [
+        'fillType' => Fill::FILL_SOLID,
+        'startColor' => ['argb' => 'FFF2F2F2']
+    ],
+    'borders' => [
+        'allBorders' => [
+            'borderStyle' => Border::BORDER_THIN,
+            'color' => ['argb' => Color::COLOR_BLACK]
+        ]
+    ]
+]);
 
-// Style the header
-$headerStyle = [
-    'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
-    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
-    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '4F81BD']],
-    'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
-];
-$sheet->getStyle('A1:G1')->applyFromArray($headerStyle);
+$sheet->getRowDimension(1)->setRowHeight(36);
+$sheet->getRowDimension(2)->setRowHeight(24);
 
-$currentRow = 2;
+$currentRow = 3;
 foreach ($records as $record) {
-    $date = $record['date'] ? date('M/d/Y', strtotime($record['date'])) : '';
+    $date = $record['date'] ? date('F d, Y', strtotime($record['date'])) : '';
     $item = $record['item'] ?? '';
     $dept = $record['department_acronym'] ?: ($record['department_name'] ?? '');
     $title = $record['title'] ?? '';
@@ -160,29 +203,51 @@ foreach ($records as $record) {
 
 // Global formatting
 $lastRow = $currentRow - 1;
-if ($lastRow >= 1) {
+if ($lastRow >= 2) {
     $bodyStyle = [
-        'alignment' => ['vertical' => Alignment::VERTICAL_TOP, 'wrapText' => true],
-        'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
+        'font' => [
+            'size' => 11,
+            'color' => ['argb' => Color::COLOR_BLACK]
+        ],
+        'alignment' => [
+            'vertical' => Alignment::VERTICAL_TOP,
+            'wrapText' => true
+        ],
+        'fill' => [
+            'fillType' => Fill::FILL_SOLID,
+            'startColor' => ['argb' => Color::COLOR_WHITE]
+        ],
+        'borders' => [
+            'allBorders' => [
+                'borderStyle' => Border::BORDER_THIN,
+                'color' => ['argb' => Color::COLOR_BLACK]
+            ]
+        ]
     ];
-    $sheet->getStyle('A1:G' . $lastRow)->applyFromArray($bodyStyle);
+    $sheet->getStyle('A3:G' . $lastRow)->applyFromArray($bodyStyle);
 
     // Center Align Item, Date, Department columns
-    $sheet->getStyle('A2:C' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+    $sheet->getStyle('A3:C' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-    // Justify Align Title, Observation, Recs, Justs (Spreadsheet doesn't have true "justify" like HTML, but we can set it)
-    $sheet->getStyle('D2:G' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_JUSTIFY);
+    // Left align text-heavy columns similar to print readability
+    $sheet->getStyle('D3:G' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+
+    for ($r = 3; $r <= $lastRow; $r++) {
+        $sheet->getRowDimension($r)->setRowHeight(-1);
+    }
 }
 
-// Auto-size columns with limits
-foreach (range('A', 'G') as $col) {
-    $sheet->getColumnDimension($col)->setAutoSize(true);
-}
-// Set specific widths for text-heavy columns
-$sheet->getColumnDimension('D')->setAutoSize(false)->setWidth(30); // Title
-$sheet->getColumnDimension('E')->setAutoSize(false)->setWidth(40); // Observation
-$sheet->getColumnDimension('F')->setAutoSize(false)->setWidth(40); // Recommendations
-$sheet->getColumnDimension('G')->setAutoSize(false)->setWidth(40); // Justifications
+// Match print column proportions
+$sheet->getColumnDimension('A')->setWidth(10);
+$sheet->getColumnDimension('B')->setWidth(14);
+$sheet->getColumnDimension('C')->setWidth(12);
+$sheet->getColumnDimension('D')->setWidth(28);
+$sheet->getColumnDimension('E')->setWidth(36);
+$sheet->getColumnDimension('F')->setWidth(36);
+$sheet->getColumnDimension('G')->setWidth(36);
+
+// Freeze headers for easier review
+$sheet->freezePane('A3');
 
 // Redirect output to a client's web browser (Xlsx)
 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

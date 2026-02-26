@@ -276,7 +276,7 @@ if (count($records) > 0) {
                 echo '<td rowspan="' . $maxRows . '" style="text-align: center;">' . htmlspecialchars($formattedDate) . '</td>';
                 echo '<td rowspan="' . $maxRows . '" style="text-align: center;">' . htmlspecialchars($record['department_acronym'] ?: ($record['department_name'] ?? '')) . '</td>';
                 echo '<td rowspan="' . $maxRows . '" style="text-align: justify;">' . htmlspecialchars($record['title']) . '</td>';
-                echo '<td rowspan="' . $maxRows . '" style="white-space: pre-wrap; text-align: justify;">' . htmlspecialchars($record['coa_observation'] ?? '') . '</td>';
+                echo '<td rowspan="' . $maxRows . '" style="white-space: pre-wrap; text-align: justify;">' . htmlspecialchars($record['coa_observation'] ?? '') . (!empty($record['coa_observation_image']) ? '<br><img src="' . htmlspecialchars($record['coa_observation_image']) . '" alt="COA Observation Image" style="max-width: 100%; height: auto; margin-top: 8px; border: 1px solid #d1d5db; border-radius: 4px;">' : '') . '</td>';
             }
 
             $rec = isset($recs[$i]) ? trim($recs[$i]) : '';

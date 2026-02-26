@@ -357,7 +357,7 @@ try {
                     echo '<td rowspan="' . $maxRows . '" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-gray-700 dark:text-gray-300">' . htmlspecialchars($formattedDate) . '</td>';
                     echo '<td rowspan="' . $maxRows . '" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['department_acronym'] ?: ($record['department_name'] ?? '')) . '</td>';
                     echo '<td rowspan="' . $maxRows . '" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300">' . htmlspecialchars($record['title']) . '</td>';
-                    echo '<td rowspan="' . $maxRows . '" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-pre-wrap text-sm">' . htmlspecialchars($record['coa_observation'] ?? '') . '</td>';
+                    echo '<td rowspan="' . $maxRows . '" class="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-pre-wrap text-sm">' . htmlspecialchars($record['coa_observation'] ?? '') . (!empty($record['coa_observation_image']) ? '<br><img src="' . htmlspecialchars($record['coa_observation_image']) . '" alt="COA Observation Image" style="max-width: 100%; height: auto; margin-top: 8px; border: 1px solid #d1d5db; border-radius: 4px;">' : '') . '</td>';
                 }
 
                 $rec = isset($recs[$i]) ? trim($recs[$i]) : '';

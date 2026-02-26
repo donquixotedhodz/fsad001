@@ -212,6 +212,9 @@ else: ?>
         else {
             echo '<div class="whitespace-pre-wrap">' . htmlspecialchars($content) . '</div>';
         }
+        if (!empty($record['coa_observation_image'])) {
+            echo '<div class="mt-2"><img src="' . htmlspecialchars($record['coa_observation_image']) . '" alt="COA Observation Image" class="w-full max-w-full h-auto rounded border border-gray-200 dark:border-gray-600"></div>';
+        }
 ?>
                             </div>
                         </td>
@@ -402,7 +405,7 @@ endif; ?>
             </button>
         </div>
 
-        <form id="aomForm" class="space-y-6">
+        <form id="aomForm" enctype="multipart/form-data" class="space-y-6">
             <input type="hidden" name="action" value="add">
             <input type="hidden" id="aomId" name="id" value="">
 
@@ -442,6 +445,12 @@ endif; ?>
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">COA Observation</label>
                 <textarea id="coaObservation" name="coa_observation" rows="3" placeholder="Enter COA observation..." class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                <div id="coaObservationImageContainer"></div>
+                <div class="mt-2">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Attach Image (Optional)</label>
+                    <input type="file" id="coaObservationImage" name="coa_observation_image" accept="image/*" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Supported formats: JPG, PNG, GIF. Max size: 5MB</p>
+                </div>
             </div>
             
             <!-- Recommendations and Management Action Plan -->
@@ -582,6 +591,9 @@ function resetAOMForm() {
     // Clear and add one empty row
     document.getElementById('actionPlanContainer').innerHTML = '';
     addRefJustRow();
+    
+    // Clear image container
+    document.getElementById('coaObservationImageContainer').innerHTML = '';
 }
 
 function closeAOMModal() {
@@ -617,6 +629,20 @@ function editAOM(id) {
                 document.getElementById('date').value = record.date || '';
                 document.getElementById('title').value = record.title || '';
                 document.getElementById('coaObservation').value = record.coa_observation || '';
+
+                // Handle existing image
+                const imageContainer = document.getElementById('coaObservationImageContainer');
+                if (record.coa_observation_image) {
+                    imageContainer.innerHTML = `
+                        <div class="mt-2 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Current Image:</p>
+                            <img src="${record.coa_observation_image}" alt="Current COA Observation Image" class="max-w-full h-32 object-contain rounded border border-gray-200 dark:border-gray-600">
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Upload a new image to replace the current one</p>
+                        </div>
+                    `;
+                } else {
+                    imageContainer.innerHTML = '';
+                }
 
                 const bulkDeptContainer = document.getElementById('bulkDepartmentContainer');
                 bulkDeptContainer.innerHTML = '';
@@ -758,6 +784,7 @@ function viewAOM(id) {
                         <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
                             <h3 class="text-sm font-bold text-gray-900 dark:text-white mb-2">COA Observation</h3>
                             <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 text-gray-900 dark:text-white whitespace-pre-wrap">${escapeHtml(record.coa_observation || '')}</div>
+                            ${record.coa_observation_image ? `<div class="mt-4"><img src="${record.coa_observation_image}" alt="COA Observation Image" class="max-w-full h-auto rounded-lg border border-gray-200 dark:border-gray-700"></div>` : ''}
                         </div>
                         
                         <div class="border-t border-gray-200 dark:border-gray-700 pt-4">

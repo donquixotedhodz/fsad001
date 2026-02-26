@@ -216,14 +216,53 @@ class AomController extends MainController
                 exit;
             }
 
+            // Handle image upload for COA Observation
+            $coa_observation_image = null;
+            if (isset($_FILES['coa_observation_image']) && $_FILES['coa_observation_image']['error'] === UPLOAD_ERR_OK) {
+                $uploadDir = __DIR__ . '/../../uploads/aom/';
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0755, true);
+                }
+
+                $fileName = $_FILES['coa_observation_image']['name'];
+                $fileTmp = $_FILES['coa_observation_image']['tmp_name'];
+                $fileSize = $_FILES['coa_observation_image']['size'];
+                $fileType = $_FILES['coa_observation_image']['type'];
+
+                // Validate file type
+                $allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+                if (!in_array($fileType, $allowedTypes)) {
+                    echo json_encode(['success' => false, 'message' => 'Invalid file type. Only JPG, PNG, and GIF are allowed.']);
+                    exit;
+                }
+
+                // Validate file size (5MB max)
+                if ($fileSize > 5 * 1024 * 1024) {
+                    echo json_encode(['success' => false, 'message' => 'File size too large. Maximum size is 5MB.']);
+                    exit;
+                }
+
+                // Generate unique filename
+                $fileExt = pathinfo($fileName, PATHINFO_EXTENSION);
+                $uniqueName = uniqid('aom_', true) . '.' . $fileExt;
+                $filePath = $uploadDir . $uniqueName;
+
+                if (move_uploaded_file($fileTmp, $filePath)) {
+                    $coa_observation_image = 'uploads/aom/' . $uniqueName;
+                } else {
+                    echo json_encode(['success' => false, 'message' => 'Failed to upload image.']);
+                    exit;
+                }
+            }
+
             $departmentIds = $this->normalizeDepartmentIds($department_ids_raw, $department_id);
             $primaryDepartmentId = !empty($departmentIds) ? $departmentIds[0] : null;
 
             $this->conn->beginTransaction();
 
             $stmt = $this->conn->prepare("
-                INSERT INTO aom_table (item, date, department_id, title, coa_observation, coa_recommendation, comments_justification)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO aom_table (item, date, department_id, title, coa_observation, coa_observation_image, coa_recommendation, comments_justification)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ");
 
             $stmt->execute([
@@ -232,6 +271,7 @@ class AomController extends MainController
                 $primaryDepartmentId,
                 $title,
                 $coa_observation,
+                $coa_observation_image,
                 $coa_recommendation,
                 $comments_justification
             ]);
@@ -348,32 +388,101 @@ class AomController extends MainController
                 exit;
             }
 
+            // Handle image upload for COA Observation
+            $coa_observation_image = null;
+            if (isset($_FILES['coa_observation_image']) && $_FILES['coa_observation_image']['error'] === UPLOAD_ERR_OK) {
+                $uploadDir = __DIR__ . '/../../uploads/aom/';
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0755, true);
+                }
+
+                $fileName = $_FILES['coa_observation_image']['name'];
+                $fileTmp = $_FILES['coa_observation_image']['tmp_name'];
+                $fileSize = $_FILES['coa_observation_image']['size'];
+                $fileType = $_FILES['coa_observation_image']['type'];
+
+                // Validate file type
+                $allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+                if (!in_array($fileType, $allowedTypes)) {
+                    echo json_encode(['success' => false, 'message' => 'Invalid file type. Only JPG, PNG, and GIF are allowed.']);
+                    exit;
+                }
+
+                // Validate file size (5MB max)
+                if ($fileSize > 5 * 1024 * 1024) {
+                    echo json_encode(['success' => false, 'message' => 'File size too large. Maximum size is 5MB.']);
+                    exit;
+                }
+
+                // Generate unique filename
+                $fileExt = pathinfo($fileName, PATHINFO_EXTENSION);
+                $uniqueName = uniqid('aom_', true) . '.' . $fileExt;
+                $filePath = $uploadDir . $uniqueName;
+
+                if (move_uploaded_file($fileTmp, $filePath)) {
+                    $coa_observation_image = 'uploads/aom/' . $uniqueName;
+                } else {
+                    echo json_encode(['success' => false, 'message' => 'Failed to upload image.']);
+                    exit;
+                }
+            }
+
             $this->conn->beginTransaction();
 
             // Update AOM record
-            $stmt = $this->conn->prepare("
-                UPDATE aom_table 
-                SET 
-                    item = ?,
-                    date = ?,
-                    department_id = ?,
-                    title = ?,
-                    coa_observation = ?,
-                    coa_recommendation = ?,
-                    comments_justification = ?
-                WHERE id = ?
-            ");
+            if ($coa_observation_image !== null) {
+                // New image uploaded, update all fields including image
+                $stmt = $this->conn->prepare("
+                    UPDATE aom_table 
+                    SET 
+                        item = ?,
+                        date = ?,
+                        department_id = ?,
+                        title = ?,
+                        coa_observation = ?,
+                        coa_observation_image = ?,
+                        coa_recommendation = ?,
+                        comments_justification = ?
+                    WHERE id = ?
+                ");
 
-            $stmt->execute([
-                $item,
-                !empty($date) ? $date : null,
-                $primaryDepartmentId,
-                $title,
-                $coa_observation,
-                $coa_recommendation,
-                $comments_justification,
-                $id
-            ]);
+                $stmt->execute([
+                    $item,
+                    !empty($date) ? $date : null,
+                    $primaryDepartmentId,
+                    $title,
+                    $coa_observation,
+                    $coa_observation_image,
+                    $coa_recommendation,
+                    $comments_justification,
+                    $id
+                ]);
+            } else {
+                // No new image, update other fields only
+                $stmt = $this->conn->prepare("
+                    UPDATE aom_table 
+                    SET 
+                        item = ?,
+                        date = ?,
+                        department_id = ?,
+                        title = ?,
+                        coa_observation = ?,
+                        coa_recommendation = ?,
+                        comments_justification = ?
+                    WHERE id = ?
+                ");
+
+                $stmt->execute([
+                    $item,
+                    !empty($date) ? $date : null,
+                    $primaryDepartmentId,
+                    $title,
+                    $coa_observation,
+                    $coa_recommendation,
+                    $comments_justification,
+                    $id
+                ]);
+            }
 
             $this->syncAomDepartments($id, $departmentIds);
             $this->conn->commit();

@@ -168,8 +168,8 @@ $ppeStmt->execute();
 $ppeResult = $ppeStmt->fetch(PDO::FETCH_ASSOC);
 $ppeBalance = $ppeResult ? floatval($ppeResult['balance']) : 0;
 
-// Fetch latest AOM records for countdown
-$stmt = $conn->prepare("SELECT item, date, title FROM aom_table ORDER BY date DESC LIMIT 5");
+// Fetch latest non-expired AOM records for countdown (15-day window)
+$stmt = $conn->prepare("SELECT item, date, title FROM aom_table WHERE DATE_ADD(date, INTERVAL 15 DAY) >= CURDATE() ORDER BY date DESC LIMIT 5");
 $stmt->execute();
 $aomRecentRecords = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -298,24 +298,20 @@ else: ?>
         $dateObj = new DateTime($record['date']);
         $targetDate = clone $dateObj;
         $targetDate->modify('+15 days');
-        $now = new DateTime();
+        $today = new DateTime('today');
 
-        $interval = $now->diff($targetDate);
-        $isExpired = $now > $targetDate;
-        $daysLeft = $interval->days;
+        $daysLeft = (int) $today->diff($targetDate)->format('%r%a');
+
+        // Safety check: hide expired rows even if they somehow pass query filtering
+        if ($daysLeft < 0) {
+            continue;
+        }
 
         $statusClass = 'text-green-700 bg-green-100 dark:bg-green-900/30 dark:text-green-400';
-        if ($isExpired) {
-            $statusClass = 'text-red-700 bg-red-100 dark:bg-red-900/30 dark:text-red-400';
-            $displayDiff = 'Expired';
-        }
-        elseif ($daysLeft <= 5) {
+        if ($daysLeft <= 5) {
             $statusClass = 'text-orange-700 bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400';
-            $displayDiff = $daysLeft . ' days left';
         }
-        else {
-            $displayDiff = $daysLeft . ' days left';
-        }
+        $displayDiff = $daysLeft . ' days left';
 ?>
                             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                                 <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white"><?php echo htmlspecialchars($record['item']); ?></td>

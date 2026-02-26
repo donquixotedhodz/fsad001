@@ -276,7 +276,48 @@ if (count($records) > 0) {
                 echo '<td rowspan="' . $maxRows . '" style="text-align: center;">' . htmlspecialchars($formattedDate) . '</td>';
                 echo '<td rowspan="' . $maxRows . '" style="text-align: center;">' . htmlspecialchars($record['department_acronym'] ?: ($record['department_name'] ?? '')) . '</td>';
                 echo '<td rowspan="' . $maxRows . '" style="text-align: justify;">' . htmlspecialchars($record['title']) . '</td>';
-                echo '<td rowspan="' . $maxRows . '" style="white-space: pre-wrap; text-align: justify;">' . htmlspecialchars($record['coa_observation'] ?? '') . (!empty($record['coa_observation_image']) ? '<br><img src="' . htmlspecialchars($record['coa_observation_image']) . '" alt="COA Observation Image" style="max-width: 100%; height: auto; margin-top: 8px; border: 1px solid #d1d5db; border-radius: 4px;">' : '') . '</td>';
+                // Handle COA observations and images as arrays
+                $coaObs = [];
+                $coaImages = [];
+                
+                try {
+                    $coaObs = json_decode($record['coa_observation'], true);
+                    if (!is_array($coaObs)) $coaObs = [$record['coa_observation']];
+                } catch (Exception $e) {
+                    $coaObs = $record['coa_observation'] ? [$record['coa_observation']] : [];
+                }
+                
+                try {
+                    $coaImages = json_decode($record['coa_observation_image'], true);
+                    if (!is_array($coaImages)) $coaImages = [$record['coa_observation_image']];
+                } catch (Exception $e) {
+                    $coaImages = $record['coa_observation_image'] ? [$record['coa_observation_image']] : [];
+                }
+                
+                $coaContent = '';
+                foreach ($coaObs as $index => $obs) {
+                    if (!empty(trim($obs))) {
+                        $coaContent .= htmlspecialchars($obs) . "\n\n";
+                    }
+                    if (!empty($coaImages[$index])) {
+                        $coaContent .= '[Image attached]' . "\n\n";
+                    }
+                }
+                
+                // Build HTML content with images inline
+                $htmlContent = '';
+                foreach ($coaObs as $index => $obs) {
+                    if (!empty(trim($obs))) {
+                        $htmlContent .= '<div style="margin-bottom: 8px; text-align: justify;">' . htmlspecialchars($obs) . '</div>';
+                    }
+                    if (!empty($coaImages[$index])) {
+                        $htmlContent .= '<div style="margin-bottom: 8px; text-align: center;"><img src="' . htmlspecialchars($coaImages[$index]) . '" alt="COA Observation Image" style="max-width: 100%; height: auto; border: 1px solid #d1d5db; border-radius: 4px;"></div>';
+                    }
+                }
+                
+                echo '<td rowspan="' . $maxRows . '" style="text-align: justify;">' . $htmlContent;
+                
+                echo '</td>';
             }
 
             $rec = isset($recs[$i]) ? trim($recs[$i]) : '';

@@ -163,7 +163,16 @@ foreach ($records as $record) {
     $item = $record['item'] ?? '';
     $dept = $record['department_acronym'] ?: ($record['department_name'] ?? '');
     $title = $record['title'] ?? '';
-    $obs = $record['coa_observation'] ?? '';
+
+    // Handle COA observations as JSON array
+    $coaObs = [];
+    try {
+        $coaObs = json_decode($record['coa_observation'], true);
+        if (!is_array($coaObs)) $coaObs = [$record['coa_observation']];
+    } catch (Exception $e) {
+        $coaObs = $record['coa_observation'] ? [$record['coa_observation']] : [];
+    }
+    $obs = implode("\n\n", array_filter($coaObs));
 
     // Recommendations and Justifications
     $recs = [];
@@ -186,7 +195,7 @@ foreach ($records as $record) {
         $justs = [];
     }
 
-    $maxSubRows = max(count($recs), count($justs));
+    $maxSubRows = max(count($recs), count($justs), count($coaObs));
     $startRow = $currentRow;
 
     for ($i = 0; $i < $maxSubRows; $i++) {

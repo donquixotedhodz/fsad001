@@ -3,19 +3,86 @@
 class AomController extends MainController
 {
 
+    private function ensureAomDepartmentsTable()
+    {
+        $sql = "
+            CREATE TABLE IF NOT EXISTS aom_departments (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                aom_id INT NOT NULL,
+                department_id INT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY uniq_aom_department (aom_id, department_id),
+                INDEX idx_aom_id (aom_id),
+                INDEX idx_department_id (department_id),
+                CONSTRAINT fk_aom_departments_aom FOREIGN KEY (aom_id) REFERENCES aom_table(id) ON DELETE CASCADE ON UPDATE CASCADE,
+                CONSTRAINT fk_aom_departments_department FOREIGN KEY (department_id) REFERENCES neadept_table(id) ON DELETE CASCADE ON UPDATE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+        ";
+        $this->conn->exec($sql);
+    }
+
+    private function normalizeDepartmentIds($departmentIdsRaw, $fallbackDepartmentId = null)
+    {
+        $departmentIds = [];
+
+        if (is_array($departmentIdsRaw)) {
+            foreach ($departmentIdsRaw as $deptIdRaw) {
+                $deptId = (int)$deptIdRaw;
+                if ($deptId > 0) {
+                    $departmentIds[] = $deptId;
+                }
+            }
+        }
+
+        $departmentIds = array_values(array_unique($departmentIds));
+
+        if (empty($departmentIds) && !empty($fallbackDepartmentId) && (int)$fallbackDepartmentId > 0) {
+            $departmentIds[] = (int)$fallbackDepartmentId;
+        }
+
+        return $departmentIds;
+    }
+
+    private function syncAomDepartments($aomId, $departmentIds)
+    {
+        $deleteStmt = $this->conn->prepare("DELETE FROM aom_departments WHERE aom_id = ?");
+        $deleteStmt->execute([$aomId]);
+
+        if (empty($departmentIds)) {
+            return;
+        }
+
+        $insertStmt = $this->conn->prepare("INSERT INTO aom_departments (aom_id, department_id) VALUES (?, ?)");
+        foreach ($departmentIds as $departmentId) {
+            $insertStmt->execute([$aomId, $departmentId]);
+        }
+    }
+
     /**
      * Get all AOM records with department names
      */
     public function getAllAOM()
     {
         try {
+            $this->ensureAomDepartmentsTable();
             $sql = "
                 SELECT 
                     a.*,
-                    d.name as department_name,
-                    d.acronym as department_acronym
+                    COALESCE(da.department_names, d_fallback.name) as department_name,
+                    COALESCE(da.department_acronyms, d_fallback.acronym) as department_acronym,
+                    COALESCE(da.department_ids_csv, IF(a.department_id IS NOT NULL, CAST(a.department_id AS CHAR), '')) as department_ids_csv
                 FROM aom_table a
-                LEFT JOIN neadept_table d ON a.department_id = d.id
+                LEFT JOIN (
+                    SELECT
+                        ad.aom_id,
+                        GROUP_CONCAT(DISTINCT d.id ORDER BY d.name SEPARATOR ',') as department_ids_csv,
+                        GROUP_CONCAT(DISTINCT d.name ORDER BY d.name SEPARATOR ', ') as department_names,
+                        GROUP_CONCAT(DISTINCT d.acronym ORDER BY d.name SEPARATOR ', ') as department_acronyms
+                    FROM aom_departments ad
+                    INNER JOIN neadept_table d ON ad.department_id = d.id
+                    GROUP BY ad.aom_id
+                ) da ON da.aom_id = a.id
+                LEFT JOIN neadept_table d_fallback ON a.department_id = d_fallback.id
                 ORDER BY a.date DESC, a.id DESC
             ";
             $stmt = $this->conn->prepare($sql);
@@ -34,13 +101,41 @@ class AomController extends MainController
     public function getAOMById($id)
     {
         try {
+            $this->ensureAomDepartmentsTable();
             $stmt = $this->conn->prepare("
-                SELECT *
+                SELECT
+                    a.*,
+                    COALESCE(da.department_names, d_fallback.name) as department_name,
+                    COALESCE(da.department_acronyms, d_fallback.acronym) as department_acronym,
+                    COALESCE(da.department_ids_csv, IF(a.department_id IS NOT NULL, CAST(a.department_id AS CHAR), '')) as department_ids_csv
                 FROM aom_table
-                WHERE id = ?
+                a
+                LEFT JOIN (
+                    SELECT
+                        ad.aom_id,
+                        GROUP_CONCAT(DISTINCT d.id ORDER BY d.name SEPARATOR ',') as department_ids_csv,
+                        GROUP_CONCAT(DISTINCT d.name ORDER BY d.name SEPARATOR ', ') as department_names,
+                        GROUP_CONCAT(DISTINCT d.acronym ORDER BY d.name SEPARATOR ', ') as department_acronyms
+                    FROM aom_departments ad
+                    INNER JOIN neadept_table d ON ad.department_id = d.id
+                    GROUP BY ad.aom_id
+                ) da ON da.aom_id = a.id
+                LEFT JOIN neadept_table d_fallback ON a.department_id = d_fallback.id
+                WHERE a.id = ?
             ");
             $stmt->execute([$id]);
-            return $stmt->fetch(PDO::FETCH_ASSOC);
+            $record = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$record) {
+                return null;
+            }
+
+            $departmentIdsCsv = trim($record['department_ids_csv'] ?? '');
+            $record['department_ids'] = $departmentIdsCsv !== ''
+                ? array_values(array_filter(array_map('intval', explode(',', $departmentIdsCsv))))
+                : [];
+
+            return $record;
         }
         catch (Exception $e) {
             error_log("Error fetching AOM by ID: " . $e->getMessage());
@@ -64,11 +159,13 @@ class AomController extends MainController
         try {
             require_once __DIR__ . '/../helpers/AuditLogger.php';
             $auditLogger = new AuditLogger($this->conn);
+            $this->ensureAomDepartmentsTable();
 
             // Validate required fields
             $item = trim($_POST['item'] ?? '');
             $date = trim($_POST['date'] ?? '');
             $department_id = !empty($_POST['department_id']) ? (int)$_POST['department_id'] : null;
+            $department_ids_raw = $_POST['department_ids'] ?? [];
             $title = trim($_POST['title'] ?? '');
             $coa_observation = trim($_POST['coa_observation'] ?? '');
 
@@ -119,7 +216,11 @@ class AomController extends MainController
                 exit;
             }
 
-            // Insert new AOM record
+            $departmentIds = $this->normalizeDepartmentIds($department_ids_raw, $department_id);
+            $primaryDepartmentId = !empty($departmentIds) ? $departmentIds[0] : null;
+
+            $this->conn->beginTransaction();
+
             $stmt = $this->conn->prepare("
                 INSERT INTO aom_table (item, date, department_id, title, coa_observation, coa_recommendation, comments_justification)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -128,7 +229,7 @@ class AomController extends MainController
             $stmt->execute([
                 $item,
                 !empty($date) ? $date : null,
-                $department_id,
+                $primaryDepartmentId,
                 $title,
                 $coa_observation,
                 $coa_recommendation,
@@ -136,6 +237,9 @@ class AomController extends MainController
             ]);
 
             $newId = $this->conn->lastInsertId();
+            $this->syncAomDepartments($newId, $departmentIds);
+
+            $this->conn->commit();
 
             // Log the action
             $auditLogger->log(
@@ -148,12 +252,16 @@ class AomController extends MainController
             echo json_encode([
                 'success' => true,
                 'message' => 'AOM record added successfully',
-                'id' => $newId
+                'id' => $newId,
+                'department_count' => count($departmentIds)
             ]);
             exit;
 
         }
         catch (Exception $e) {
+            if ($this->conn->inTransaction()) {
+                $this->conn->rollBack();
+            }
             error_log("Error adding AOM: " . $e->getMessage());
             echo json_encode(['success' => false, 'message' => 'Error adding record: ' . $e->getMessage()]);
             exit;
@@ -176,11 +284,15 @@ class AomController extends MainController
         try {
             require_once __DIR__ . '/../helpers/AuditLogger.php';
             $auditLogger = new AuditLogger($this->conn);
+            $this->ensureAomDepartmentsTable();
 
             $id = (int)($_POST['id'] ?? 0);
             $item = trim($_POST['item'] ?? '');
             $date = trim($_POST['date'] ?? '');
             $department_id = !empty($_POST['department_id']) ? (int)$_POST['department_id'] : null;
+            $department_ids_raw = $_POST['department_ids'] ?? [];
+            $departmentIds = $this->normalizeDepartmentIds($department_ids_raw, $department_id);
+            $primaryDepartmentId = !empty($departmentIds) ? $departmentIds[0] : null;
             $title = trim($_POST['title'] ?? '');
             $coa_observation = trim($_POST['coa_observation'] ?? '');
 
@@ -236,6 +348,8 @@ class AomController extends MainController
                 exit;
             }
 
+            $this->conn->beginTransaction();
+
             // Update AOM record
             $stmt = $this->conn->prepare("
                 UPDATE aom_table 
@@ -253,13 +367,16 @@ class AomController extends MainController
             $stmt->execute([
                 $item,
                 !empty($date) ? $date : null,
-                $department_id,
+                $primaryDepartmentId,
                 $title,
                 $coa_observation,
                 $coa_recommendation,
                 $comments_justification,
                 $id
             ]);
+
+            $this->syncAomDepartments($id, $departmentIds);
+            $this->conn->commit();
 
             // Log the action
             $auditLogger->log(
@@ -277,6 +394,9 @@ class AomController extends MainController
 
         }
         catch (Exception $e) {
+            if ($this->conn->inTransaction()) {
+                $this->conn->rollBack();
+            }
             error_log("Error updating AOM: " . $e->getMessage());
             echo json_encode(['success' => false, 'message' => 'Error updating record: ' . $e->getMessage()]);
             exit;
@@ -294,6 +414,7 @@ class AomController extends MainController
         try {
             $data = json_decode(file_get_contents('php://input'), true);
             $id = (int)($data['id'] ?? 0);
+            $this->ensureAomDepartmentsTable();
 
             if ($id <= 0) {
                 echo json_encode(['success' => false, 'message' => 'Invalid record ID']);
@@ -313,9 +434,13 @@ class AomController extends MainController
                 exit;
             }
 
+            $this->conn->beginTransaction();
+
             // Delete record
             $stmt = $this->conn->prepare("DELETE FROM aom_table WHERE id = ?");
             $stmt->execute([$id]);
+
+            $this->conn->commit();
 
             // Log the action
             $auditLogger->log(
@@ -333,6 +458,9 @@ class AomController extends MainController
 
         }
         catch (Exception $e) {
+            if ($this->conn->inTransaction()) {
+                $this->conn->rollBack();
+            }
             error_log("Error deleting AOM: " . $e->getMessage());
             echo json_encode(['success' => false, 'message' => 'Error deleting record: ' . $e->getMessage()]);
             exit;

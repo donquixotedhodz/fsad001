@@ -20,6 +20,8 @@ $filterYear = $_GET['selected_year'] ?? date('Y');
 $filterDateFrom = $_GET['date_from'] ?? '';
 $filterDateTo = $_GET['date_to'] ?? '';
 
+$conn->exec("\n    CREATE TABLE IF NOT EXISTS aom_departments (\n        id INT AUTO_INCREMENT PRIMARY KEY,\n        aom_id INT NOT NULL,\n        department_id INT NOT NULL,\n        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n        UNIQUE KEY uniq_aom_department (aom_id, department_id),\n        INDEX idx_aom_id (aom_id),\n        INDEX idx_department_id (department_id),\n        CONSTRAINT fk_aom_departments_aom FOREIGN KEY (aom_id) REFERENCES aom_table(id) ON DELETE CASCADE ON UPDATE CASCADE,\n        CONSTRAINT fk_aom_departments_department FOREIGN KEY (department_id) REFERENCES neadept_table(id) ON DELETE CASCADE ON UPDATE CASCADE\n    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci\n");
+
 // Get pagination parameters
 $itemsPerPage = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
 $currentPageNum = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
@@ -274,7 +276,8 @@ elseif ($filterDateType === 'custom') {
 }
 
 if (!empty($filterDept)) {
-    $whereConditions[] = "a.department_id = ?";
+    $whereConditions[] = "(EXISTS (SELECT 1 FROM aom_departments adf WHERE adf.aom_id = a.id AND adf.department_id = ?) OR a.department_id = ?)";
+    $params[] = $filterDept;
     $params[] = $filterDept;
 }
 
@@ -298,9 +301,21 @@ try {
     $currentPageNum = min($currentPageNum, max(1, $totalPages));
     $offset = ($currentPageNum - 1) * $itemsPerPage;
 
-    $sql = "SELECT a.*, d.name as department_name, d.acronym as department_acronym 
+    $sql = "SELECT 
+                                a.*,
+                                COALESCE(da.department_names, d_fallback.name) as department_name,
+                                COALESCE(da.department_acronyms, d_fallback.acronym) as department_acronym
                             FROM aom_table a 
-                            LEFT JOIN neadept_table d ON a.department_id = d.id 
+                            LEFT JOIN (
+                                SELECT
+                                    ad.aom_id,
+                                    GROUP_CONCAT(DISTINCT d.name ORDER BY d.name SEPARATOR ', ') as department_names,
+                                    GROUP_CONCAT(DISTINCT d.acronym ORDER BY d.name SEPARATOR ', ') as department_acronyms
+                                FROM aom_departments ad
+                                INNER JOIN neadept_table d ON ad.department_id = d.id
+                                GROUP BY ad.aom_id
+                            ) da ON da.aom_id = a.id
+                            LEFT JOIN neadept_table d_fallback ON a.department_id = d_fallback.id
                             $whereClause 
                             ORDER BY a.date DESC 
                             LIMIT $itemsPerPage OFFSET $offset";

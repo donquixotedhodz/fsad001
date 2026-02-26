@@ -2,6 +2,8 @@
 session_start();
 require_once __DIR__ . '/../config.php';
 
+$conn->exec("\n    CREATE TABLE IF NOT EXISTS aom_departments (\n        id INT AUTO_INCREMENT PRIMARY KEY,\n        aom_id INT NOT NULL,\n        department_id INT NOT NULL,\n        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n        UNIQUE KEY uniq_aom_department (aom_id, department_id),\n        INDEX idx_aom_id (aom_id),\n        INDEX idx_department_id (department_id),\n        CONSTRAINT fk_aom_departments_aom FOREIGN KEY (aom_id) REFERENCES aom_table(id) ON DELETE CASCADE ON UPDATE CASCADE,\n        CONSTRAINT fk_aom_departments_department FOREIGN KEY (department_id) REFERENCES neadept_table(id) ON DELETE CASCADE ON UPDATE CASCADE\n    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci\n");
+
 // Build filter conditions (same as in aom_reports.php)
 $whereConditions = [];
 $params = [];
@@ -47,7 +49,8 @@ elseif ($dateFilter === 'custom') {
 }
 
 if (!empty($_GET['department_id'])) {
-    $whereConditions[] = "a.department_id = ?";
+    $whereConditions[] = "(EXISTS (SELECT 1 FROM aom_departments adf WHERE adf.aom_id = a.id AND adf.department_id = ?) OR a.department_id = ?)";
+    $params[] = $_GET['department_id'];
     $params[] = $_GET['department_id'];
 }
 
@@ -62,9 +65,21 @@ if (!empty($_GET['search'])) {
 $whereClause = !empty($whereConditions) ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
 
 try {
-    $sql = "SELECT a.*, d.name as department_name, d.acronym as department_acronym 
+    $sql = "SELECT 
+                a.*,
+                COALESCE(da.department_names, d_fallback.name) as department_name,
+                COALESCE(da.department_acronyms, d_fallback.acronym) as department_acronym
             FROM aom_table a 
-            LEFT JOIN neadept_table d ON a.department_id = d.id 
+            LEFT JOIN (
+                SELECT
+                    ad.aom_id,
+                    GROUP_CONCAT(DISTINCT d.name ORDER BY d.name SEPARATOR ', ') as department_names,
+                    GROUP_CONCAT(DISTINCT d.acronym ORDER BY d.name SEPARATOR ', ') as department_acronyms
+                FROM aom_departments ad
+                INNER JOIN neadept_table d ON ad.department_id = d.id
+                GROUP BY ad.aom_id
+            ) da ON da.aom_id = a.id
+            LEFT JOIN neadept_table d_fallback ON a.department_id = d_fallback.id
             $whereClause 
             ORDER BY a.date DESC";
     $stmt = $conn->prepare($sql);

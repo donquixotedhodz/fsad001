@@ -423,13 +423,13 @@ endif; ?>
             <!-- Department -->
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Department</label>
-                <select id="department" name="department_id" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    <option value="">Select Department</option>
-                    <?php foreach ($departments as $dept): ?>
-                    <option value="<?php echo $dept['id']; ?>"><?php echo htmlspecialchars($dept['name']); ?></option>
-                    <?php
-endforeach; ?>
-                </select>
+                <div id="bulkDepartmentWrapper">
+                    <div id="bulkDepartmentContainer" class="space-y-3"></div>
+                    <button type="button" onclick="addBulkDepartmentRow()" class="mt-3 text-sm px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition font-medium">
+                        + Add Department
+                    </button>
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Use + Add Department to assign multiple departments to one AOM.</p>
+                </div>
             </div>
 
             <!-- Title -->
@@ -527,12 +527,57 @@ function addRefJustRow(rec = '', just = '') {
     container.appendChild(div.firstElementChild);
 }
 
+function getBulkDepartmentTemplate(selectedValue = '') {
+    return `
+        <div class="flex items-center gap-2 bulk-dept-row">
+            <select name="department_ids[]" class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <option value="">Select Department</option>
+                <?php foreach ($departments as $dept): ?>
+                <option value="<?php echo $dept['id']; ?>" ${selectedValue == '<?php echo $dept['id']; ?>' ? 'selected' : ''}><?php echo htmlspecialchars($dept['name']); ?></option>
+                <?php endforeach; ?>
+            </select>
+            <button type="button" onclick="removeBulkDepartmentRow(this)" class="px-3 py-2 text-gray-400 hover:text-red-500 transition" title="Remove department">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+    `;
+}
+
+function addBulkDepartmentRow(selectedValue = '') {
+    const container = document.getElementById('bulkDepartmentContainer');
+    const div = document.createElement('div');
+    div.innerHTML = getBulkDepartmentTemplate(selectedValue);
+    const row = div.firstElementChild;
+    container.appendChild(row);
+
+    const select = row.querySelector('select[name="department_ids[]"]');
+    if (selectedValue) {
+        select.value = selectedValue;
+    }
+}
+
+function removeBulkDepartmentRow(button) {
+    const container = document.getElementById('bulkDepartmentContainer');
+    const rows = container.querySelectorAll('.bulk-dept-row');
+    if (rows.length <= 1) {
+        const select = rows[0].querySelector('select[name="department_ids[]"]');
+        select.value = '';
+        return;
+    }
+    button.closest('.bulk-dept-row').remove();
+}
+
 function resetAOMForm() {
     document.getElementById('aomForm').reset();
     document.getElementById('aomId').value = '';
     document.getElementById('submitBtn').textContent = 'Add AOM';
     document.getElementById('modalTitle').textContent = 'Add AOM';
     document.getElementById('aomForm').elements['action'].value = 'add';
+    const bulkDepartmentContainer = document.getElementById('bulkDepartmentContainer');
+    bulkDepartmentContainer.innerHTML = '';
+    addBulkDepartmentRow();
     
     // Clear and add one empty row
     document.getElementById('actionPlanContainer').innerHTML = '';
@@ -570,9 +615,19 @@ function editAOM(id) {
                 document.getElementById('aomId').value = record.id;
                 document.getElementById('item').value = record.item || '';
                 document.getElementById('date').value = record.date || '';
-                document.getElementById('department').value = record.department_id || '';
                 document.getElementById('title').value = record.title || '';
                 document.getElementById('coaObservation').value = record.coa_observation || '';
+
+                const bulkDeptContainer = document.getElementById('bulkDepartmentContainer');
+                bulkDeptContainer.innerHTML = '';
+                const departmentIds = Array.isArray(record.department_ids) ? record.department_ids : [];
+                if (departmentIds.length > 0) {
+                    departmentIds.forEach(deptId => addBulkDepartmentRow(String(deptId)));
+                } else if (record.department_id) {
+                    addBulkDepartmentRow(String(record.department_id));
+                } else {
+                    addBulkDepartmentRow();
+                }
                 
                 // Handle dynamic rows
                 const container = document.getElementById('actionPlanContainer');
@@ -634,17 +689,7 @@ function viewAOM(id) {
         .then(data => {
             if (data.success) {
                 const record = data.data;
-                
-                const deptSelect = document.getElementById('department');
-                let deptName = '';
-                if (record.department_id) {
-                    for (let i = 0; i < deptSelect.options.length; i++) {
-                        if (deptSelect.options[i].value == record.department_id) {
-                            deptName = deptSelect.options[i].text;
-                            break;
-                        }
-                    }
-                }
+                let deptName = record.department_name || '';
 
                 // Parse action plan items
                 let recs = [];
@@ -846,6 +891,8 @@ document.getElementById('aomForm').addEventListener('submit', function(e) {
         });
     });
 });
+
+addBulkDepartmentRow();
 </script>
 
 <?php

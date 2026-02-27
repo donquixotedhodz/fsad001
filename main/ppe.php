@@ -28,6 +28,8 @@ $username = $_SESSION['username'] ?? 'User';
 // Constants for PPE
 $STARTING_CHECK_NO = 690001;
 $STARTING_BALANCE = 0.00;
+$DV_NOT_REQUIRED_TYPES = ['online', 'tax_withheld', 'initial_deposit', 'interest'];
+$NO_CHECK_NO_TYPES = ['remittance', 'tax_withheld', 'initial_deposit', 'interest', 'dm', 'cm'];
 
 // Handle form submission for adding PPE
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_ppe') {
@@ -41,10 +43,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     $date = $_POST['date'] ?? date('Y-m-d'); // User-provided date or current date
     $particulars = htmlspecialchars($_POST['particulars'] ?? '');
     $check_type = htmlspecialchars($_POST['check_type'] ?? 'actual');
-    $check_no = $check_type === 'remittance' ? '' : ($check_type === 'online' ? 'ONLINE' : intval($_POST['check_no'] ?? 0));
-    $dv_or_no = htmlspecialchars($_POST['dv_or_no'] ?? '');
+    $check_no = in_array($check_type, $NO_CHECK_NO_TYPES, true) ? '' : ($check_type === 'online' ? 'ONLINE' : intval($_POST['check_no'] ?? 0));
+    $dv_or_no = in_array($check_type, $DV_NOT_REQUIRED_TYPES, true) ? '' : htmlspecialchars($_POST['dv_or_no'] ?? '');
+    if ($check_type === 'dm') {
+        $dv_or_no = 'DM';
+    } elseif ($check_type === 'cm') {
+        $dv_or_no = 'CM';
+    }
     $debit = floatval($_POST['debit'] ?? 0);
     $credit = floatval($_POST['credit'] ?? 0);
+
+    if ($check_type === 'dm') {
+        $credit = 0;
+    } elseif ($check_type === 'cm') {
+        $debit = 0;
+    }
 
     $filePath = null;
     $fileName = null;
@@ -81,7 +94,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         }
     }
 
-    if (!isset($errorMessage) && !empty($particulars) && ($check_no > 0 || $check_no === 'ONLINE' || $check_no === '')) {
+    $isValidCheckNo = ($check_no > 0 || $check_no === 'ONLINE' || $check_no === '');
+    $isValidAmountForType = true;
+    if ($check_type === 'dm' && $debit <= 0) {
+        $isValidAmountForType = false;
+    }
+    if ($check_type === 'cm' && $credit <= 0) {
+        $isValidAmountForType = false;
+    }
+
+    if (!isset($errorMessage) && !empty($particulars) && $isValidCheckNo && $isValidAmountForType) {
         try {
             // Get the last balance
             $stmt = $conn->prepare("SELECT balance FROM ppe ORDER BY id DESC LIMIT 1");
@@ -119,7 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         }
     }
     elseif (!isset($errorMessage)) {
-        $errorMessage = "Please fill in all required fields. Particulars: " . ($particulars ? "OK" : "EMPTY") . ", Check No: " . ($check_no > 0 || $check_no === 'ONLINE' ? "OK" : "INVALID (" . $check_no . ")");
+        $errorMessage = "Please fill in all required fields. Particulars: " . ($particulars ? "OK" : "EMPTY") . ", Check No: " . ($isValidCheckNo ? "OK" : "INVALID (" . $check_no . ")") . ", Amount: " . ($isValidAmountForType ? "OK" : "INVALID for selected Check Type");
     }
 }
 
@@ -200,10 +222,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     $date = $_POST['date'] ?? date('Y-m-d');
     $particulars = htmlspecialchars($_POST['particulars'] ?? '');
     $check_type = htmlspecialchars($_POST['check_type'] ?? 'actual');
-    $check_no = $check_type === 'remittance' ? '' : ($check_type === 'online' ? 'ONLINE' : intval($_POST['check_no'] ?? 0));
-    $dv_or_no = htmlspecialchars($_POST['dv_or_no'] ?? '');
+    $check_no = in_array($check_type, $NO_CHECK_NO_TYPES, true) ? '' : ($check_type === 'online' ? 'ONLINE' : intval($_POST['check_no'] ?? 0));
+    $dv_or_no = in_array($check_type, $DV_NOT_REQUIRED_TYPES, true) ? '' : htmlspecialchars($_POST['dv_or_no'] ?? '');
+    if ($check_type === 'dm') {
+        $dv_or_no = 'DM';
+    } elseif ($check_type === 'cm') {
+        $dv_or_no = 'CM';
+    }
     $debit = floatval($_POST['debit'] ?? 0);
     $credit = floatval($_POST['credit'] ?? 0);
+
+    if ($check_type === 'dm') {
+        $credit = 0;
+    } elseif ($check_type === 'cm') {
+        $debit = 0;
+    }
 
     $filePath = null;
     $fileName = null;
@@ -255,7 +288,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     }
     // If no new file, keep the existing file - don't delete it
 
-    if (!isset($errorMessage) && $ppe_id > 0 && !empty($particulars) && ($check_no > 0 || $check_no === 'ONLINE' || $check_no === '')) {
+    $isValidCheckNo = ($check_no > 0 || $check_no === 'ONLINE' || $check_no === '');
+    $isValidAmountForType = true;
+    if ($check_type === 'dm' && $debit <= 0) {
+        $isValidAmountForType = false;
+    }
+    if ($check_type === 'cm' && $credit <= 0) {
+        $isValidAmountForType = false;
+    }
+
+    if (!isset($errorMessage) && $ppe_id > 0 && !empty($particulars) && $isValidCheckNo && $isValidAmountForType) {
         try {
             // Get the current record
             $stmt = $conn->prepare("SELECT debit, credit FROM ppe WHERE id = ?");
@@ -456,9 +498,14 @@ endif; ?>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Check Type</label>
                     <select id="checkType" name="check_type" onchange="toggleCheckNoInput()" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="actual">Actual Check No.</option>
-                        <option value="online">Online</option>
-                        <option value="remittance">Remittance</option>
+                        <option value="actual">ACTUAL CHECK NO.</option>
+                        <option value="online">ONLINE</option>
+                        <option value="remittance">REMITTANCE</option>
+                        <option value="tax_withheld">TAX WITHHELD</option>
+                        <option value="initial_deposit">INITIAL DEPOSIT</option>
+                        <option value="interest">INTEREST</option>
+                        <option value="dm">DEBIT MEMO</option>
+                        <option value="cm">CREDIT MEMO</option>
                     </select>
                 </div>
 
@@ -582,6 +629,11 @@ endif; ?>
                         <option value="actual">Actual Check No.</option>
                         <option value="online">Online</option>
                         <option value="remittance">Remittance</option>
+                        <option value="tax_withheld">TAX WITHHELD</option>
+                        <option value="initial_deposit">INITIAL DEPOSIT</option>
+                        <option value="interest">INTEREST</option>
+                        <option value="dm">DM</option>
+                        <option value="cm">CM</option>
                     </select>
                 </div>
 
@@ -880,6 +932,36 @@ catch (Exception $e) {
 endif; ?>
 
 <script>
+function isDVNotRequiredType(checkType) {
+    return ['online', 'tax_withheld', 'initial_deposit', 'interest'].includes(checkType);
+}
+
+function isDMorCM(checkType) {
+    return ['dm', 'cm'].includes(checkType);
+}
+
+function setAmountLockState(prefix, checkType) {
+    const debitInput = document.querySelector(prefix === 'add' ? '#addPPEForm [name="debit"]' : '#editPPEForm [name="debit"]');
+    const creditInput = document.querySelector(prefix === 'add' ? '#addPPEForm [name="credit"]' : '#editPPEForm [name="credit"]');
+
+    if (!debitInput || !creditInput) {
+        return;
+    }
+
+    if (checkType === 'dm') {
+        creditInput.disabled = true;
+        creditInput.value = '0.00';
+        debitInput.disabled = false;
+    } else if (checkType === 'cm') {
+        debitInput.disabled = true;
+        debitInput.value = '0.00';
+        creditInput.disabled = false;
+    } else {
+        debitInput.disabled = false;
+        creditInput.disabled = false;
+    }
+}
+
 function toggleCheckNoInput() {
     const checkType = document.getElementById('checkType').value;
     const checkNoDiv = document.getElementById('checkNoDiv');
@@ -888,7 +970,12 @@ function toggleCheckNoInput() {
     const dvFormatted = document.getElementById('addDVFormatted');
     const dvOnline = document.getElementById('addDVOnline');
     
-    if (checkType === 'online') {
+    if (isDVNotRequiredType(checkType)) {
+        checkNoDiv.style.display = 'none';
+        checkNoInput.required = false;
+        checkNoInput.value = '';
+        dvContainer.style.display = 'none';
+    } else if (isDMorCM(checkType)) {
         checkNoDiv.style.display = 'none';
         checkNoInput.required = false;
         checkNoInput.value = '';
@@ -909,6 +996,8 @@ function toggleCheckNoInput() {
         // Fetch latest check no when switching to actual
         fetchLatestCheckNo();
     }
+
+    setAmountLockState('add', checkType);
 }
 
 function fetchLatestCheckNo() {
@@ -941,7 +1030,12 @@ function toggleCheckNoInputEdit() {
     const dvFormatted = document.getElementById('editDVFormatted');
     const dvOnline = document.getElementById('editDVOnline');
     
-    if (checkType === 'online') {
+    if (isDVNotRequiredType(checkType)) {
+        checkNoDiv.style.display = 'none';
+        checkNoInput.required = false;
+        checkNoInput.value = '';
+        dvContainer.style.display = 'none';
+    } else if (isDMorCM(checkType)) {
         checkNoDiv.style.display = 'none';
         checkNoInput.required = false;
         checkNoInput.value = '';
@@ -960,6 +1054,8 @@ function toggleCheckNoInputEdit() {
         dvFormatted.style.display = 'flex';
         dvOnline.style.display = 'none';
     }
+
+    setAmountLockState('edit', checkType);
 }
 
 function updateDVNumber() {
@@ -1016,6 +1112,10 @@ function editPPE(id) {
             // Set check type based on check_no value
             if (data.record.check_no === 'ONLINE') {
                 document.getElementById('editCheckType').value = 'online';
+            } else if (data.record.check_no === 'DM' || data.record.dv_or_no === 'DM') {
+                document.getElementById('editCheckType').value = 'dm';
+            } else if (data.record.check_no === 'CM' || data.record.dv_or_no === 'CM') {
+                document.getElementById('editCheckType').value = 'cm';
             } else if (data.record.check_no === '') {
                 document.getElementById('editCheckType').value = 'remittance';
             } else {
@@ -1138,13 +1238,18 @@ function updateEditPPEFileList() {
 
 function prepareAddPPESubmit(event) {
     event.preventDefault();
+    const form = document.getElementById('addPPEForm');
     
     // Ensure the DV/OR number is set in the hidden field
     const checkType = document.getElementById('checkType').value;
     const hiddenDV = document.getElementById('addDVNumber');
     
-    if (checkType === 'online') {
+    if (isDVNotRequiredType(checkType)) {
         hiddenDV.value = '';
+    } else if (checkType === 'dm') {
+        hiddenDV.value = 'DM';
+    } else if (checkType === 'cm') {
+        hiddenDV.value = 'CM';
     } else if (checkType === 'remittance') {
         const manualDV = document.getElementById('addDVManual').value;
         if (!manualDV) {
@@ -1171,6 +1276,29 @@ function prepareAddPPESubmit(event) {
         }
         hiddenDV.value = prefix + suffix;
     }
+
+    const debitInput = form.querySelector('[name="debit"]');
+    const creditInput = form.querySelector('[name="credit"]');
+
+    if (checkType === 'dm' && (!debitInput.value || parseFloat(debitInput.value.replace(/,/g, '')) <= 0)) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Validation Error',
+            text: 'For DM, please enter a Debit amount greater than 0',
+            confirmButtonColor: '#ef4444'
+        });
+        return;
+    }
+
+    if (checkType === 'cm' && (!creditInput.value || parseFloat(creditInput.value.replace(/,/g, '')) <= 0)) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Validation Error',
+            text: 'For CM, please enter a Credit amount greater than 0',
+            confirmButtonColor: '#ef4444'
+        });
+        return;
+    }
     
     // Validate particulars
     const particulars = document.querySelector('[name="particulars"]').value.trim();
@@ -1185,10 +1313,6 @@ function prepareAddPPESubmit(event) {
     }
     
     // Convert formatted currency values to plain numbers for submission
-    const form = document.getElementById('addPPEForm');
-    const debitInput = form.querySelector('[name="debit"]');
-    const creditInput = form.querySelector('[name="credit"]');
-    
     if (debitInput.value) {
         debitInput.value = debitInput.value.replace(/,/g, '');
     }
@@ -1267,8 +1391,12 @@ function prepareEditPPESubmit(event) {
     const checkType = document.getElementById('editCheckType').value;
     const hiddenDV = document.getElementById('editDVNumber');
     
-    if (checkType === 'online') {
+    if (isDVNotRequiredType(checkType)) {
         hiddenDV.value = '';
+    } else if (checkType === 'dm') {
+        hiddenDV.value = 'DM';
+    } else if (checkType === 'cm') {
+        hiddenDV.value = 'CM';
     } else if (checkType === 'remittance') {
         const manualDV = document.getElementById('editDVManual').value.trim();
         hiddenDV.value = manualDV;
@@ -1282,6 +1410,30 @@ function prepareEditPPESubmit(event) {
         }
     } else {
         hiddenDV.value = '';
+    }
+
+    const form = document.getElementById('editPPEForm');
+    const debitInput = form.querySelector('[name="debit"]');
+    const creditInput = form.querySelector('[name="credit"]');
+
+    if (checkType === 'dm' && (!debitInput.value || parseFloat(debitInput.value.replace(/,/g, '')) <= 0)) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Validation Error',
+            text: 'For DM, please enter a Debit amount greater than 0',
+            confirmButtonColor: '#ef4444'
+        });
+        return;
+    }
+
+    if (checkType === 'cm' && (!creditInput.value || parseFloat(creditInput.value.replace(/,/g, '')) <= 0)) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Validation Error',
+            text: 'For CM, please enter a Credit amount greater than 0',
+            confirmButtonColor: '#ef4444'
+        });
+        return;
     }
     
     // Validate particulars
@@ -1297,10 +1449,6 @@ function prepareEditPPESubmit(event) {
     }
     
     // Convert formatted currency values to plain numbers for submission
-    const form = document.getElementById('editPPEForm');
-    const debitInput = form.querySelector('[name="debit"]');
-    const creditInput = form.querySelector('[name="credit"]');
-    
     if (debitInput.value) {
         debitInput.value = debitInput.value.replace(/,/g, '');
     }

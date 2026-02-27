@@ -232,17 +232,23 @@ else: ?>
         $coaImages = [];
         
         try {
-            $coaObs = json_decode($record['coa_observation'], true);
-            if (!is_array($coaObs)) $coaObs = [$record['coa_observation']];
+            $coaObservationRaw = $record['coa_observation'] ?? '';
+            $coaObs = json_decode((string)$coaObservationRaw, true);
+            if (!is_array($coaObs)) {
+                $coaObs = $coaObservationRaw !== '' ? [(string)$coaObservationRaw] : [];
+            }
         } catch (Exception $e) {
-            $coaObs = $record['coa_observation'] ? [$record['coa_observation']] : [];
+            $coaObs = !empty($record['coa_observation']) ? [(string)$record['coa_observation']] : [];
         }
         
         try {
-            $coaImages = json_decode($record['coa_observation_image'], true);
-            if (!is_array($coaImages)) $coaImages = [$record['coa_observation_image']];
+            $coaObservationImageRaw = $record['coa_observation_image'] ?? '';
+            $coaImages = json_decode((string)$coaObservationImageRaw, true);
+            if (!is_array($coaImages)) {
+                $coaImages = $coaObservationImageRaw !== '' ? [(string)$coaObservationImageRaw] : [];
+            }
         } catch (Exception $e) {
-            $coaImages = $record['coa_observation_image'] ? [$record['coa_observation_image']] : [];
+            $coaImages = !empty($record['coa_observation_image']) ? [(string)$record['coa_observation_image']] : [];
         }
         
         $displayContent = '';

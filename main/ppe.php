@@ -632,8 +632,8 @@ endif; ?>
                         <option value="tax_withheld">TAX WITHHELD</option>
                         <option value="initial_deposit">INITIAL DEPOSIT</option>
                         <option value="interest">INTEREST</option>
-                        <option value="dm">DM</option>
-                        <option value="cm">CM</option>
+                        <option value="dm">DEBIT MEMO</option>
+                        <option value="cm">CREDIT MEMO</option>
                     </select>
                 </div>
 
@@ -1116,6 +1116,8 @@ function editPPE(id) {
                 document.getElementById('editCheckType').value = 'dm';
             } else if (data.record.check_no === 'CM' || data.record.dv_or_no === 'CM') {
                 document.getElementById('editCheckType').value = 'cm';
+            } else if ((data.record.check_no === '' || data.record.check_no === null) && (data.record.dv_or_no === '' || data.record.dv_or_no === null)) {
+                document.getElementById('editCheckType').value = 'tax_withheld';
             } else if (data.record.check_no === '') {
                 document.getElementById('editCheckType').value = 'remittance';
             } else {

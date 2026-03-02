@@ -1,0 +1,2293 @@
+<?php
+session_start();
+require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/app/controllers/MainController.php';
+require_once __DIR__ . '/app/controllers/DocumentController.php';
+require_once __DIR__ . '/app/controllers/FavoritesController.php';
+require_once __DIR__ . '/app/helpers/AuditLogger.php';
+
+MainController::requireAuth();
+$controller = new MainController($conn);
+$controller->setCurrentPage('documents');
+$documentController = new DocumentController($conn);
+$favoritesController = new FavoritesController($conn);
+$auditLogger = new AuditLogger($conn);
+
+// Handle upload and delete requests - MUST EXIT to prevent HTML output
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    if (isset($_POST['action']) && $_POST['action'] === 'upload') {
+        $documentController->uploadDocument();
+        exit;
+    }
+    if (isset($_POST['action']) && $_POST['action'] === 'edit') {
+        $documentController->editDocument();
+        exit;
+    }
+    if (isset($_POST['action']) && $_POST['action'] === 'toggle_favorite') {
+        $favoritesController->toggleFavorite();
+        exit;
+    }
+}
+
+// Check for delete request
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_SERVER['CONTENT_TYPE']) && $_SERVER['CONTENT_TYPE'] === 'application/json') {
+    $documentController->deleteDocument();
+    exit;
+}
+
+$username = $_SESSION['username'] ?? 'User';
+
+// Fetch electric cooperatives from database
+$ecStmt = $conn->prepare("SELECT id, name, code FROM electric_cooperatives ORDER BY name ASC");
+$ecStmt->execute();
+$electricCooperatives = $ecStmt->fetchAll();
+
+// Fetch items for dropdown
+$itemsStmt = $conn->prepare("SELECT id, name FROM items ORDER BY name ASC");
+$itemsStmt->execute();
+$itemsList = $itemsStmt->fetchAll();
+
+// Fetch recommending approvals for dropdown
+$recStmt = $conn->prepare("SELECT id, name FROM recommending_approvals ORDER BY name ASC");
+$recStmt->execute();
+$recommendingApprovals = $recStmt->fetchAll();
+
+// Fetch approving authority for dropdown
+$appStmt = $conn->prepare("SELECT id, name FROM approving_authority ORDER BY name ASC");
+$appStmt->execute();
+$approvingAuthorities = $appStmt->fetchAll();
+
+// Fetch departments for dropdown
+$deptStmt = $conn->prepare("SELECT id, name FROM departments ORDER BY name ASC");
+$deptStmt->execute();
+$departmentsList = $deptStmt->fetchAll();
+
+// Fetch teams for dropdown
+$teamStmt = $conn->prepare("SELECT id, name FROM teams ORDER BY name ASC");
+$teamStmt->execute();
+$teamsList = $teamStmt->fetchAll();
+
+// Get all documents
+$allDocuments = $documentController->getAllDocuments();
+
+// Create cooperative color map
+$ecColors = [];
+$colorPalette = [
+    'bg-red-200 dark:bg-red-900/30',
+    'bg-blue-200 dark:bg-blue-900/30',
+    'bg-green-200 dark:bg-green-900/30',
+    'bg-yellow-200 dark:bg-yellow-900/30',
+    'bg-purple-200 dark:bg-purple-900/30',
+    'bg-pink-200 dark:bg-pink-900/30',
+    'bg-indigo-200 dark:bg-indigo-900/30',
+    'bg-teal-200 dark:bg-teal-900/30',
+    'bg-orange-200 dark:bg-orange-900/30',
+    'bg-cyan-200 dark:bg-cyan-900/30',
+];
+
+$colorIndex = 0;
+foreach ($allDocuments as $doc) {
+    $ec = $doc['ec'];
+    if (!isset($ecColors[$ec])) {
+        $ecColors[$ec] = $colorPalette[$colorIndex % count($colorPalette)];
+        $colorIndex++;
+    }
+}
+
+// Handle search filter
+$searchTerm = isset($_GET['search']) ? trim($_GET['search']) : '';
+$filterItem = isset($_GET['item']) ? trim($_GET['item']) : '';
+$filteredDocuments = $allDocuments;
+
+// Apply filters
+if (!empty($searchTerm) || !empty($filterItem)) {
+    $filteredDocuments = array_filter($allDocuments, function ($doc) use ($searchTerm, $filterItem) {
+        // Apply search filter - search ALL fields
+        if (!empty($searchTerm)) {
+            $searchLower = strtolower($searchTerm);
+            $searchableFields = [
+                $doc['ec'] ?? '',
+                $doc['item'] ?? '',
+                $doc['file_name'] ?? '',
+                $doc['recommending_approvals'] ?? '',
+                $doc['approving_authority'] ?? '',
+                $doc['control_point'] ?? '',
+                $doc['department'] ?? '',
+                $doc['team'] ?? '',
+                $doc['created_at'] ?? ''
+            ];
+
+            $combined = strtolower(implode(' ', $searchableFields));
+            if (strpos($combined, $searchLower) === false) {
+                return false;
+            }
+        }
+
+        // Apply Item filter (exact match after trim)
+        if (!empty($filterItem)) {
+            $docItem = isset($doc['item']) ? trim($doc['item']) : '';
+            $filterItemTrimmed = trim($filterItem);
+            if ($docItem !== $filterItemTrimmed) {
+                return false;
+            }
+        }
+
+        return true;
+    });
+    // Re-index the array to avoid issues with pagination
+    $filteredDocuments = array_values($filteredDocuments);
+}
+
+// Pagination
+$itemsPerPage = isset($_GET['limit']) ? (int)$_GET['limit'] : 5;
+$totalItems = count($filteredDocuments);
+$totalPages = ceil($totalItems / $itemsPerPage);
+$currentPage = isset($_GET['page']) ? max(1, min((int)$_GET['page'], $totalPages)) : 1;
+$offset = ($currentPage - 1) * $itemsPerPage;
+$documents = array_slice($filteredDocuments, $offset, $itemsPerPage);
+
+ob_start();
+?>
+
+<div class="w-full">
+    <!-- Page Header -->
+    <div class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between">
+        <div>
+            <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-2">Documents</h1>
+            <p class="text-gray-600 dark:text-gray-400">Manage and organize your documents</p>
+        </div>
+        <button onclick="document.getElementById('uploadModal').classList.remove('hidden')" class="mt-4 md:mt-0 inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Upload Document
+        </button>
+    </div>
+
+    <!-- Filters and Search -->
+    <div class="mb-6 flex flex-col md:flex-row gap-4">
+        <form method="GET" class="flex flex-wrap gap-4 w-full" id="searchForm">
+            <input type="hidden" name="page" value="1">
+            <input type="hidden" name="limit" value="<?php echo htmlspecialchars($itemsPerPage); ?>">
+            
+            <!-- Search Input -->
+            <div class="flex-1 relative min-w-xs">
+                <input 
+                    type="text" 
+                    id="searchInput"
+                    name="search"
+                    value="<?php echo htmlspecialchars($searchTerm); ?>"
+                    placeholder="Search all documents..." 
+                    class="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                <svg class="absolute right-3 top-2.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+            </div>
+
+            <!-- Item Filter -->
+            <div class="min-w-xs">
+                <select name="item" onchange="document.getElementById('searchForm').submit()" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">All Items</option>
+                    <?php foreach ($itemsList as $item): ?>
+                        <option value="<?php echo htmlspecialchars($item['name']); ?>" <?php echo($filterItem === $item['name']) ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($item['name']); ?>
+                        </option>
+                    <?php
+endforeach; ?>
+                </select>
+            </div>
+
+            <!-- Clear Filters Button -->
+            <?php if (!empty($searchTerm) || !empty($filterItem)): ?>
+            <button type="button" onclick="window.location.href='?'" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition font-medium">
+                Clear Filters
+            </button>
+            <?php
+endif; ?>
+        </form>
+    </div>
+
+    <!-- Show Entries and Documents Table -->
+    <div class="mb-4 flex items-center gap-2">
+        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Show</label>
+        <select id="limitSelect" onchange="changeLimit()" class="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="5" <?php echo($itemsPerPage == 5) ? 'selected' : ''; ?>>5</option>
+            <option value="10" <?php echo($itemsPerPage == 10) ? 'selected' : ''; ?>>10</option>
+            <option value="25" <?php echo($itemsPerPage == 25) ? 'selected' : ''; ?>>25</option>
+            <option value="50" <?php echo($itemsPerPage == 50) ? 'selected' : ''; ?>>50</option>
+        </select>
+        <span class="text-sm text-gray-600 dark:text-gray-400">entries</span>
+    </div>
+
+    <!-- Documents Table -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-x-auto">
+        <?php if (empty($allDocuments)): ?>
+        <div class="text-center py-12 px-4">
+            <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">No documents yet</h3>
+            <p class="text-gray-600 dark:text-gray-400 mb-4">Start by uploading your first document</p>
+        </div>
+        <?php
+else: ?>
+        <table class="w-full">
+            <thead class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                <tr>
+                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Item</th>
+                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white hidden sm:table-cell">Recommending Approvals</th>
+                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white hidden md:table-cell">Approving Authority</th>
+                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white hidden lg:table-cell">Control Point</th>
+                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white hidden lg:table-cell">Department/Office</th>
+                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">EC</th>
+                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white hidden xl:table-cell">Team</th>
+                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($documents as $doc): ?>
+                <tr class="border-b border-gray-200 dark:border-gray-700 transition <?php echo isset($ecColors[$doc['ec']]) ? $ecColors[$doc['ec']] : ''; ?>">
+                    <td class="px-6 py-4 text-sm text-gray-900 dark:text-white font-medium">
+                        <?php echo htmlspecialchars($doc['item']); ?>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 hidden sm:table-cell">
+                        <?php echo htmlspecialchars($doc['recommending_approvals'] ?: '-'); ?>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 hidden md:table-cell">
+                        <?php echo htmlspecialchars($doc['approving_authority'] ?: '-'); ?>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 hidden lg:table-cell">
+                        <?php
+        if (!empty($doc['control_point'])) {
+            $points = array_filter(array_map('trim', explode("\n", $doc['control_point'])));
+            if (!empty($points)) {
+                $totalPoints = count($points);
+                echo '<div class="control-points-container" data-doc-id="' . $doc['id'] . '">';
+
+                // Show first control point
+                echo '<div class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">' . htmlspecialchars($points[0]) . '</div>';
+
+                // Show additional points (initially hidden)
+                if ($totalPoints > 1) {
+                    echo '<div class="additional-points hidden space-y-1 mt-1">';
+                    for ($i = 1; $i < $totalPoints; $i++) {
+                        echo '<div class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">' . htmlspecialchars($points[$i]) . '</div>';
+                    }
+                    echo '</div>';
+
+                    // See more/less toggle
+                    echo '<button onclick="toggleControlPoints(' . $doc['id'] . ', this)" class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 mt-1 focus:outline-none">See more (' . ($totalPoints - 1) . ' more)</button>';
+                }
+
+                echo '</div>';
+            }
+            else {
+                echo '-';
+            }
+        }
+        else {
+            echo '-';
+        }
+?>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 hidden lg:table-cell">
+                        <?php
+        if (!empty($doc['department'])) {
+            $depts = array_filter(array_map('trim', explode("\n", $doc['department'])));
+            if (!empty($depts)) {
+                echo '<div class="space-y-1">';
+                foreach ($depts as $dept) {
+                    $deptName = preg_replace('/^\d+\.\s+/', '', $dept);
+                    echo '<div class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">' . htmlspecialchars($deptName) . '</div>';
+                }
+                echo '</div>';
+            }
+            else {
+                echo '-';
+            }
+        }
+        else {
+            echo '-';
+        }
+?>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 font-bold">
+                        <?php echo htmlspecialchars($doc['ec']); ?>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 hidden xl:table-cell">
+                        <?php
+        if (!empty($doc['team'])) {
+            $teams = array_filter(array_map('trim', explode("\n", $doc['team'])));
+            if (!empty($teams)) {
+                echo '<div class="space-y-1">';
+                foreach ($teams as $team) {
+                    $teamName = preg_replace('/^\d+\.\s+/', '', $team);
+                    echo '<div class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">' . htmlspecialchars($teamName) . '</div>';
+                }
+                echo '</div>';
+            }
+            else {
+                echo '-';
+            }
+        }
+        else {
+            echo '-';
+        }
+?>
+                    </td>
+                    <td class="px-6 py-4 text-sm space-x-3 flex items-center justify-center">
+                        <?php if (!empty($doc['file_path'])): ?>
+                        <?php
+            $filePath = $doc['file_path'];
+            $fileExt = strtolower(pathinfo($doc['file_name'], PATHINFO_EXTENSION));
+            $previewableTypes = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
+?>
+                        <!-- Preview Button (Eye Icon) -->
+                        <?php if (in_array($fileExt, $previewableTypes)): ?>
+                        <button onclick="openPreviewModal(<?php echo $doc['id']; ?>, '<?php echo htmlspecialchars($doc['file_name']); ?>')" title="Preview document" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition" style="background-color: var(--theme-primary);">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                            </svg>
+                        </button>
+                        <?php
+            endif; ?>
+                        <!-- Favorites Button (Star Icon) -->
+                        <?php
+            $isFavorited = $favoritesController->isFavorite($doc['id']);
+            $favClass = $isFavorited ? 'is-favorite' : '';
+            $favTitle = $isFavorited ? 'Remove from favorites' : 'Add to favorites';
+            $favBgColor = $isFavorited ? 'background-color: var(--theme-danger);' : 'background-color: var(--theme-secondary);';
+            $favFill = $isFavorited ? 'currentColor' : 'none';
+?>
+                        <div class="custom-tooltip">
+                            <button onclick="toggleFavorite(<?php echo $doc['id']; ?>, this)" class="toggle-favorite-btn inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition favorite-btn-<?php echo $doc['id']; ?> <?php echo $favClass; ?>" style="<?php echo $favBgColor; ?> border: 2px solid black;" data-document-id="<?php echo $doc['id']; ?>" data-is-favorite="<?php echo $isFavorited ? '1' : '0'; ?>" data-tooltip="<?php echo $favTitle; ?>">
+                                <svg class="w-4 h-4 favorite-star" fill="<?php echo $favFill; ?>" stroke="black" stroke-width="1.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
+                                </svg>
+                            </button>
+                            <span class="tooltip-text"><?php echo $favTitle; ?></span>
+                        </div>
+                        <?php
+        endif; ?>
+                        <?php if (isset($_SESSION['role']) && ($_SESSION['role'] === 'administrator' || $_SESSION['role'] === 'superadmin')): ?>
+                        <button onclick="openEditModal(<?php echo htmlspecialchars(json_encode($doc)); ?>)" title="Edit document" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition mr-2" style="background-color: #eab308;">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                            </svg>
+                        </button>
+                        <button onclick="deleteDocument(<?php echo htmlspecialchars(json_encode($doc)); ?>)" title="Delete document" class="inline-flex items-center justify-center w-8 h-8 text-white rounded hover:opacity-90 transition" style="background-color: var(--theme-danger);">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                        </button>
+                        <?php
+        endif; ?>
+                    </td>
+                </tr>
+                <?php
+    endforeach; ?>
+            </tbody>
+        </table>
+        <?php
+endif; ?>
+    </div>
+
+    <!-- Pagination -->
+    <?php if ($totalPages > 1): ?>
+    <?php
+    // Build query string for pagination links
+    $paginationQuery = '&limit=' . $itemsPerPage;
+    if (!empty($searchTerm))
+        $paginationQuery .= '&search=' . urlencode($searchTerm);
+    if (!empty($filterItem))
+        $paginationQuery .= '&item=' . urlencode($filterItem);
+?>
+    <div class="mt-6 flex items-center justify-between">
+        <div class="text-sm text-gray-600 dark:text-gray-400">
+            Showing <?php echo($offset + 1); ?> to <?php echo min($offset + $itemsPerPage, $totalItems); ?> of <?php echo $totalItems; ?> documents
+        </div>
+        <div class="flex gap-2">
+            <?php if ($currentPage > 1): ?>
+            <a href="?page=<?php echo $currentPage - 1; ?><?php echo $paginationQuery; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                Previous
+            </a>
+            <?php
+    endif; ?>
+
+            <?php
+    $startPage = max(1, $currentPage - 2);
+    $endPage = min($totalPages, $currentPage + 2);
+
+    if ($startPage > 1): ?>
+            <a href="?page=1<?php echo $paginationQuery; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">1</a>
+            <?php if ($startPage > 2): ?>
+            <span class="px-4 py-2 text-gray-600 dark:text-gray-400">...</span>
+            <?php
+        endif; ?>
+            <?php
+    endif; ?>
+
+            <?php for ($i = $startPage; $i <= $endPage; $i++): ?>
+            <a href="?page=<?php echo $i; ?><?php echo $paginationQuery; ?>" class="px-4 py-2 rounded-lg transition <?php echo($i === $currentPage) ? 'bg-blue-600 text-white' : 'border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'; ?>">
+                <?php echo $i; ?>
+            </a>
+            <?php
+    endfor; ?>
+
+            <?php if ($endPage < $totalPages): ?>
+            <?php if ($endPage < $totalPages - 1): ?>
+            <span class="px-4 py-2 text-gray-600 dark:text-gray-400">...</span>
+            <?php
+        endif; ?>
+            <a href="?page=<?php echo $totalPages; ?><?php echo $paginationQuery; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition"><?php echo $totalPages; ?></a>
+            <?php
+    endif; ?>
+
+            <?php if ($currentPage < $totalPages): ?>
+            <a href="?page=<?php echo $currentPage + 1; ?><?php echo $paginationQuery; ?>" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                Next
+            </a>
+            <?php
+    endif; ?>
+        </div>
+    </div>
+    <?php
+endif; ?>
+
+<!-- Upload Modal -->
+<div id="uploadModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-gray-800 rounded-lg w-full max-w-6xl p-8 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-3xl font-bold text-gray-900 dark:text-white">Upload Document</h2>
+            <button id="closeModalBtn" onclick="document.getElementById('uploadModal').classList.add('hidden')" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+
+        <form id="uploadForm" enctype="multipart/form-data" class="space-y-6">
+            <input type="hidden" name="action" value="upload">
+            
+            <!-- First Row: EC -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Electric Cooperative *</label>
+                <div class="relative">
+                    <input type="text" id="ecInput" name="ec" required placeholder="Type to search EC..." class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+                    <div id="ecSuggestions" class="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+                </div>
+            </div>
+
+            <!-- Combined Items, Recommending Approvals, and Approving Authority Section -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Items * / Recommending Approvals / Approving Authority</label>
+                <div id="combinedListContainer" class="space-y-2 mb-3">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                        <!-- Item -->
+                        <div class="relative">
+                            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1. Item</span>
+                            <input type="text" name="items[]" placeholder="Type to search item..." class="item-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+                            <div class="item-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+                        </div>
+                        <!-- Recommending Approval -->
+                        <div class="relative">
+                            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">Rec. Approval</span>
+                            <input type="text" name="recommending_approvals_list[]" placeholder="Type to search approval..." class="rec-app-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+                            <div class="rec-app-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+                        </div>
+                        <!-- Approving Authority -->
+                        <div class="relative flex gap-2 items-end">
+                            <div class="flex-1">
+                                <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">App. Authority</span>
+                                <input type="text" name="approving_authority_list[]" placeholder="Type to search authority..." class="app-auth-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+                                <div class="app-auth-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button type="button" onclick="addCombinedRow()" class="text-sm px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition font-medium">
+                    + Add Row
+                </button>
+            </div>
+
+            <!-- Full Width Control Points -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Control Points</label>
+                <div id="controlPointsContainer" class="space-y-2 mb-3">
+                    <div class="flex gap-2 items-end">
+                        <div class="flex-1 relative">
+                            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1.</span>
+                            <input type="text" name="control_points[]" placeholder="Enter control point" class="control-point-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+                        </div>
+                    </div>
+                </div>
+                <button type="button" onclick="addControlPoint()" class="text-sm px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition font-medium">
+                    + Add Control Point
+                </button>
+            </div>
+
+            <!-- Two Column Layout: Department and Team -->
+            <div class="grid grid-cols-2 gap-6">
+                <!-- Department Section -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Department</label>
+                    <div id="departmentContainer" class="space-y-2 mb-3">
+                        <div class="flex gap-2 items-end">
+                            <div class="flex-1 relative">
+                                <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1.</span>
+                                <input type="text" name="departments[]" placeholder="Type to search department..." class="department-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+                                <div class="department-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" onclick="addDepartment()" class="text-sm px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition font-medium">
+                        + Add Department
+                    </button>
+                </div>
+
+                <!-- Team Section -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Team</label>
+                    <div id="teamContainer" class="space-y-2 mb-3">
+                        <div class="flex gap-2 items-end">
+                            <div class="flex-1 relative">
+                                <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1.</span>
+                                <input type="text" name="teams[]" placeholder="Type to search team..." class="team-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+                                <div class="team-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" onclick="addTeam()" class="text-sm px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition font-medium">
+                        + Add Team
+                    </button>
+                </div>
+            </div>
+
+            <!-- Full Width File Upload -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Upload Files</label>
+                <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition cursor-pointer">
+                    <input type="file" name="files[]" multiple class="hidden" id="fileInput">
+                    <label for="fileInput" class="cursor-pointer text-center block">
+                        <svg class="w-10 h-10 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Click to select files or drag and drop</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">PDF, Word, Excel, Image files (Max 50MB per file)</p>
+                    </label>
+                </div>
+                <div id="fileList" class="mt-3 text-sm text-gray-600 dark:text-gray-400"></div>
+            </div>
+
+            <div id="uploadMessage" class="hidden p-4 rounded-lg text-sm font-medium"></div>
+
+            <!-- Loading Indicator -->
+            <div id="uploadLoading" class="hidden flex items-center justify-center gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+                <div class="animate-spin">
+                    <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+                <span class="text-blue-700 dark:text-blue-300 font-medium">Uploading documents...</span>
+            </div>
+
+            <div class="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button id="cancelBtn" type="button" onclick="document.getElementById('uploadModal').classList.add('hidden')" class="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition font-medium">
+                    Cancel
+                </button>
+                <button id="submitBtn" type="submit" class="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-medium">
+                    Upload Documents
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Document Modal -->
+<div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-gray-800 rounded-lg w-full max-w-6xl p-8 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-3xl font-bold text-gray-900 dark:text-white">Edit Document</h2>
+            <button id="closeEditModalBtn" onclick="document.getElementById('editModal').classList.add('hidden')" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+
+        <form id="editForm" class="space-y-6">
+            <input type="hidden" id="editDocId" name="doc_id">
+            <input type="hidden" name="action" value="edit">
+            
+            <!-- EC Selection -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                    Electric Cooperative <span class="text-red-500">*</span>
+                </label>
+                <div class="relative">
+                    <input type="text" id="editEcInput" placeholder="Select EC..." class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+                    <div id="editEcSuggestions" class="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+                </div>
+            </div>
+
+            <!-- Combined Items, Recommending Approvals, and Approving Authority Section -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Items <span class="text-red-500">*</span> / Recommending Approvals / Approving Authority</label>
+                <div id="editCombinedListContainer" class="space-y-2">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">
+                        <!-- Item -->
+                        <div class="relative">
+                            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1. Item</span>
+                            <input type="text" name="edit_items[]" placeholder="Type to search item..." class="edit-item-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+                            <div class="edit-item-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+                        </div>
+                        <!-- Recommending Approval -->
+                        <div class="relative">
+                            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">Rec. Approval</span>
+                            <input type="text" name="edit_recommending_approvals_list[]" placeholder="Type to search approval..." class="edit-rec-app-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+                            <div class="edit-rec-app-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+                        </div>
+                        <!-- Approving Authority + Remove Button -->
+                        <div class="relative flex gap-2 items-end">
+                            <div class="flex-1">
+                                <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">App. Authority</span>
+                                <input type="text" name="edit_approving_authority_list[]" placeholder="Type to search authority..." class="edit-app-auth-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+                                <div class="edit-app-auth-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+                            </div>
+                            <button type="button" onclick="removeCombinedRow(this)" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">✕</button>
+                        </div>
+                    </div>
+                </div>
+                <button type="button" onclick="addEditCombinedRow()" class="mt-2 px-4 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded hover:bg-green-200 dark:hover:bg-green-900/50 transition text-sm font-medium">+ Add Row</button>
+            </div>
+
+            <!-- Control Points -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Control Points</label>
+                <div id="editControlPointsContainer" class="space-y-2">
+                    <div class="flex gap-2 items-end">
+                        <div class="flex-1 relative">
+                            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1.</span>
+                            <input type="text" name="edit_control_points[]" placeholder="Enter control point" class="edit-control-point-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+                        </div>
+                        <button type="button" onclick="this.parentElement.remove(); updateEditControlPointNumbers();" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">✕</button>
+                    </div>
+                </div>
+                <button type="button" onclick="addEditControlPoint()" class="mt-2 px-4 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded hover:bg-green-200 dark:hover:bg-green-900/50 transition text-sm font-medium">+ Add Control Point</button>
+            </div>
+
+            <!-- Two Column Layout: Departments and Teams -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Departments Section -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Departments</label>
+                    <div id="editDepartmentContainer" class="space-y-2">
+                        <div class="flex gap-2 items-end">
+                            <div class="flex-1 relative">
+                                <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1.</span>
+                                <input type="text" name="edit_departments[]" placeholder="Type to search department..." class="edit-department-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+                                <div class="edit-department-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+                            </div>
+                            <button type="button" onclick="this.parentElement.remove(); updateEditDepartmentNumbers()" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">✕</button>
+                        </div>
+                    </div>
+                    <button type="button" onclick="addEditDepartment()" class="mt-2 px-4 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded hover:bg-green-200 dark:hover:bg-green-900/50 transition text-sm font-medium">+ Add Department</button>
+                </div>
+
+                <!-- Teams Section -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Teams</label>
+                    <div id="editTeamContainer" class="space-y-2">
+                        <div class="flex gap-2 items-end">
+                            <div class="flex-1 relative">
+                                <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1.</span>
+                                <input type="text" name="edit_teams[]" placeholder="Type to search team..." class="edit-team-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+                                <div class="edit-team-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+                            </div>
+                            <button type="button" onclick="this.parentElement.remove(); updateEditTeamNumbers()" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">✕</button>
+                        </div>
+                    </div>
+                    <button type="button" onclick="addEditTeam()" class="mt-2 px-4 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded hover:bg-green-200 dark:hover:bg-green-900/50 transition text-sm font-medium">+ Add Team</button>
+                </div>
+            </div>
+
+            <!-- File Upload -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Replace File (Optional)</label>
+                <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition cursor-pointer" id="editFileDropZone">
+                    <input type="file" name="edit_file" class="hidden" id="editFileInput">
+                    <label for="editFileInput" class="cursor-pointer text-center block">
+                        <svg class="w-10 h-10 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Click to select a file or drag and drop</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">PDF, Word, Excel, Image files (Max 50MB)</p>
+                    </label>
+                </div>
+                <div id="editFileList" class="mt-3 text-sm text-gray-600 dark:text-gray-400"></div>
+            </div>
+
+            <!-- Error Message -->
+            <div id="editMessage" class="hidden px-4 py-3 rounded-lg"></div>
+
+            <!-- Loading Indicator -->
+            <div id="editUploadLoading" class="hidden flex items-center justify-center gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+                <div class="animate-spin">
+                    <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+                <span class="text-blue-700 dark:text-blue-300 font-medium">Updating document...</span>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button id="editCancelBtn" type="button" onclick="document.getElementById('editModal').classList.add('hidden')" class="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition font-medium">
+                    Cancel
+                </button>
+                <button id="editSubmitBtn" type="submit" class="flex-1 px-4 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition font-medium">
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Document Preview Modal -->
+<div id="previewModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-screen overflow-y-auto">
+        <!-- Modal Header -->
+        <div class="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
+            <h2 id="previewTitle" class="text-2xl font-bold text-gray-900 dark:text-white truncate"></h2>
+            <button onclick="closePreviewModal()" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Modal Content -->
+        <div class="p-6">
+            <div id="previewContent" class="flex items-center justify-center min-h-[300px] bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <div class="flex items-center justify-center gap-3">
+                    <div class="animate-spin">
+                        <svg class="w-8 h-8 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </div>
+                    <span class="text-gray-600 dark:text-gray-300 font-medium">Loading preview...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="sticky bottom-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-6 py-4">
+            <button onclick="closePreviewModal()" class="w-full px-4 py-3 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition font-medium">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+// Autocomplete data
+const itemsData = <?php echo json_encode(array_map(function ($item) {
+    return $item['name'];
+}, $itemsList)); ?>;
+const recAppData = <?php echo json_encode(array_map(function ($rec) {
+    return $rec['name'];
+}, $recommendingApprovals)); ?>;
+const appAuthData = <?php echo json_encode(array_map(function ($auth) {
+    return $auth['name'];
+}, $approvingAuthorities)); ?>;
+const departmentsData = <?php echo json_encode(array_map(function ($dept) {
+    return $dept['name'];
+}, $departmentsList)); ?>;
+const teamsData = <?php echo json_encode(array_map(function ($team) {
+    return $team['name'];
+}, $teamsList)); ?>;
+const ecData = <?php echo json_encode(array_map(function ($ec) {
+    return ['name' => $ec['name'], 'code' => $ec['code']];
+}, $electricCooperatives)); ?>;
+
+// Autocomplete function
+function setupAutocomplete(inputId, suggestionsId, data, displayFn = null) {
+    const input = document.getElementById(inputId);
+    const suggestionsDiv = document.getElementById(suggestionsId);
+    
+    if (!input) return;
+    
+    input.addEventListener('input', function() {
+        const query = this.value.toLowerCase();
+        
+        if (query.length === 0) {
+            suggestionsDiv.classList.add('hidden');
+            return;
+        }
+        
+        let filtered;
+        if (Array.isArray(data) && data[0]?.code) {
+            // EC data
+            filtered = data.filter(item => 
+                item.name.toLowerCase().includes(query) || 
+                item.code.toLowerCase().includes(query)
+            );
+        } else {
+            filtered = data.filter(item => item.toLowerCase().includes(query));
+        }
+        
+        if (filtered.length === 0) {
+            suggestionsDiv.classList.add('hidden');
+            return;
+        }
+        
+        suggestionsDiv.innerHTML = filtered.map((item, index) => {
+            const display = Array.isArray(data) && data[0]?.code 
+                ? `${item.name} (${item.code})` 
+                : item;
+            return `<div class="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer" onclick="selectSuggestion('${inputId}', '${display}', '${Array.isArray(data) && data[0]?.code ? item.code : item}')">${display}</div>`;
+        }).join('');
+        
+        suggestionsDiv.classList.remove('hidden');
+    });
+    
+    document.addEventListener('click', function(e) {
+        if (!input.contains(e.target) && !suggestionsDiv.contains(e.target)) {
+            suggestionsDiv.classList.add('hidden');
+        }
+    });
+}
+
+function selectSuggestion(inputId, displayValue, actualValue) {
+    const input = document.getElementById(inputId);
+    
+    // For EC input, extract just the name part (remove code)
+    if (inputId === 'ecInput') {
+        // displayValue is like "Name (Code)", we need just "Name"
+        const match = displayValue.match(/^(.+?)\s*\(/);
+        input.value = match ? match[1].trim() : displayValue;
+    } else {
+        input.value = displayValue;
+    }
+    
+    const suggestionsId = inputId.replace('Input', 'Suggestions');
+    const suggestionsDiv = document.getElementById(suggestionsId);
+    if (suggestionsDiv) {
+        suggestionsDiv.classList.add('hidden');
+    }
+}
+
+// Setup autocomplete for items inputs
+function setupItemAutocomplete(input, data) {
+    if (!input) return;
+    
+    input.addEventListener('input', function() {
+        const query = this.value.toLowerCase().trim();
+        const suggestionsDiv = this.nextElementSibling;
+        
+        if (query.length === 0) {
+            suggestionsDiv.classList.add('hidden');
+            return;
+        }
+        
+        const filtered = data.filter(item => {
+            const itemLower = item.toLowerCase().trim();
+            // Include if it contains the query and is not an exact match
+            return itemLower.includes(query) && itemLower !== query;
+        });
+        
+        if (filtered.length === 0) {
+            suggestionsDiv.classList.add('hidden');
+            return;
+        }
+        
+        suggestionsDiv.innerHTML = filtered.map(item => 
+            `<div class="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer" onclick="selectItemSuggestion(this)">${item}</div>`
+        ).join('');
+        
+        suggestionsDiv.classList.remove('hidden');
+    });
+    
+    document.addEventListener('click', function(e) {
+        const suggestionsDiv = input.nextElementSibling;
+        if (!input.contains(e.target) && !suggestionsDiv.contains(e.target)) {
+            suggestionsDiv.classList.add('hidden');
+        }
+    });
+}
+
+function selectItemSuggestion(element) {
+    const value = element.textContent;
+    const input = element.parentElement.previousElementSibling;
+    input.value = value;
+    element.parentElement.classList.add('hidden');
+}
+
+// Setup autocomplete for rec approvals inputs
+function setupRecAppAutocomplete(input, data) {
+    if (!input) return;
+    
+    input.addEventListener('input', function() {
+        const query = this.value.toLowerCase();
+        const suggestionsDiv = this.nextElementSibling;
+        
+        if (query.length === 0) {
+            suggestionsDiv.classList.add('hidden');
+            return;
+        }
+        
+        const filtered = data.filter(item => item.toLowerCase().includes(query));
+        
+        if (filtered.length === 0) {
+            suggestionsDiv.classList.add('hidden');
+            return;
+        }
+        
+        suggestionsDiv.innerHTML = filtered.map(item => 
+            `<div class="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer" onclick="selectRecAppSuggestion(this)">${item}</div>`
+        ).join('');
+        
+        suggestionsDiv.classList.remove('hidden');
+    });
+    
+    document.addEventListener('click', function(e) {
+        if (!input.contains(e.target) && !input.nextElementSibling.contains(e.target)) {
+            input.nextElementSibling.classList.add('hidden');
+        }
+    });
+}
+
+function selectRecAppSuggestion(element) {
+    const value = element.textContent;
+    const suggestionsDiv = element.parentElement;
+    const input = suggestionsDiv.previousElementSibling;
+    input.value = value;
+    suggestionsDiv.classList.add('hidden');
+}
+
+// Setup autocomplete for app auth inputs
+function setupAppAuthAutocomplete(input, data) {
+    if (!input) return;
+    
+    input.addEventListener('input', function() {
+        const query = this.value.toLowerCase();
+        const suggestionsDiv = this.nextElementSibling;
+        
+        if (query.length === 0) {
+            suggestionsDiv.classList.add('hidden');
+            return;
+        }
+        
+        const filtered = data.filter(item => item.toLowerCase().includes(query));
+        
+        if (filtered.length === 0) {
+            suggestionsDiv.classList.add('hidden');
+            return;
+        }
+        
+        suggestionsDiv.innerHTML = filtered.map(item => 
+            `<div class="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer" onclick="selectAppAuthSuggestion(this)">${item}</div>`
+        ).join('');
+        
+        suggestionsDiv.classList.remove('hidden');
+    });
+    
+    document.addEventListener('click', function(e) {
+        if (!input.contains(e.target) && !input.nextElementSibling.contains(e.target)) {
+            input.nextElementSibling.classList.add('hidden');
+        }
+    });
+}
+
+function selectAppAuthSuggestion(element) {
+    const value = element.textContent;
+    const suggestionsDiv = element.parentElement;
+    const input = suggestionsDiv.previousElementSibling;
+    input.value = value;
+    suggestionsDiv.classList.add('hidden');
+}
+
+// Initialize EC autocomplete
+setupAutocomplete('ecInput', 'ecSuggestions', ecData);
+setupItemAutocomplete(document.querySelector('#combinedListContainer .item-input'), itemsData);
+setupRecAppAutocomplete(document.querySelector('#combinedListContainer .rec-app-input'), recAppData);
+setupAppAuthAutocomplete(document.querySelector('#combinedListContainer .app-auth-input'), appAuthData);
+setupDepartmentAutocomplete(document.querySelector('#departmentContainer .department-input'), departmentsData);
+setupTeamAutocomplete(document.querySelector('#teamContainer .team-input'), teamsData);
+
+// Handle combined row adding (Item, Recommending Approval, Approving Authority)
+function addCombinedRow() {
+    const container = document.getElementById('combinedListContainer');
+    const currentCount = container.querySelectorAll('[name="items[]"]').length + 1;
+    
+    const div = document.createElement('div');
+    div.className = 'grid grid-cols-3 gap-3 items-end';
+    div.innerHTML = `
+        <!-- Item -->
+        <div class="relative">
+            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">${currentCount}. Item</span>
+            <input type="text" name="items[]" placeholder="Type to search item..." class="item-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+            <div class="item-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+        </div>
+        <!-- Recommending Approval -->
+        <div class="relative">
+            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">Rec. Approval</span>
+            <input type="text" name="recommending_approvals_list[]" placeholder="Type to search approval..." class="rec-app-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+            <div class="rec-app-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+        </div>
+        <!-- Approving Authority + Remove Button -->
+        <div class="relative flex gap-2 items-end">
+            <div class="flex-1">
+                <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">App. Authority</span>
+                <input type="text" name="approving_authority_list[]" placeholder="Type to search authority..." class="app-auth-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+                <div class="app-auth-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+            </div>
+            <button type="button" onclick="removeCombinedRow(this); updateCombinedNumbers();" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">✕</button>
+        </div>
+    `;
+    container.appendChild(div);
+    setupItemAutocomplete(div.querySelector('.item-input'), itemsData);
+    setupRecAppAutocomplete(div.querySelector('.rec-app-input'), recAppData);
+    setupAppAuthAutocomplete(div.querySelector('.app-auth-input'), appAuthData);
+}
+
+// Remove combined row
+function removeCombinedRow(button) {
+    button.closest('.grid').remove();
+    updateCombinedNumbers();
+}
+
+// Update combined row numbering
+function updateCombinedNumbers() {
+    const container = document.getElementById('combinedListContainer');
+    const rows = container.querySelectorAll('.grid');
+    rows.forEach((row, index) => {
+        const span = row.querySelector('span');
+        if (span) {
+            span.textContent = (index + 1) + '. Item';
+        }
+    });
+}
+
+// Add department input field
+function addDepartment() {
+    const container = document.getElementById('departmentContainer');
+    const currentCount = container.querySelectorAll('input[name="departments[]"]').length + 1;
+    
+    const div = document.createElement('div');
+    div.className = 'flex gap-2 items-end';
+    div.innerHTML = `
+        <div class="flex-1 relative">
+            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">${currentCount}.</span>
+            <input type="text" name="departments[]" placeholder="Type to search department..." class="department-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+            <div class="department-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+        </div>
+        <button type="button" onclick="this.parentElement.remove(); updateDepartmentNumbers()" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">
+            ✕
+        </button>
+    `;
+    container.appendChild(div);
+    setupDepartmentAutocomplete(div.querySelector('.department-input'), departmentsData);
+}
+
+// Update numbering when departments are removed
+function updateDepartmentNumbers() {
+    const container = document.getElementById('departmentContainer');
+    const inputs = container.querySelectorAll('input[name="departments[]"]');
+    inputs.forEach((input, index) => {
+        const span = input.parentElement.querySelector('span');
+        span.textContent = (index + 1) + '.';
+    });
+}
+
+// Add team input field
+function addTeam() {
+    const container = document.getElementById('teamContainer');
+    const currentCount = container.querySelectorAll('input[name="teams[]"]').length + 1;
+    
+    const div = document.createElement('div');
+    div.className = 'flex gap-2 items-end';
+    div.innerHTML = `
+        <div class="flex-1 relative">
+            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">${currentCount}.</span>
+            <input type="text" name="teams[]" placeholder="Type to search team..." class="team-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+            <div class="team-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+        </div>
+        <button type="button" onclick="this.parentElement.remove(); updateTeamNumbers()" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">
+            ✕
+        </button>
+    `;
+    container.appendChild(div);
+    setupTeamAutocomplete(div.querySelector('.team-input'), teamsData);
+}
+
+// Update numbering when teams are removed
+function updateTeamNumbers() {
+    const container = document.getElementById('teamContainer');
+    const inputs = container.querySelectorAll('input[name="teams[]"]');
+    inputs.forEach((input, index) => {
+        const span = input.parentElement.querySelector('span');
+        span.textContent = (index + 1) + '.';
+    });
+}
+
+// Add control point input field
+function addControlPoint() {
+    const container = document.getElementById('controlPointsContainer');
+    const currentCount = container.querySelectorAll('input[name="control_points[]"]').length + 1;
+    
+    const div = document.createElement('div');
+    div.className = 'flex gap-2 items-end';
+    div.innerHTML = `
+        <div class="flex-1 relative">
+            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">${currentCount}.</span>
+            <input type="text" name="control_points[]" placeholder="Enter control point" class="control-point-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+        </div>
+        <button type="button" onclick="this.parentElement.remove(); updateControlPointNumbers();" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">✕</button>
+    `;
+    container.appendChild(div);
+}
+
+// Update numbering when control points are removed
+function updateControlPointNumbers() {
+    const container = document.getElementById('controlPointsContainer');
+    const inputs = container.querySelectorAll('input[name="control_points[]"]');
+    inputs.forEach((input, index) => {
+        const span = input.parentElement.querySelector('span');
+        span.textContent = (index + 1) + '.';
+    });
+}
+
+// Setup autocomplete for department inputs
+function setupDepartmentAutocomplete(input, data) {
+    if (!input) return;
+    
+    input.addEventListener('input', function() {
+        const query = this.value.toLowerCase();
+        const suggestionsDiv = this.nextElementSibling;
+        
+        if (query.length === 0) {
+            suggestionsDiv.classList.add('hidden');
+            return;
+        }
+        
+        const filtered = data.filter(item => item.toLowerCase().includes(query));
+        
+        if (filtered.length === 0) {
+            suggestionsDiv.classList.add('hidden');
+            return;
+        }
+        
+        suggestionsDiv.innerHTML = filtered.map(item => 
+            `<div onclick="selectDepartmentSuggestion(this)" class="px-4 py-2 hover:bg-blue-100 dark:hover:bg-blue-900 cursor-pointer text-gray-900 dark:text-white">${item}</div>`
+        ).join('');        
+        suggestionsDiv.classList.remove('hidden');
+    });
+}
+
+function selectDepartmentSuggestion(element) {
+    const value = element.textContent;
+    const suggestionsDiv = element.parentElement;
+    const input = suggestionsDiv.previousElementSibling;
+    input.value = value;
+    suggestionsDiv.classList.add('hidden');
+}
+
+// Setup autocomplete for team inputs
+function setupTeamAutocomplete(input, data) {
+    if (!input) return;
+    
+    input.addEventListener('input', function() {
+        const query = this.value.toLowerCase();
+        const suggestionsDiv = this.nextElementSibling;
+        
+        if (query.length === 0) {
+            suggestionsDiv.classList.add('hidden');
+            return;
+        }
+        
+        const filtered = data.filter(item => item.toLowerCase().includes(query));
+        
+        if (filtered.length === 0) {
+            suggestionsDiv.classList.add('hidden');
+            return;
+        }
+        
+        suggestionsDiv.innerHTML = filtered.map(item => 
+            `<div onclick="selectTeamSuggestion(this)" class="px-4 py-2 hover:bg-blue-100 dark:hover:bg-blue-900 cursor-pointer text-gray-900 dark:text-white">${item}</div>`
+        ).join('');        
+        suggestionsDiv.classList.remove('hidden');
+    });
+}
+
+function selectTeamSuggestion(element) {
+    const value = element.textContent;
+    const suggestionsDiv = element.parentElement;
+    const input = suggestionsDiv.previousElementSibling;
+    input.value = value;
+    suggestionsDiv.classList.add('hidden');
+}
+
+// File upload handling
+const fileInput = document.getElementById('fileInput');
+const fileDropZone = fileInput.parentElement;
+
+fileInput.addEventListener('change', updateFileList);
+
+fileDropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    fileDropZone.classList.add('bg-blue-100', 'dark:bg-blue-900/30', 'border-blue-400', 'dark:border-blue-500');
+});
+
+fileDropZone.addEventListener('dragleave', () => {
+    fileDropZone.classList.remove('bg-blue-100', 'dark:bg-blue-900/30', 'border-blue-400', 'dark:border-blue-500');
+});
+
+fileDropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    fileDropZone.classList.remove('bg-blue-100', 'dark:bg-blue-900/30', 'border-blue-400', 'dark:border-blue-500');
+    fileInput.files = e.dataTransfer.files;
+    updateFileList();
+});
+
+function updateFileList() {
+    const fileList = document.getElementById('fileList');
+    const files = fileInput.files;
+    
+    if (files.length > 0) {
+        let html = '<div class="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg"><p class="font-medium mb-2 text-gray-900 dark:text-white">Selected files (' + files.length + '):</p><ul class="space-y-1">';
+        for (let i = 0; i < files.length; i++) {
+            const sizeMB = (files[i].size / 1024 / 1024).toFixed(2);
+            html += '<li class="text-sm text-gray-700 dark:text-gray-300">📄 ' + files[i].name + ' <span class="text-gray-500 dark:text-gray-400">(' + sizeMB + ' MB)</span></li>';
+        }
+        html += '</ul></div>';
+        fileList.innerHTML = html;
+    } else {
+        fileList.innerHTML = '';
+    }
+}
+
+document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    // Lock the form
+    const submitBtn = document.getElementById('submitBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const uploadLoading = document.getElementById('uploadLoading');
+    const uploadMessage = document.getElementById('uploadMessage');
+    const uploadForm = document.getElementById('uploadForm');
+    
+    if (fileInput.files.length === 0) {
+        alert('Please select at least one file');
+        return;
+    }
+    
+    // Show loading indicator and disable buttons
+    uploadLoading.classList.remove('hidden');
+    submitBtn.disabled = true;
+    cancelBtn.disabled = true;
+    closeModalBtn.disabled = true;
+    uploadForm.style.opacity = '0.6';
+    uploadForm.style.pointerEvents = 'none';
+    uploadMessage.classList.add('hidden');
+    
+    // Validate and get Item values
+    const itemSelects = document.querySelectorAll('[name="items[]"]');
+    const items = [];
+    let isValid = true;
+    
+    itemSelects.forEach((select) => {
+        let value = select.value;
+        if (value === '__new__') {
+            const input = select.parentElement.querySelector('.item-input');
+            value = input.value.trim();
+            if (!value) {
+                isValid = false;
+                return;
+            }
+        }
+        if (value) items.push(value);
+    });
+    
+    if (!isValid) {
+        alert('Please enter all new item names');
+        return;
+    }
+    if (items.length === 0) {
+        alert('Please select or enter at least one item');
+        return;
+    }
+
+    // Get Recommending Approvals values (preserve index positions, keep blanks as blanks)
+    const recAppSelects = document.querySelectorAll('[name="recommending_approvals_list[]"]');
+    const recApps = [];
+    
+    recAppSelects.forEach((select) => {
+        let value = select.value;
+        if (value === '__new__') {
+            const input = select.parentElement.querySelector('.rec-app-input');
+            value = input.value.trim();
+        }
+        recApps.push(value); // Push all values, including blank strings
+    });
+
+    // Get Approving Authority values (preserve index positions, keep blanks as blanks)
+    const appAuthSelects = document.querySelectorAll('[name="approving_authority_list[]"]');
+    const appAuths = [];
+    
+    appAuthSelects.forEach((select) => {
+        let value = select.value;
+        if (value === '__new__') {
+            const input = select.parentElement.querySelector('.app-auth-input');
+            value = input.value.trim();
+        }
+        appAuths.push(value); // Push all values, including blank strings
+    });
+    
+    const formData = new FormData(document.getElementById('uploadForm'));
+    
+    // Remove old fields and set new ones
+    formData.delete('item');
+    formData.delete('recommending_approvals');
+    formData.delete('approving_authority');
+    formData.delete('items[]');
+    formData.delete('recommending_approvals_list[]');
+    formData.delete('approving_authority_list[]');
+    
+    // Add processed values (preserving blank entries to maintain index alignment)
+    items.forEach(item => formData.append('items[]', item));
+    recApps.forEach(app => formData.append('recommending_approvals_list[]', app));
+    appAuths.forEach(auth => formData.append('approving_authority_list[]', auth));
+    
+    // Combine departments with numbering
+    const departmentInputs = document.querySelectorAll('input[name="departments[]"]');
+    const departments = Array.from(departmentInputs)
+        .map((input, index) => {
+            const value = input.value.trim();
+            return value ? (index + 1) + '. ' + value : null;
+        })
+        .filter(dept => dept !== null)
+        .join('\n');
+    
+    if (departments) {
+        formData.set('department', departments);
+    }
+
+    // Combine teams with numbering
+    const teamInputs = document.querySelectorAll('input[name="teams[]"]');
+    const teams = Array.from(teamInputs)
+        .map((input, index) => {
+            const value = input.value.trim();
+            return value ? (index + 1) + '. ' + value : null;
+        })
+        .filter(team => team !== null)
+        .join('\n');
+    
+    if (teams) {
+        formData.set('team', teams);
+    }
+    
+    // Combine control points with numbering
+    const controlPointInputs = document.querySelectorAll('input[name="control_points[]"]');
+    const controlPoints = Array.from(controlPointInputs)
+        .map((input, index) => {
+            const value = input.value.trim();
+            return value ? (index + 1) + '. ' + value : null;
+        })
+        .filter(cp => cp !== null)
+        .join('\n');
+    
+    formData.set('control_point', controlPoints);
+    
+    const messageDiv = document.getElementById('uploadMessage');
+    
+    try {
+        const response = await fetch(window.location.href, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            uploadLoading.classList.add('hidden');
+            messageDiv.classList.remove('hidden', 'bg-red-50', 'text-red-800', 'dark:bg-red-900/20', 'dark:text-red-400');
+            messageDiv.classList.add('bg-green-50', 'text-green-800', 'dark:bg-green-900/20', 'dark:text-green-400');
+            messageDiv.textContent = '✓ ' + data.message;
+            
+            setTimeout(() => {
+                document.getElementById('uploadModal').classList.add('hidden');
+                location.reload();
+            }, 1500);
+        } else {
+            uploadLoading.classList.add('hidden');
+            submitBtn.disabled = false;
+            cancelBtn.disabled = false;
+            closeModalBtn.disabled = false;
+            uploadForm.style.opacity = '1';
+            uploadForm.style.pointerEvents = 'auto';
+            
+            messageDiv.classList.remove('hidden', 'bg-green-50', 'text-green-800', 'dark:bg-green-900/20', 'dark:text-green-400');
+            messageDiv.classList.add('bg-red-50', 'text-red-800', 'dark:bg-red-900/20', 'dark:text-red-400');
+            messageDiv.textContent = '✗ ' + (data.message || 'Upload failed');
+        }
+    } catch (error) {
+        uploadLoading.classList.add('hidden');
+        submitBtn.disabled = false;
+        cancelBtn.disabled = false;
+        closeModalBtn.disabled = false;
+        uploadForm.style.opacity = '1';
+        uploadForm.style.pointerEvents = 'auto';
+        
+        messageDiv.classList.remove('hidden', 'bg-green-50', 'text-green-800', 'dark:bg-green-900/20', 'dark:text-green-400');
+        messageDiv.classList.add('bg-red-50', 'text-red-800', 'dark:bg-red-900/20', 'dark:text-red-400');
+        messageDiv.textContent = '✗ Error uploading documents: ' + error.message;
+    }
+});
+
+// Change pagination limit
+function changeLimit() {
+    const limit = document.getElementById('limitSelect').value;
+    const searchTerm = new URLSearchParams(window.location.search).get('search') || '';
+    const itemFilter = new URLSearchParams(window.location.search).get('item') || '';
+    
+    let url = '?page=1&limit=' + limit;
+    if (searchTerm) url += '&search=' + encodeURIComponent(searchTerm);
+    if (itemFilter) url += '&item=' + encodeURIComponent(itemFilter);
+    
+    window.location.href = url;
+}
+
+function deleteDocument(doc) {
+    if (typeof doc === 'string') {
+        doc = JSON.parse(doc);
+    } else if (typeof doc === 'number') {
+        // Fallback for old single-id parameter
+        doc = { id: doc, file_name: 'Document' };
+    }
+    
+    const fileName = doc.file_name || 'Document';
+    const ec = doc.ec || 'N/A';
+    const item = doc.item || 'N/A';
+    
+    Swal.fire({
+        title: 'Delete Document',
+        html: `
+            <div class="text-left">
+                <p class="mb-4 text-gray-700 dark:text-gray-300"><strong>Are you sure you want to delete this document?</strong></p>
+                <div class="bg-gray-100 dark:bg-gray-700 rounded-lg p-4 text-sm space-y-2">
+                    <div><span class="font-semibold text-gray-800 dark:text-gray-200">File Name:</span> <span class="text-gray-600 dark:text-gray-400">${fileName}</span></div>
+                    <div><span class="font-semibold text-gray-800 dark:text-gray-200">Electric Cooperative:</span> <span class="text-gray-600 dark:text-gray-400">${ec}</span></div>
+                    <div><span class="font-semibold text-gray-800 dark:text-gray-200">Item:</span> <span class="text-gray-600 dark:text-gray-400">${item}</span></div>
+                </div>
+            </div>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Yes, delete it!',
+        cancelButtonText: 'Cancel',
+        allowOutsideClick: false,
+        allowEscapeKey: true,
+        customClass: {
+            popup: 'swal2-light-mode'
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(window.location.href, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ id: doc.id })
+            }).then(response => response.json()).then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        title: 'Deleted!',
+                        text: 'Document has been deleted successfully.',
+                        icon: 'success',
+                        timer: 2000,
+                        timerProgressBar: true,
+                        customClass: {
+                            popup: 'swal2-light-mode'
+                        }
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Error!',
+                        text: 'Failed to delete document: ' + data.message,
+                        icon: 'error',
+                        customClass: {
+                            popup: 'swal2-light-mode'
+                        }
+                    });
+                }
+            });
+        }
+    });
+}
+
+// Helper function to strip numbering from entries (e.g., "1. Item Name" -> "Item Name")
+function stripNumbering(value) {
+    if (!value) return '';
+    return value.replace(/^\d+\.\s+/, '').trim();
+}
+
+// Open Edit Modal and populate with document data
+function openEditModal(doc) {
+    const modal = document.getElementById('editModal');
+    document.getElementById('editDocId').value = doc.id;
+    document.getElementById('editEcInput').value = doc.ec;
+    
+    // Clear and populate combined container (Items, Rec Approvals, App Authority)
+    const combinedContainer = document.getElementById('editCombinedListContainer');
+    combinedContainer.innerHTML = '';
+    
+    // Parse data - split by newlines and strip numbering
+    // For items: filter empty and strip numbering
+    const items = doc.item ? doc.item.split('\n').filter(i => i.trim()).map(stripNumbering) : [''];
+    
+    // For recommending_approvals: preserve empty values and strip numbering only from non-empty
+    const recApps = doc.recommending_approvals ? doc.recommending_approvals.split('\n').map(val => {
+        return val.trim() === '' ? '' : stripNumbering(val);
+    }) : [];
+    
+    // For approving_authority: preserve empty values and strip numbering only from non-empty
+    const appAuths = doc.approving_authority ? doc.approving_authority.split('\n').map(val => {
+        return val.trim() === '' ? '' : stripNumbering(val);
+    }) : [];
+    
+    // Get max length to ensure all rows are created
+    const maxLength = Math.max(items.length, recApps.length, appAuths.length, 1);
+    
+    // Create rows for all data
+    for (let i = 0; i < maxLength; i++) {
+        const itemVal = items[i] || '';
+        const recAppVal = recApps[i] || '';
+        const appAuthVal = appAuths[i] || '';
+        addEditCombinedRowToModal(itemVal, recAppVal, appAuthVal, i + 1);
+    }
+    
+    // Clear and populate control points
+    const cpContainer = document.getElementById('editControlPointsContainer');
+    cpContainer.innerHTML = '';
+    
+    if (doc.control_point) {
+        // Split by newlines, strip numbering from each entry
+        const points = doc.control_point.split('\n').map(p => {
+            const trimmed = p.trim();
+            return trimmed === '' ? '' : stripNumbering(trimmed);
+        }).filter(p => p !== '' || p === '');  // Keep all entries
+        
+        if (points.length > 0) {
+            points.forEach((point, index) => {
+                addEditControlPointToModal(point, index + 1);
+            });
+        } else {
+            addEditControlPointToModal('', 1);
+        }
+    } else {
+        addEditControlPointToModal('', 1);
+    }
+    
+    // Clear and populate departments
+    const deptContainer = document.getElementById('editDepartmentContainer');
+    deptContainer.innerHTML = '';
+    
+    if (doc.department) {
+        // Split by newlines, strip numbering from each entry
+        const depts = doc.department.split('\n').map(d => {
+            const trimmed = d.trim();
+            return trimmed === '' ? '' : stripNumbering(trimmed);
+        }).filter(d => d !== '' || d === '');  // Keep all entries
+        
+        if (depts.length > 0) {
+            depts.forEach((dept, index) => {
+                addEditDepartmentToModal(dept, index + 1);
+            });
+        } else {
+            addEditDepartmentToModal('', 1);
+        }
+    } else {
+        addEditDepartmentToModal('', 1);
+    }
+    
+    // Clear and populate teams
+    const teamContainer = document.getElementById('editTeamContainer');
+    teamContainer.innerHTML = '';
+    
+    if (doc.team) {
+        // Split by newlines, strip numbering from each entry
+        const teams = doc.team.split('\n').map(t => {
+            const trimmed = t.trim();
+            return trimmed === '' ? '' : stripNumbering(trimmed);
+        }).filter(t => t !== '' || t === '');  // Keep all entries
+        
+        if (teams.length > 0) {
+            teams.forEach((team, index) => {
+                addEditTeamToModal(team, index + 1);
+            });
+        } else {
+            addEditTeamToModal('', 1);
+        }
+    } else {
+        addEditTeamToModal('', 1);
+    }
+    
+    // Setup autocomplete for all fields
+    setTimeout(() => {
+        setupAutocomplete('editEcInput', 'editEcSuggestions', ecData);
+        document.querySelectorAll('.edit-item-input').forEach(input => {
+            setupItemAutocomplete(input, itemsData);
+        });
+        document.querySelectorAll('.edit-rec-app-input').forEach(input => {
+            setupRecAppAutocomplete(input, recAppData);
+        });
+        document.querySelectorAll('.edit-app-auth-input').forEach(input => {
+            setupAppAuthAutocomplete(input, appAuthData);
+        });
+        document.querySelectorAll('.edit-department-input').forEach(input => {
+            setupDepartmentAutocomplete(input, departmentsData);
+        });
+        document.querySelectorAll('.edit-team-input').forEach(input => {
+            setupTeamAutocomplete(input, teamsData);
+        });
+    }, 100);
+    
+    // Setup file upload handling for edit form
+    setupEditFileUpload();
+    
+    modal.classList.remove('hidden');
+}
+
+// Setup file handling for edit form
+function setupEditFileUpload() {
+    const editFileInput = document.getElementById('editFileInput');
+    const editFileDropZone = editFileInput.parentElement;
+    const editFileList = document.getElementById('editFileList');
+    
+    editFileInput.addEventListener('change', updateEditFileList);
+    
+    editFileDropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        editFileDropZone.classList.add('bg-blue-100', 'dark:bg-blue-900/30', 'border-blue-400', 'dark:border-blue-500');
+    });
+    
+    editFileDropZone.addEventListener('dragleave', () => {
+        editFileDropZone.classList.remove('bg-blue-100', 'dark:bg-blue-900/30', 'border-blue-400', 'dark:border-blue-500');
+    });
+    
+    editFileDropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        editFileDropZone.classList.remove('bg-blue-100', 'dark:bg-blue-900/30', 'border-blue-400', 'dark:border-blue-500');
+        editFileInput.files = e.dataTransfer.files;
+        updateEditFileList();
+    });
+}
+
+function updateEditFileList() {
+    const editFileList = document.getElementById('editFileList');
+    const editFileInput = document.getElementById('editFileInput');
+    const files = editFileInput.files;
+    
+    if (files.length > 0) {
+        let html = '<div class="space-y-2">';
+        for (let file of files) {
+            const fileSize = (file.size / 1024 / 1024).toFixed(2);
+            html += `
+                <div class="flex items-center justify-between p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                    <span class="text-sm font-medium text-gray-900 dark:text-white">${file.name}</span>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">${fileSize} MB</span>
+                </div>
+            `;
+        }
+        html += '</div>';
+        editFileList.innerHTML = html;
+    } else {
+        editFileList.innerHTML = '';
+    }
+}
+
+function addEditCombinedRowToModal(itemVal = '', recAppVal = '', appAuthVal = '', number) {
+    const container = document.getElementById('editCombinedListContainer');
+    const div = document.createElement('div');
+    div.className = 'grid grid-cols-3 gap-3 items-start';
+    div.innerHTML = `
+        <!-- Item -->
+        <div class="relative">
+            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">${number}. Item</span>
+            <input type="text" name="edit_items[]" placeholder="Type to search item..." class="edit-item-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" value="${(itemVal || '').replace(/"/g, '&quot;')}">
+            <div class="edit-item-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+        </div>
+        <!-- Recommending Approval -->
+        <div class="relative">
+            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">Rec. Approval</span>
+            <input type="text" name="edit_recommending_approvals_list[]" placeholder="Type to search approval..." class="edit-rec-app-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" value="${(recAppVal || '').replace(/"/g, '&quot;')}">
+            <div class="edit-rec-app-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+        </div>
+        <!-- Approving Authority + Remove Button -->
+        <div class="relative flex gap-2 items-end">
+            <div class="flex-1">
+                <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">App. Authority</span>
+                <input type="text" name="edit_approving_authority_list[]" placeholder="Type to search authority..." class="edit-app-auth-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" value="${(appAuthVal || '').replace(/"/g, '&quot;')}">
+                <div class="edit-app-auth-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+            </div>
+            <button type="button" onclick="removeCombinedRow(this); updateEditCombinedNumbers();" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">✕</button>
+        </div>
+    `;
+    container.appendChild(div);
+    setupItemAutocomplete(div.querySelector('.edit-item-input'), itemsData);
+    setupRecAppAutocomplete(div.querySelector('.edit-rec-app-input'), recAppData);
+    setupAppAuthAutocomplete(div.querySelector('.edit-app-auth-input'), appAuthData);
+}
+
+function addEditCombinedRow() {
+    const container = document.getElementById('editCombinedListContainer');
+    const currentCount = container.querySelectorAll('input[name="edit_items[]"]').length + 1;
+    addEditCombinedRowToModal('', '', '', currentCount);
+}
+
+function updateEditCombinedNumbers() {
+    const container = document.getElementById('editCombinedListContainer');
+    const rows = container.querySelectorAll('.grid');
+    rows.forEach((row, index) => {
+        const span = row.querySelector('span');
+        if (span) {
+            span.textContent = (index + 1) + '. Item';
+        }
+    });
+}
+
+function addEditControlPointToModal(value = '', number) {
+    const container = document.getElementById('editControlPointsContainer');
+    const div = document.createElement('div');
+    div.className = 'flex gap-2 items-end';
+    div.innerHTML = `
+        <div class="flex-1 relative">
+            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">${number}.</span>
+            <input type="text" name="edit_control_points[]" placeholder="Enter control point" class="edit-control-point-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" value="${(value || '').replace(/"/g, '&quot;')}">
+        </div>
+        <button type="button" onclick="this.parentElement.remove(); updateEditControlPointNumbers();" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">✕</button>
+    `;
+    container.appendChild(div);
+}
+
+function updateEditControlPointNumbers() {
+    const container = document.getElementById('editControlPointsContainer');
+    const inputs = container.querySelectorAll('input[name="edit_control_points[]"]');
+    inputs.forEach((input, index) => {
+        const span = input.parentElement.querySelector('span');
+        span.textContent = (index + 1) + '.';
+    });
+}
+
+function addEditControlPoint() {
+    const container = document.getElementById('editControlPointsContainer');
+    const currentCount = container.querySelectorAll('input[name="edit_control_points[]"]').length + 1;
+    addEditControlPointToModal('', currentCount);
+}
+
+function addEditDepartmentToModal(value = '', number) {
+    const container = document.getElementById('editDepartmentContainer');
+    const div = document.createElement('div');
+    div.className = 'flex gap-2 items-end';
+    div.innerHTML = `
+        <div class="flex-1 relative">
+            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">${number}.</span>
+            <input type="text" name="edit_departments[]" placeholder="Type to search department..." class="edit-department-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" value="${(value || '').replace(/"/g, '&quot;')}">
+            <div class="edit-department-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+        </div>
+        <button type="button" onclick="this.parentElement.remove(); updateEditDepartmentNumbers()" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">✕</button>
+    `;
+    container.appendChild(div);
+    setupDepartmentAutocomplete(div.querySelector('.edit-department-input'), departmentsData);
+}
+
+function addEditTeamToModal(value = '', number) {
+    const container = document.getElementById('editTeamContainer');
+    const div = document.createElement('div');
+    div.className = 'flex gap-2 items-end';
+    div.innerHTML = `
+        <div class="flex-1 relative">
+            <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">${number}.</span>
+            <input type="text" name="edit_teams[]" placeholder="Type to search team..." class="edit-team-input w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" value="${(value || '').replace(/"/g, '&quot;')}">
+            <div class="edit-team-suggestions absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden z-10"></div>
+        </div>
+        <button type="button" onclick="this.parentElement.remove(); updateEditTeamNumbers()" class="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">✕</button>
+    `;
+    container.appendChild(div);
+    setupTeamAutocomplete(div.querySelector('.edit-team-input'), teamsData);
+}
+
+function addEditDepartment() {
+    const container = document.getElementById('editDepartmentContainer');
+    const currentCount = container.querySelectorAll('input[name="edit_departments[]"]').length + 1;
+    addEditDepartmentToModal('', currentCount);
+}
+
+function addEditTeam() {
+    const container = document.getElementById('editTeamContainer');
+    const currentCount = container.querySelectorAll('input[name="edit_teams[]"]').length + 1;
+    addEditTeamToModal('', currentCount);
+}
+
+function updateEditDepartmentNumbers() {
+    const container = document.getElementById('editDepartmentContainer');
+    const inputs = container.querySelectorAll('input[name="edit_departments[]"]');
+    inputs.forEach((input, index) => {
+        const span = input.parentElement.querySelector('span');
+        span.textContent = (index + 1) + '.';
+    });
+}
+
+function updateEditTeamNumbers() {
+    const container = document.getElementById('editTeamContainer');
+    const inputs = container.querySelectorAll('input[name="edit_teams[]"]');
+    inputs.forEach((input, index) => {
+        const span = input.parentElement.querySelector('span');
+        span.textContent = (index + 1) + '.';
+    });
+}
+
+// Handle edit form submission
+document.getElementById('editForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const docId = document.getElementById('editDocId').value;
+    const submitBtn = document.getElementById('editSubmitBtn');
+    const cancelBtn = document.getElementById('editCancelBtn');
+    const closeBtn = document.getElementById('closeEditModalBtn');
+    const messageDiv = document.getElementById('editMessage');
+    
+    // Validate EC
+    const ec = document.getElementById('editEcInput').value.trim();
+    if (!ec) {
+        messageDiv.textContent = 'Please select an Electric Cooperative';
+        messageDiv.className = 'px-4 py-3 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400';
+        messageDiv.classList.remove('hidden');
+        return;
+    }
+    
+    // Validate items
+    const itemInputs = document.querySelectorAll('input[name="edit_items[]"]');
+    const items = [];
+    let isValid = true;
+    
+    itemInputs.forEach((input) => {
+        const value = input.value.trim();
+        if (!value) {
+            messageDiv.textContent = 'All items must have values';
+            messageDiv.className = 'px-4 py-3 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400';
+            messageDiv.classList.remove('hidden');
+            isValid = false;
+        }
+        if (value) items.push(value);
+    });
+    
+    if (!isValid || items.length === 0) return;
+    
+    // Get other field values - collect all including empty ones for alignment
+    const recAppInputs = document.querySelectorAll('input[name="edit_recommending_approvals_list[]"]');
+    const recApps = [];
+    recAppInputs.forEach((input) => {
+        recApps.push(input.value.trim());
+    });
+    
+    const appAuthInputs = document.querySelectorAll('input[name="edit_approving_authority_list[]"]');
+    const appAuths = [];
+    appAuthInputs.forEach((input) => {
+        appAuths.push(input.value.trim());
+    });
+    
+    // Collect control points with numbering preserved for storage
+    const cpInputs = document.querySelectorAll('input[name="edit_control_points[]"]');
+    const controlPoints = [];
+    cpInputs.forEach((input, index) => {
+        const value = input.value.trim();
+        if (value) {
+            controlPoints.push((index + 1) + '. ' + value);
+        }
+    });
+    
+    // Collect departments with numbering preserved for storage
+    const deptInputs = document.querySelectorAll('input[name="edit_departments[]"]');
+    const departments = [];
+    deptInputs.forEach((input, index) => {
+        const value = input.value.trim();
+        if (value) {
+            departments.push((index + 1) + '. ' + value);
+        }
+    });
+    
+    // Collect teams with numbering preserved for storage
+    const teamInputs = document.querySelectorAll('input[name="edit_teams[]"]');
+    const teams = [];
+    teamInputs.forEach((input, index) => {
+        const value = input.value.trim();
+        if (value) {
+            teams.push((index + 1) + '. ' + value);
+        }
+    });
+    
+    submitBtn.disabled = true;
+    cancelBtn.disabled = true;
+    closeBtn.disabled = true;
+    
+    const editUploadLoading = document.getElementById('editUploadLoading');
+    const editFileInput = document.getElementById('editFileInput');
+    editUploadLoading.classList.remove('hidden');
+    
+    try {
+        const formData = new FormData();
+        formData.append('action', 'edit');
+        formData.append('doc_id', docId);
+        formData.append('ec', ec);
+        formData.append('items', items.join('\n'));
+        formData.append('recommending_approvals', recApps.join('\n'));
+        formData.append('approving_authority', appAuths.join('\n'));
+        formData.append('control_point', controlPoints.join('\n'));
+        formData.append('department', departments.join('\n'));
+        formData.append('team', teams.join('\n'));
+        
+        // Add file if selected
+        if (editFileInput.files.length > 0) {
+            formData.append('edit_file', editFileInput.files[0]);
+        }
+        
+        const response = await fetch('', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            messageDiv.textContent = 'Document updated successfully!';
+            messageDiv.className = 'px-4 py-3 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400';
+            messageDiv.classList.remove('hidden');
+            
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            messageDiv.textContent = 'Error: ' + data.message;
+            messageDiv.className = 'px-4 py-3 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400';
+            messageDiv.classList.remove('hidden');
+        }
+    } catch (error) {
+        messageDiv.textContent = 'Error updating document';
+        messageDiv.className = 'px-4 py-3 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400';
+        messageDiv.classList.remove('hidden');
+    } finally {
+        editUploadLoading.classList.add('hidden');
+        submitBtn.disabled = false;
+        cancelBtn.disabled = false;
+        closeBtn.disabled = false;
+    }
+});
+
+if (searchInput) {
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            searchForm.submit();
+        }, 1000);
+    });
+}
+
+// PDF Preview Variables
+let pdfDoc = null;
+let currentPdfPage = 1;
+let totalPdfPages = 0;
+let pdfFilePath = '';
+
+// PDF Preview Function
+function previewPDF(filePath) {
+    console.log('previewPDF called with:', filePath);
+    
+    try {
+        // Resolve relative path to absolute URL
+        const absolutePath = new URL(filePath, window.location.href).href;
+        console.log('Resolved path:', absolutePath);
+        pdfFilePath = absolutePath;
+        const modal = document.getElementById('pdfPreviewModal');
+        
+        if (!modal) {
+            console.error('PDF preview modal not found');
+            window.open(filePath, '_blank');
+            return;
+        }
+        
+        // Show loading state
+        const pdfContainer = document.getElementById('pdfContainer');
+        pdfContainer.innerHTML = '<div style="text-align: center; padding: 2rem; color: #666;">Loading PDF...</div>';
+        modal.classList.remove('hidden');
+        
+        console.log('Modal opened, loading PDF from:', absolutePath);
+        
+        // Check if PDF.js is available
+        if (typeof pdfjsLib === 'undefined') {
+            console.error('PDF.js library not loaded');
+            pdfContainer.innerHTML = '<div style="text-align: center; padding: 2rem; color: red;">PDF viewer library not loaded. <a href="' + absolutePath + '" target="_blank">Click to open in new tab</a></div>';
+            return;
+        }
+        
+        // Fetch the PDF file and load it
+        fetch(absolutePath)
+            .then(function(response) {
+                console.log('Fetch response status:', response.status);
+                if (!response.ok) {
+                    throw new Error('HTTP error! status: ' + response.status);
+                }
+                return response.arrayBuffer();
+            })
+            .then(function(arrayBuffer) {
+                console.log('PDF loaded, size:', arrayBuffer.byteLength, 'bytes');
+                return pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            })
+            .then(function(pdf) {
+                console.log('PDF document loaded, pages:', pdf.numPages);
+                pdfDoc = pdf;
+                totalPdfPages = pdf.numPages;
+                currentPdfPage = 1;
+                
+                // Update page info
+                document.getElementById('totalPages').textContent = totalPdfPages;
+                document.getElementById('currentPage').textContent = currentPdfPage;
+                document.getElementById('pdfPageInput').max = totalPdfPages;
+                document.getElementById('pdfPageInput').value = currentPdfPage;
+                
+                // Render first page
+                renderPdfPage(currentPdfPage);
+            })
+            .catch(function(error) {
+                console.error('Error loading PDF:', error);
+                pdfContainer.innerHTML = '<div style="text-align: center; padding: 2rem; color: red;">Error: ' + error.message + '<br><a href="' + filePath + '" target="_blank">Click to open in new tab</a></div>';
+            });
+    } catch (e) {
+        console.error('Exception in previewPDF:', e);
+        alert('Error: ' + e.message);
+    }
+}
+
+function renderPdfPage(pageNum) {
+    if (!pdfDoc) {
+        console.error('PDF not loaded');
+        return;
+    }
+    
+    console.log('Rendering page:', pageNum);
+    
+    try {
+        pdfDoc.getPage(pageNum).then(function(page) {
+            const canvas = document.getElementById('pdfCanvas');
+            if (!canvas) {
+                console.error('Canvas element not found');
+                return;
+            }
+            
+            const context = canvas.getContext('2d');
+            const scale = 1.5;
+            const viewport = page.getViewport({ scale: scale });
+            
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            
+            console.log('Rendering page', pageNum, 'at scale', scale, 'viewport:', viewport.width, 'x', viewport.height);
+            
+            const renderContext = {
+                canvasContext: context,
+                viewport: viewport
+            };
+            
+            page.render(renderContext).promise.then(function() {
+                console.log('Page ' + pageNum + ' rendered successfully');
+            }).catch(function(error) {
+                console.error('Error rendering page:', error);
+            });
+            
+            // Update page info
+            document.getElementById('currentPage').textContent = pageNum;
+            document.getElementById('pdfPageInput').value = pageNum;
+        }).catch(function(error) {
+            console.error('Error getting page:', error);
+            document.getElementById('pdfContainer').innerHTML = '<div style="text-align: center; padding: 2rem; color: red;">Error: ' + error.message + '</div>';
+        });
+    } catch (e) {
+        console.error('Exception in renderPdfPage:', e);
+    }
+}
+
+function nextPdfPage() {
+    console.log('nextPdfPage called, current:', currentPdfPage, 'total:', totalPdfPages);
+    if (pdfDoc && currentPdfPage < totalPdfPages) {
+        currentPdfPage++;
+        renderPdfPage(currentPdfPage);
+    }
+}
+
+function previousPdfPage() {
+    console.log('previousPdfPage called, current:', currentPdfPage);
+    if (pdfDoc && currentPdfPage > 1) {
+        currentPdfPage--;
+        renderPdfPage(currentPdfPage);
+    }
+}
+
+function goToPage() {
+    const pageInput = document.getElementById('pdfPageInput');
+    const pageNum = parseInt(pageInput.value);
+    console.log('goToPage called with:', pageNum);
+    
+    if (pdfDoc && pageNum >= 1 && pageNum <= totalPdfPages) {
+        currentPdfPage = pageNum;
+        renderPdfPage(currentPdfPage);
+    }
+}
+
+function downloadPdf() {
+    console.log('downloadPdf called with path:', pdfFilePath);
+    if (pdfFilePath) {
+        window.open(pdfFilePath, '_blank');
+    }
+}
+
+// Preview Modal Functions
+function openPreviewModal(documentId, fileName) {
+    const modal = document.getElementById('previewModal');
+    const previewContent = document.getElementById('previewContent');
+    const previewTitle = document.getElementById('previewTitle');
+    const fileExt = fileName.split('.').pop().toLowerCase();
+    
+    previewTitle.textContent = fileName;
+    
+    // Determine file type
+    const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(fileExt);
+    const isPDF = fileExt === 'pdf';
+    
+    if (isImage) {
+        // Display image
+        previewContent.innerHTML = `<img src="preview_document.php?id=${documentId}" alt="${fileName}" class="max-w-full max-h-[600px] object-contain mx-auto rounded">`;
+    } else if (isPDF) {
+        // Display PDF in iframe
+        previewContent.innerHTML = `<iframe src="preview_document.php?id=${documentId}" class="w-full h-[600px] border-0 rounded"></iframe>`;
+    } else {
+        previewContent.innerHTML = '<div class="text-center py-8 text-gray-600">Preview not available for this file type</div>';
+    }
+    
+    modal.classList.remove('hidden');
+}
+
+function closePreviewModal() {
+    const modal = document.getElementById('previewModal');
+    modal.classList.add('hidden');
+    document.getElementById('previewContent').innerHTML = '';
+}
+
+// Close preview modal when clicking outside
+document.addEventListener('click', function(e) {
+    const modal = document.getElementById('previewModal');
+    if (e.target === modal) {
+        closePreviewModal();
+    }
+});
+
+// Close preview modal with Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closePreviewModal();
+    }
+});
+
+// Toggle favorite
+async function toggleFavorite(documentId, button) {
+    try {
+        const response = await fetch('', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: 'action=toggle_favorite&document_id=' + documentId
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            const star = button.querySelector('.favorite-star');
+            const tooltipSpan = button.parentElement.querySelector('.tooltip-text');
+            if (data.isFavorite) {
+                // Fill the star and turn red
+                star.setAttribute('fill', 'currentColor');
+                button.style.backgroundColor = 'var(--theme-danger)';
+                button.setAttribute('data-tooltip', 'Remove from favorites');
+                if (tooltipSpan) tooltipSpan.textContent = 'Remove from favorites';
+                button.title = 'Remove from favorites';
+                button.setAttribute('data-is-favorite', '1');
+                button.classList.add('is-favorite');
+            } else {
+                // Outline the star and turn back to secondary color
+                star.setAttribute('fill', 'none');
+                button.style.backgroundColor = 'var(--theme-secondary)';
+                button.setAttribute('data-tooltip', 'Add to favorites');
+                if (tooltipSpan) tooltipSpan.textContent = 'Add to favorites';
+                button.title = 'Add to favorites';
+                button.setAttribute('data-is-favorite', '0');
+                button.classList.remove('is-favorite');
+            }
+        } else {
+            alert('Error: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error toggling favorite:', error);
+        alert('Error toggling favorite');
+    }
+}
+
+// Toggle control points visibility
+function toggleControlPoints(documentId, button) {
+    const container = button.closest('.control-points-container');
+    const additionalPoints = container.querySelector('.additional-points');
+    
+    if (additionalPoints.classList.contains('hidden')) {
+        // Show additional points
+        additionalPoints.classList.remove('hidden');
+        button.textContent = 'See less';
+        button.classList.remove('text-blue-600', 'dark:text-blue-400', 'hover:text-blue-800', 'dark:hover:text-blue-300');
+        button.classList.add('text-gray-600', 'dark:text-gray-400', 'hover:text-gray-800', 'dark:hover:text-gray-300');
+    } else {
+        // Hide additional points
+        additionalPoints.classList.add('hidden');
+        button.textContent = 'See more (' + (container.querySelectorAll('.additional-points > div').length) + ' more)';
+        button.classList.remove('text-gray-600', 'dark:text-gray-400', 'hover:text-gray-800', 'dark:hover:text-gray-300');
+        button.classList.add('text-blue-600', 'dark:text-blue-400', 'hover:text-blue-800', 'dark:hover:text-blue-300');
+    }
+}
+
+// Test to verify functions are available
+console.log('PDF Preview functions loaded:', {
+    previewPDF: typeof previewPDF,
+    renderPdfPage: typeof renderPdfPage,
+    nextPdfPage: typeof nextPdfPage,
+    previousPdfPage: typeof previousPdfPage,
+    goToPage: typeof goToPage,
+    downloadPdf: typeof downloadPdf,
+    openPreviewModal: typeof openPreviewModal,
+    closePreviewModal: typeof closePreviewModal,
+    pdfjsLib: typeof pdfjsLib
+});
+</script>
+
+<?php
+$content = ob_get_clean();
+$pageTitle = 'Documents';
+require_once __DIR__ . '/app/views/layouts/master.php';
+?>

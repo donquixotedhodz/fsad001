@@ -67,6 +67,36 @@ $teamStmt = $conn->prepare("SELECT id, name FROM teams ORDER BY name ASC");
 $teamStmt->execute();
 $teamsList = $teamStmt->fetchAll();
 
+// Fetch available uploaded files for document picker
+$availableUploadFiles = [];
+$uploadsDirectory = __DIR__ . '/uploads';
+$uploadsDirectory = __DIR__ . '/uploads/manap_files';
+if (is_dir($uploadsDirectory)) {
+    $uploadEntries = scandir($uploadsDirectory);
+    if ($uploadEntries !== false) {
+        foreach ($uploadEntries as $entry) {
+            if ($entry === '.' || $entry === '..') {
+                continue;
+            }
+
+            $fullPath = $uploadsDirectory . '/' . $entry;
+            if (!is_file($fullPath)) {
+                continue;
+            }
+
+            $availableUploadFiles[] = [
+                'name' => $entry,
+                'path' => 'uploads/manap_files/' . $entry,
+                'size' => filesize($fullPath) ?: 0
+            ];
+        }
+    }
+}
+
+usort($availableUploadFiles, function ($a, $b) {
+    return strnatcasecmp($a['name'], $b['name']);
+});
+
 // Get all documents
 $allDocuments = $documentController->getAllDocuments();
 
@@ -565,19 +595,21 @@ endif; ?>
                 </div>
             </div>
 
-            <!-- Full Width File Upload -->
+            <!-- Full Width File Selection -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Upload Files</label>
-                <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition cursor-pointer">
-                    <input type="file" name="files[]" multiple class="hidden" id="fileInput">
-                    <label for="fileInput" class="cursor-pointer text-center block">
-                        <svg class="w-10 h-10 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                        </svg>
-                        <p class="text-sm text-gray-600 dark:text-gray-400">Click to select files or drag and drop</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">PDF, Word, Excel, Image files (Max 50MB per file)</p>
-                    </label>
-                </div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select File</label>
+                <select id="selectedFile" name="selected_file" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
+                    <option value="">-- Choose a file --</option>
+                    <?php if (empty($availableUploadFiles)): ?>
+                    <option value="" disabled>No files found in uploads/manap_files</option>
+                    <?php endif; ?>
+                    <?php foreach ($availableUploadFiles as $uploadFile): ?>
+                    <option value="<?php echo htmlspecialchars($uploadFile['path']); ?>" data-name="<?php echo htmlspecialchars($uploadFile['name']); ?>" data-size="<?php echo (int) $uploadFile['size']; ?>">
+                        <?php echo htmlspecialchars($uploadFile['name']); ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+                <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">Pick an existing file from uploads/manap_files.</p>
                 <div id="fileList" class="mt-3 text-sm text-gray-600 dark:text-gray-400"></div>
             </div>
 
@@ -714,19 +746,18 @@ endif; ?>
                 </div>
             </div>
 
-            <!-- File Upload -->
+            <!-- File Selection -->
             <div>
                 <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Replace File (Optional)</label>
-                <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition cursor-pointer" id="editFileDropZone">
-                    <input type="file" name="edit_file" class="hidden" id="editFileInput">
-                    <label for="editFileInput" class="cursor-pointer text-center block">
-                        <svg class="w-10 h-10 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                        </svg>
-                        <p class="text-sm text-gray-600 dark:text-gray-400">Click to select a file or drag and drop</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">PDF, Word, Excel, Image files (Max 50MB)</p>
-                    </label>
-                </div>
+                <select id="editSelectedFile" name="selected_edit_file" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <option value="">-- Keep current file --</option>
+                    <?php foreach ($availableUploadFiles as $uploadFile): ?>
+                    <option value="<?php echo htmlspecialchars($uploadFile['path']); ?>" data-name="<?php echo htmlspecialchars($uploadFile['name']); ?>" data-size="<?php echo (int) $uploadFile['size']; ?>">
+                        <?php echo htmlspecialchars($uploadFile['name']); ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+                <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">Choose a file from uploads/manap_files, or keep the current file.</p>
                 <div id="editFileList" class="mt-3 text-sm text-gray-600 dark:text-gray-400"></div>
             </div>
 
@@ -1233,39 +1264,20 @@ function selectTeamSuggestion(element) {
     suggestionsDiv.classList.add('hidden');
 }
 
-// File upload handling
-const fileInput = document.getElementById('fileInput');
-const fileDropZone = fileInput.parentElement;
+// File selection handling
+const selectedFile = document.getElementById('selectedFile');
 
-fileInput.addEventListener('change', updateFileList);
-
-fileDropZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    fileDropZone.classList.add('bg-blue-100', 'dark:bg-blue-900/30', 'border-blue-400', 'dark:border-blue-500');
-});
-
-fileDropZone.addEventListener('dragleave', () => {
-    fileDropZone.classList.remove('bg-blue-100', 'dark:bg-blue-900/30', 'border-blue-400', 'dark:border-blue-500');
-});
-
-fileDropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    fileDropZone.classList.remove('bg-blue-100', 'dark:bg-blue-900/30', 'border-blue-400', 'dark:border-blue-500');
-    fileInput.files = e.dataTransfer.files;
-    updateFileList();
-});
+selectedFile.addEventListener('change', updateFileList);
 
 function updateFileList() {
     const fileList = document.getElementById('fileList');
-    const files = fileInput.files;
+    const selectedOption = selectedFile.options[selectedFile.selectedIndex];
     
-    if (files.length > 0) {
-        let html = '<div class="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg"><p class="font-medium mb-2 text-gray-900 dark:text-white">Selected files (' + files.length + '):</p><ul class="space-y-1">';
-        for (let i = 0; i < files.length; i++) {
-            const sizeMB = (files[i].size / 1024 / 1024).toFixed(2);
-            html += '<li class="text-sm text-gray-700 dark:text-gray-300">📄 ' + files[i].name + ' <span class="text-gray-500 dark:text-gray-400">(' + sizeMB + ' MB)</span></li>';
-        }
-        html += '</ul></div>';
+    if (selectedOption && selectedOption.value) {
+        const fileName = selectedOption.dataset.name || selectedOption.textContent.trim();
+        const fileSize = parseInt(selectedOption.dataset.size || '0', 10);
+        const sizeMB = (fileSize / 1024 / 1024).toFixed(2);
+        const html = '<div class="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg"><p class="font-medium mb-2 text-gray-900 dark:text-white">Selected file:</p><p class="text-sm text-gray-700 dark:text-gray-300">📄 ' + fileName + ' <span class="text-gray-500 dark:text-gray-400">(' + sizeMB + ' MB)</span></p></div>';
         fileList.innerHTML = html;
     } else {
         fileList.innerHTML = '';
@@ -1283,8 +1295,8 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
     const uploadMessage = document.getElementById('uploadMessage');
     const uploadForm = document.getElementById('uploadForm');
     
-    if (fileInput.files.length === 0) {
-        alert('Please select at least one file');
+    if (!selectedFile.value) {
+        alert('Please select a file');
         return;
     }
     
@@ -1663,57 +1675,45 @@ function openEditModal(doc) {
         });
     }, 100);
     
-    // Setup file upload handling for edit form
-    setupEditFileUpload();
+    // Setup file selection handling for edit form
+    setupEditFileSelection();
+    const editSelectedFile = document.getElementById('editSelectedFile');
+    if (doc.file_path) {
+        editSelectedFile.value = doc.file_path;
+    } else {
+        editSelectedFile.value = '';
+    }
+    updateEditFileList();
     
     modal.classList.remove('hidden');
 }
 
-// Setup file handling for edit form
-function setupEditFileUpload() {
-    const editFileInput = document.getElementById('editFileInput');
-    const editFileDropZone = editFileInput.parentElement;
-    const editFileList = document.getElementById('editFileList');
-    
-    editFileInput.addEventListener('change', updateEditFileList);
-    
-    editFileDropZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        editFileDropZone.classList.add('bg-blue-100', 'dark:bg-blue-900/30', 'border-blue-400', 'dark:border-blue-500');
-    });
-    
-    editFileDropZone.addEventListener('dragleave', () => {
-        editFileDropZone.classList.remove('bg-blue-100', 'dark:bg-blue-900/30', 'border-blue-400', 'dark:border-blue-500');
-    });
-    
-    editFileDropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        editFileDropZone.classList.remove('bg-blue-100', 'dark:bg-blue-900/30', 'border-blue-400', 'dark:border-blue-500');
-        editFileInput.files = e.dataTransfer.files;
-        updateEditFileList();
-    });
+// Setup file selection handling for edit form
+function setupEditFileSelection() {
+    const editSelectedFile = document.getElementById('editSelectedFile');
+    if (!editSelectedFile) {
+        return;
+    }
+
+    if (editSelectedFile.dataset.listenerBound !== '1') {
+        editSelectedFile.addEventListener('change', updateEditFileList);
+        editSelectedFile.dataset.listenerBound = '1';
+    }
 }
 
 function updateEditFileList() {
     const editFileList = document.getElementById('editFileList');
-    const editFileInput = document.getElementById('editFileInput');
-    const files = editFileInput.files;
+    const editSelectedFile = document.getElementById('editSelectedFile');
+    const selectedOption = editSelectedFile.options[editSelectedFile.selectedIndex];
     
-    if (files.length > 0) {
-        let html = '<div class="space-y-2">';
-        for (let file of files) {
-            const fileSize = (file.size / 1024 / 1024).toFixed(2);
-            html += `
-                <div class="flex items-center justify-between p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
-                    <span class="text-sm font-medium text-gray-900 dark:text-white">${file.name}</span>
-                    <span class="text-xs text-gray-500 dark:text-gray-400">${fileSize} MB</span>
-                </div>
-            `;
-        }
-        html += '</div>';
+    if (selectedOption && selectedOption.value) {
+        const fileName = selectedOption.dataset.name || selectedOption.textContent.trim();
+        const fileSize = parseInt(selectedOption.dataset.size || '0', 10);
+        const fileSizeMb = (fileSize / 1024 / 1024).toFixed(2);
+        const html = '<div class="space-y-2"><div class="flex items-center justify-between p-3 bg-gray-100 dark:bg-gray-700 rounded-lg"><span class="text-sm font-medium text-gray-900 dark:text-white">' + fileName + '</span><span class="text-xs text-gray-500 dark:text-gray-400">' + fileSizeMb + ' MB</span></div></div>';
         editFileList.innerHTML = html;
     } else {
-        editFileList.innerHTML = '';
+        editFileList.innerHTML = '<p class="text-xs text-gray-500 dark:text-gray-400">Keeping current file</p>';
     }
 }
 
@@ -1943,7 +1943,7 @@ document.getElementById('editForm').addEventListener('submit', async (e) => {
     closeBtn.disabled = true;
     
     const editUploadLoading = document.getElementById('editUploadLoading');
-    const editFileInput = document.getElementById('editFileInput');
+    const editSelectedFile = document.getElementById('editSelectedFile');
     editUploadLoading.classList.remove('hidden');
     
     try {
@@ -1958,9 +1958,9 @@ document.getElementById('editForm').addEventListener('submit', async (e) => {
         formData.append('department', departments.join('\n'));
         formData.append('team', teams.join('\n'));
         
-        // Add file if selected
-        if (editFileInput.files.length > 0) {
-            formData.append('edit_file', editFileInput.files[0]);
+        // Add selected replacement file if chosen
+        if (editSelectedFile.value) {
+            formData.append('selected_edit_file', editSelectedFile.value);
         }
         
         const response = await fetch('', {

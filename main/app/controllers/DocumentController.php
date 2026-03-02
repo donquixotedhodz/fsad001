@@ -140,16 +140,10 @@ class DocumentController extends MainController {
                 }
             }
 
-            // Check if files are uploaded
-            if (!isset($_FILES['files']) || empty($_FILES['files']['name'][0])) {
-                echo json_encode(['success' => false, 'message' => 'No files uploaded']);
-                exit;
-            }
-
-            // Get uploaded files
-            $files = $_FILES['files'];
+            // Get file source (dropdown-selected file or uploaded files)
+            $selectedFilePath = trim($_POST['selected_file'] ?? '');
             $uploadedCount = 0;
-            $totalFiles = count($files['name']);
+            $filesToProcess = [];
 
             // Create uploads directory if it doesn't exist
             $uploads_dir = __DIR__ . '/../../uploads';
@@ -163,38 +157,93 @@ class DocumentController extends MainController {
                              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                              'image/jpeg', 'image/png', 'image/gif'];
 
-            // Process each file
-            for ($i = 0; $i < $totalFiles; $i++) {
-                if ($files['error'][$i] != 0) {
-                    continue;
+            // Use selected existing file from dropdown
+            if (!empty($selectedFilePath)) {
+                if (!preg_match('/^uploads\/manap_files\/[A-Za-z0-9._\-]+$/', $selectedFilePath)) {
+                    echo json_encode(['success' => false, 'message' => 'Invalid selected file']);
+                    exit;
                 }
 
-                $file_name = basename($files['name'][$i]);
-                $file_size = $files['size'][$i];
-                $file_type = $files['type'][$i];
-                $file_tmp = $files['tmp_name'][$i];
+                $selectedFileName = basename($selectedFilePath);
+                $manapFilesDir = $uploads_dir . '/manap_files';
+                $absoluteSelectedPath = realpath($manapFilesDir . '/' . $selectedFileName);
+                $uploadsRealPath = realpath($manapFilesDir);
 
-                // Validate file type
-                if (!in_array($file_type, $allowed_types)) {
-                    continue;
+                if ($absoluteSelectedPath === false || $uploadsRealPath === false || strpos($absoluteSelectedPath, $uploadsRealPath) !== 0 || !is_file($absoluteSelectedPath)) {
+                    echo json_encode(['success' => false, 'message' => 'Selected file does not exist']);
+                    exit;
                 }
 
-                // Validate file size (max 50MB)
-                if ($file_size > 50 * 1024 * 1024) {
-                    continue;
+                $selectedMimeType = @mime_content_type($absoluteSelectedPath);
+                if ($selectedMimeType !== false && !in_array($selectedMimeType, $allowed_types)) {
+                    echo json_encode(['success' => false, 'message' => 'Selected file type is not allowed']);
+                    exit;
                 }
 
-                // Generate unique filename
-                $file_extension = pathinfo($file_name, PATHINFO_EXTENSION);
-                $unique_filename = uniqid() . '_' . time() . '_' . $i . '.' . $file_extension;
-                $file_path = $uploads_dir . '/' . $unique_filename;
-
-                if (!move_uploaded_file($file_tmp, $file_path)) {
-                    continue;
+                if (filesize($absoluteSelectedPath) > 50 * 1024 * 1024) {
+                    echo json_encode(['success' => false, 'message' => 'Selected file exceeds 50MB limit']);
+                    exit;
                 }
 
-                // Store relative path for database
-                $relative_path = 'uploads/' . $unique_filename;
+                $filesToProcess[] = [
+                    'file_name' => $selectedFileName,
+                    'file_path' => $selectedFilePath,
+                    'file_size' => filesize($absoluteSelectedPath)
+                ];
+            }
+
+            // Legacy uploaded files flow (kept for compatibility)
+            if (isset($_FILES['files']) && !empty($_FILES['files']['name'][0])) {
+                $files = $_FILES['files'];
+                $totalFiles = count($files['name']);
+
+                for ($i = 0; $i < $totalFiles; $i++) {
+                    if ($files['error'][$i] != 0) {
+                        continue;
+                    }
+
+                    $file_name = basename($files['name'][$i]);
+                    $file_size = $files['size'][$i];
+                    $file_type = $files['type'][$i];
+                    $file_tmp = $files['tmp_name'][$i];
+
+                    // Validate file type
+                    if (!in_array($file_type, $allowed_types)) {
+                        continue;
+                    }
+
+                    // Validate file size (max 50MB)
+                    if ($file_size > 50 * 1024 * 1024) {
+                        continue;
+                    }
+
+                    // Generate unique filename
+                    $file_extension = pathinfo($file_name, PATHINFO_EXTENSION);
+                    $unique_filename = uniqid() . '_' . time() . '_' . $i . '.' . $file_extension;
+                    $file_path = $uploads_dir . '/' . $unique_filename;
+
+                    if (!move_uploaded_file($file_tmp, $file_path)) {
+                        continue;
+                    }
+
+                    $filesToProcess[] = [
+                        'file_name' => $file_name,
+                        'file_path' => 'uploads/' . $unique_filename,
+                        'file_size' => $file_size
+                    ];
+                }
+            }
+
+            if (empty($filesToProcess)) {
+                echo json_encode(['success' => false, 'message' => 'No file selected']);
+                exit;
+            }
+
+            // Process each selected/uploaded file
+            foreach ($filesToProcess as $fileData) {
+                $file_name = $fileData['file_name'];
+                $file_size = $fileData['file_size'];
+                $relative_path = $fileData['file_path'];
 
                 // Concatenate all control points into a numbered list format (with line breaks)
                 $filtered_cp = array_filter($control_points);
@@ -460,8 +509,44 @@ class DocumentController extends MainController {
                 }
             }
 
-            // Handle file upload if provided
+            // Handle selected replacement file from dropdown
             $newFilePath = null;
+            $newFileName = null;
+            $selectedEditFilePath = trim($_POST['selected_edit_file'] ?? '');
+
+            if (!empty($selectedEditFilePath)) {
+                if (!preg_match('/^uploads\/manap_files\/[A-Za-z0-9._\-]+$/', $selectedEditFilePath)) {
+                    echo json_encode(['success' => false, 'message' => 'Invalid selected file']);
+                    exit;
+                }
+
+                $uploadDir = __DIR__ . '/../../uploads/manap_files';
+                $selectedFileName = basename($selectedEditFilePath);
+                $absoluteSelectedPath = realpath($uploadDir . '/' . $selectedFileName);
+                $uploadsRealPath = realpath($uploadDir);
+
+                if ($absoluteSelectedPath === false || $uploadsRealPath === false || strpos($absoluteSelectedPath, $uploadsRealPath) !== 0 || !is_file($absoluteSelectedPath)) {
+                    echo json_encode(['success' => false, 'message' => 'Selected file does not exist']);
+                    exit;
+                }
+
+                $allowedExts = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'jpg', 'jpeg', 'png', 'gif', 'ppt', 'pptx'];
+                $selectedExt = strtolower(pathinfo($selectedFileName, PATHINFO_EXTENSION));
+                if (!in_array($selectedExt, $allowedExts)) {
+                    echo json_encode(['success' => false, 'message' => 'Selected file type not allowed']);
+                    exit;
+                }
+
+                if (filesize($absoluteSelectedPath) > 50 * 1024 * 1024) {
+                    echo json_encode(['success' => false, 'message' => 'Selected file exceeds 50MB limit']);
+                    exit;
+                }
+
+                $newFilePath = $selectedEditFilePath;
+                $newFileName = $selectedFileName;
+            }
+
+            // Handle file upload if provided (legacy fallback)
             if (!empty($_FILES['edit_file']['tmp_name'])) {
                 // Delete old file if it exists
                 if (!empty($oldDocument['file_path'])) {
@@ -496,6 +581,7 @@ class DocumentController extends MainController {
 
                 if (move_uploaded_file($_FILES['edit_file']['tmp_name'], $uploadPath)) {
                     $newFilePath = $relativePath;
+                    $newFileName = $_FILES['edit_file']['name'];
                 } else {
                     echo json_encode(['success' => false, 'message' => 'Failed to upload file']);
                     exit;
@@ -516,10 +602,7 @@ class DocumentController extends MainController {
             // Add file path to update if new file uploaded
             if ($newFilePath) {
                 $updateFields['file_path'] = $newFilePath;
-                // Update filename if available
-                if (!empty($_FILES['edit_file']['name'])) {
-                    $updateFields['file_name'] = $_FILES['edit_file']['name'];
-                }
+                $updateFields['file_name'] = $newFileName;
             }
 
             // Build SQL query dynamically
